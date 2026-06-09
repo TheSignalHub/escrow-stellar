@@ -230,7 +230,7 @@ cargo test
 - [Architecture](docs/ARCHITECTURE.md) — System design, integration patterns, security model
 - [Smart Contract Reference](docs/SMART_CONTRACT.md) — Complete API with types and events
 - [Frontend Architecture](docs/FRONTEND.md) — Component structure, hooks, design system
-- [Demo Guide](docs/DEMO_GUIDE.md) — Step-by-step walkthrough
+- [Demo Guide](docs/DEMO_GUIDE.md) — Step-by-step walkthrough test
 
 ## License
 
