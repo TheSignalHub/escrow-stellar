@@ -496,6 +496,8 @@ export default function App() {
                 <CreateDeal
                   onCreateDeal={escrow.createDeal}
                   onDealCreated={handleDealCreated}
+                  walletAddress={wallet.address}
+                  signTransaction={wallet.signTransaction}
                 />
               )}
 

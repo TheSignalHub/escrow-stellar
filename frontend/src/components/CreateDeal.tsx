@@ -3,7 +3,10 @@ import { toContractAmount, XLM_SAC_ADDRESS, USDC_TOKEN_ADDRESS, TOKENS, DEMO_ACC
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
 import { Card, Button } from './ui/Components';
+import { AssetSwapStep } from './AssetSwapStep';
 import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle2, FileText, Check, ShieldCheck, Zap } from 'lucide-react';
+
+type SourceAsset = 'XLM' | 'USDC';
 
 interface MilestoneInput {
   name: string;
@@ -59,16 +62,22 @@ interface Props {
     milestoneAmounts: bigint[]
   ) => Promise<{ dealId: number; txHash: string }>;
   onDealCreated?: (dealId: number) => void;
+  /** Required for the multi-asset funding flow (D6). When omitted, swap path is disabled. */
+  walletAddress?: string;
+  signTransaction?: (xdr: string, opts?: unknown) => Promise<string>;
 }
 
-export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
+export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTransaction }: Props) {
   const toast = useToast();
   const [dealTitle, setDealTitle] = useState('');
   const [dealDescription, setDealDescription] = useState('');
   const [provider, setProvider] = useState('');
   const [connector, setConnector] = useState('');
   const [totalAmount, setTotalAmount] = useState(500);
-  const [paymentToken, setPaymentToken] = useState<'XLM' | 'USDC'>('XLM');
+  // Source asset = what the user pays with. Settlement is always USDC for the
+  // escrow contract (D6 — multi-asset funding via Soroswap Aggregator).
+  // When sourceAsset === 'USDC', no swap is needed (direct path).
+  const [sourceAsset, setSourceAsset] = useState<SourceAsset>('USDC');
   const [platformFee, setPlatformFee] = useState(10);
   const [connectorShare, setConnectorShare] = useState(50);
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
@@ -80,9 +89,16 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
   const [txStep, setTxStep] = useState<'signing' | 'submitting' | 'confirming' | null>(null);
   const [result, setResult] = useState<{ dealId: number; txHash: string } | null>(null);
   const [error, setError] = useState('');
+  const [showSwap, setShowSwap] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // Captured when a swap completes — surfaced in review screen for audit trail
+  const [swapTxHash, setSwapTxHash] = useState<string | null>(null);
 
-  const tokenSymbol = TOKENS[paymentToken].symbol;
+  // Settlement token (locked to USDC when swapping, equals source otherwise)
+  const settlementToken: SourceAsset = 'USDC';
+  const tokenSymbol = TOKENS[settlementToken].symbol;
+  const needsSwap = sourceAsset !== 'USDC';
+  const canSwap = Boolean(walletAddress && signTransaction);
 
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
     setDealTitle(scenario.name);
@@ -90,11 +106,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
     setProvider(DEMO_ACCOUNTS.provider);
     setConnector(DEMO_ACCOUNTS.connector);
     setTotalAmount(scenario.totalAmount);
-    setPaymentToken('XLM');
+    setSourceAsset('USDC');
     setPlatformFee(scenario.platformFee);
     setConnectorShare(scenario.connectorShare);
     setMilestones(scenario.milestones.map((m) => ({ ...m })));
     setError('');
+    setSwapTxHash(null);
   };
 
   const updateMilestonePercentage = (index: number, value: number) => {
@@ -120,7 +137,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
   const totalMilestonePercent = milestones.reduce((a, b) => a + b.percentage, 0);
 
-  // Step 1: Validate → show review
+  // Step 1: Validate → either show swap step or go straight to review
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -146,18 +163,40 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
       return;
     }
 
-    const tokenAddress = paymentToken === 'XLM' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
-    if (!tokenAddress) {
-      setError('Token address not configured. Check your .env file.');
+    if (!USDC_TOKEN_ADDRESS) {
+      setError('USDC token address not configured. Check your .env file (VITE_USDC_TOKEN_ADDRESS).');
       return;
     }
 
-    setShowReview(true);
+    if (needsSwap) {
+      if (!canSwap) {
+        setError(
+          'Wallet not ready for swap. Reconnect your wallet, then pick a different source asset.',
+        );
+        return;
+      }
+      setShowSwap(true);
+    } else {
+      setShowReview(true);
+    }
   };
 
-  // Step 2: Confirm → submit to contract
+  // Step 1.5 callbacks — wired into <AssetSwapStep />
+  const handleSwapConfirmed = (params: { txHash: string }) => {
+    setSwapTxHash(params.txHash);
+    setShowSwap(false);
+    setShowReview(true);
+    toast(`Swap confirmed — escrow will settle in USDC`, 'success');
+  };
+
+  const handleSwapCancel = () => {
+    setShowSwap(false);
+    setError('');
+  };
+
+  // Step 2: Confirm → submit to contract (token always = USDC after this point)
   const handleConfirm = async () => {
-    const tokenAddress = paymentToken === 'XLM' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
+    const tokenAddress = USDC_TOKEN_ADDRESS;
     if (!tokenAddress) return;
 
     setLoading(true);
@@ -172,7 +211,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
       const res = await onCreateDeal(
         provider.trim(),
         connector.trim(),
-        tokenAddress,
+        USDC_TOKEN_ADDRESS,
         platformFee * 100,
         connectorShare * 100,
         milestoneAmounts
@@ -255,6 +294,33 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
     );
   }
 
+  // Step 1.5 — Asset swap (only when sourceAsset !== USDC)
+  if (showSwap && walletAddress && signTransaction) {
+    return (
+      <div className="w-full max-w-4xl mx-auto animate-fade-in py-4">
+        <div className="mb-6">
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">
+            Multi-Asset Funding
+          </h2>
+          <p className="text-zinc-500 font-medium text-sm lg:text-base">
+            Route {sourceAsset} → USDC through the aggregator (Soroswap · Phoenix · Aqua) before
+            creating the escrow deal.
+          </p>
+        </div>
+        <AssetSwapStep
+          sourceAssetAddress={XLM_SAC_ADDRESS}
+          sourceAssetSymbol={sourceAsset}
+          usdcAddress={USDC_TOKEN_ADDRESS}
+          targetUsdcUnits={totalAmount}
+          walletAddress={walletAddress}
+          signTransaction={signTransaction}
+          onSwapConfirmed={handleSwapConfirmed}
+          onCancel={handleSwapCancel}
+        />
+      </div>
+    );
+  }
+
   // Review / summary step before contract call
   if (showReview) {
     const providerPct = 100 - platformFee;
@@ -333,6 +399,26 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
                     {totalAmount.toLocaleString()} <span className="text-xl">{tokenSymbol}</span>
                   </span>
                 </div>
+
+                {swapTxHash && (
+                  <div className="mb-6 p-3 rounded-xl bg-zinc-900/60 border border-emerald-500/20 text-xs">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest mb-1.5">
+                      <ShieldCheck size={12} />
+                      Swap completed
+                    </div>
+                    <p className="text-zinc-400 mb-1">
+                      Source {sourceAsset} → USDC routed via aggregator. Escrow will receive USDC.
+                    </p>
+                    <a
+                      href={getExplorerTxLink(swapTxHash)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-emerald-400 font-mono underline hover:text-emerald-300 break-all"
+                    >
+                      {swapTxHash.slice(0, 16)}…
+                    </a>
+                  </div>
+                )}
 
                 <div className="space-y-4 mb-8">
                   <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Split Per Release</h5>
@@ -581,25 +667,49 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
               <div className="space-y-6">
                  <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-2">Total Amount</label>
-                  <div className="flex gap-2">
-                     <select
-                        value={paymentToken}
-                        onChange={(e) => setPaymentToken(e.target.value as 'XLM' | 'USDC')}
-                        className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
-                      >
-                        <option value="XLM">XLM</option>
-                        <option value="USDC">USDC</option>
-                      </select>
-                      <input
-                        type="number"
-                        value={totalAmount}
-                        onChange={(e) => setTotalAmount(Number(e.target.value))}
-                        min={1}
-                        required
-                        className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-xl font-mono font-bold text-emerald-400 outline-none transition-colors"
-                      />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">
+                      Total Amount (USDC)
+                    </label>
+                    <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                      Escrow settles in USDC
+                    </span>
                   </div>
+                  <input
+                    type="number"
+                    value={totalAmount}
+                    onChange={(e) => setTotalAmount(Number(e.target.value))}
+                    min={1}
+                    required
+                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-xl font-mono font-bold text-emerald-400 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                    Source Asset (what you pay with)
+                  </label>
+                  <select
+                    value={sourceAsset}
+                    onChange={(e) => setSourceAsset(e.target.value as SourceAsset)}
+                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
+                    disabled={!canSwap && sourceAsset !== 'USDC'}
+                  >
+                    <option value="USDC">USDC — direct (no swap)</option>
+                    <option value="XLM" disabled={!canSwap}>
+                      XLM — swap to USDC via aggregator
+                    </option>
+                  </select>
+                  {needsSwap && (
+                    <p className="text-[10px] text-zinc-500 mt-1.5">
+                      A swap step will run before deal creation. Routed via Soroswap · Phoenix · Aqua.
+                    </p>
+                  )}
+                  {!canSwap && (
+                    <p className="text-[10px] text-amber-500 mt-1.5">
+                      Connect a wallet to enable non-USDC source assets.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
