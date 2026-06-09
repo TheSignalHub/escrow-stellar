@@ -8,7 +8,7 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 
 **Contract on Testnet**: [`CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC`](https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC)
 
-**GitHub**: [github.com/SamirStream/stellar-demo](https://github.com/SamirStream/stellar-demo)
+**GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
 ## Key Features
 
@@ -113,7 +113,7 @@ npm run dev
 ## Project Structure
 
 ```text
-stellar-demo/
+escrow-stellar/
 ├── contracts/
 │   └── deal_escrow/
 │       └── src/
