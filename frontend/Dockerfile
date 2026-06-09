@@ -1,0 +1,36 @@
+FROM node:22.16-bookworm-slim AS build
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    g++ \
+    make \
+    pkg-config \
+    python3 \
+    libusb-1.0-0-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+ARG VITE_PRIVY_APP_ID
+ARG VITE_DEAL_ESCROW_CONTRACT
+ARG VITE_USDC_TOKEN_ADDRESS
+ARG VITE_SOROSWAP_API_KEY
+
+ENV VITE_PRIVY_APP_ID=$VITE_PRIVY_APP_ID
+ENV VITE_DEAL_ESCROW_CONTRACT=$VITE_DEAL_ESCROW_CONTRACT
+ENV VITE_USDC_TOKEN_ADDRESS=$VITE_USDC_TOKEN_ADDRESS
+ENV VITE_SOROSWAP_API_KEY=$VITE_SOROSWAP_API_KEY
+
+RUN npm run build
+
+FROM nginx:1.27-alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
