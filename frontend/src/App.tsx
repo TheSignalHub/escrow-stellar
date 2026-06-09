@@ -173,7 +173,7 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => (
       <Button onClick={onConnect} variant="primary" className="px-8 lg:px-10 py-4 lg:py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
         Connect Wallet
       </Button>
-      <a href="https://github.com/SamirStream/stellar-demo" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
+      <a href="https://github.com/TheSignalHub/escrow-stellar" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
         <Button variant="secondary" className="px-8 lg:px-10 py-4 lg:py-5 w-full h-full" icon={Globe2}>
           Read the Docs
         </Button>
