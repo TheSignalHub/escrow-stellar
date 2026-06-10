@@ -6,7 +6,10 @@ import { Card, Button } from './ui/Components';
 import { AssetSwapStep } from './AssetSwapStep';
 import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle2, FileText, Check, ShieldCheck, Zap } from 'lucide-react';
 
-type SourceAsset = 'XLM' | 'USDC';
+// Source asset = what the client pays with.
+// USDC | XLM_DIRECT settle directly in that asset (deal token = asset SAC).
+// XLM_SWAP routes XLM → USDC via the aggregator before create_deal (D6 path).
+type SourceAsset = 'USDC' | 'XLM_DIRECT' | 'XLM_SWAP';
 
 interface MilestoneInput {
   name: string;
@@ -74,10 +77,10 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   const [provider, setProvider] = useState('');
   const [connector, setConnector] = useState('');
   const [totalAmount, setTotalAmount] = useState(500);
-  // Source asset = what the user pays with. Settlement is always USDC for the
-  // escrow contract (D6 — multi-asset funding via Soroswap Aggregator).
-  // When sourceAsset === 'USDC', no swap is needed (direct path).
-  const [sourceAsset, setSourceAsset] = useState<SourceAsset>('USDC');
+  // Source asset selector — see SourceAsset type. Default to XLM_DIRECT for
+  // the Tranche 2 demo because Soroswap testnet pools are dry and Circle's
+  // USDC SAC requires an extra wrap step. Mainnet ships with USDC default.
+  const [sourceAsset, setSourceAsset] = useState<SourceAsset>('XLM_DIRECT');
   const [platformFee, setPlatformFee] = useState(10);
   const [connectorShare, setConnectorShare] = useState(50);
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
@@ -94,10 +97,14 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   // Captured when a swap completes — surfaced in review screen for audit trail
   const [swapTxHash, setSwapTxHash] = useState<string | null>(null);
 
-  // Settlement token (locked to USDC when swapping, equals source otherwise)
-  const settlementToken: SourceAsset = 'USDC';
-  const tokenSymbol = TOKENS[settlementToken].symbol;
-  const needsSwap = sourceAsset !== 'USDC';
+  // Settlement token = SAC the deal contract will hold:
+  //   USDC       → USDC SAC (deal token = USDC)
+  //   XLM_DIRECT → XLM SAC  (deal token = XLM, no swap)
+  //   XLM_SWAP   → USDC SAC after aggregator swap (D6 flow)
+  const settlementSymbol: 'XLM' | 'USDC' = sourceAsset === 'XLM_DIRECT' ? 'XLM' : 'USDC';
+  const settlementTokenAddress = sourceAsset === 'XLM_DIRECT' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
+  const tokenSymbol = TOKENS[settlementSymbol].symbol;
+  const needsSwap = sourceAsset === 'XLM_SWAP';
   const canSwap = Boolean(walletAddress && signTransaction);
 
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
@@ -106,7 +113,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     setProvider(DEMO_ACCOUNTS.provider);
     setConnector(DEMO_ACCOUNTS.connector);
     setTotalAmount(scenario.totalAmount);
-    setSourceAsset('USDC');
+    setSourceAsset('XLM_DIRECT');
     setPlatformFee(scenario.platformFee);
     setConnectorShare(scenario.connectorShare);
     setMilestones(scenario.milestones.map((m) => ({ ...m })));
@@ -163,8 +170,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
       return;
     }
 
-    if (!USDC_TOKEN_ADDRESS) {
-      setError('USDC token address not configured. Check your .env file (VITE_USDC_TOKEN_ADDRESS).');
+    if (!settlementTokenAddress) {
+      setError(
+        sourceAsset === 'XLM_DIRECT'
+          ? 'XLM SAC address not configured.'
+          : 'USDC token address not configured. Check your .env file (VITE_USDC_TOKEN_ADDRESS).',
+      );
       return;
     }
 
@@ -194,9 +205,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     setError('');
   };
 
-  // Step 2: Confirm → submit to contract (token always = USDC after this point)
+  // Step 2: Confirm → submit to contract. Token address depends on source:
+  //   XLM_DIRECT → XLM SAC
+  //   USDC | XLM_SWAP → USDC SAC (swap path already converted)
   const handleConfirm = async () => {
-    const tokenAddress = USDC_TOKEN_ADDRESS;
+    const tokenAddress = settlementTokenAddress;
     if (!tokenAddress) return;
 
     setLoading(true);
@@ -211,7 +224,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
       const res = await onCreateDeal(
         provider.trim(),
         connector.trim(),
-        USDC_TOKEN_ADDRESS,
+        settlementTokenAddress,
         platformFee * 100,
         connectorShare * 100,
         milestoneAmounts
@@ -294,7 +307,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     );
   }
 
-  // Step 1.5 — Asset swap (only when sourceAsset !== USDC)
+  // Step 1.5 — Asset swap (only when sourceAsset = XLM_SWAP)
   if (showSwap && walletAddress && signTransaction) {
     return (
       <div className="w-full max-w-4xl mx-auto animate-fade-in py-4">
@@ -303,13 +316,13 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
             Multi-Asset Funding
           </h2>
           <p className="text-zinc-500 font-medium text-sm lg:text-base">
-            Route {sourceAsset} → USDC through the aggregator (Soroswap · Phoenix · Aqua) before
+            Route XLM → USDC through the aggregator (Soroswap · Phoenix · Aqua) before
             creating the escrow deal.
           </p>
         </div>
         <AssetSwapStep
           sourceAssetAddress={XLM_SAC_ADDRESS}
-          sourceAssetSymbol={sourceAsset}
+          sourceAssetSymbol="XLM"
           usdcAddress={USDC_TOKEN_ADDRESS}
           targetUsdcUnits={totalAmount}
           walletAddress={walletAddress}
@@ -407,7 +420,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                       Swap completed
                     </div>
                     <p className="text-zinc-400 mb-1">
-                      Source {sourceAsset} → USDC routed via aggregator. Escrow will receive USDC.
+                      Source XLM → USDC routed via aggregator. Escrow will receive USDC.
                     </p>
                     <a
                       href={getExplorerTxLink(swapTxHash)}
@@ -669,10 +682,10 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                  <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">
-                      Total Amount (USDC)
+                      Total Amount ({settlementSymbol})
                     </label>
                     <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
-                      Escrow settles in USDC
+                      Escrow settles in {settlementSymbol}
                     </span>
                   </div>
                   <input
@@ -693,21 +706,31 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     value={sourceAsset}
                     onChange={(e) => setSourceAsset(e.target.value as SourceAsset)}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
-                    disabled={!canSwap && sourceAsset !== 'USDC'}
                   >
-                    <option value="USDC">USDC — direct (no swap)</option>
-                    <option value="XLM" disabled={!canSwap}>
-                      XLM — swap to USDC via aggregator
+                    <option value="XLM_DIRECT">XLM — direct (no swap, settles in XLM)</option>
+                    <option value="USDC">USDC — direct (no swap, settles in USDC)</option>
+                    <option value="XLM_SWAP" disabled={!canSwap}>
+                      XLM → USDC — swap via aggregator (D6 path)
                     </option>
                   </select>
+                  {sourceAsset === 'XLM_DIRECT' && (
+                    <p className="text-[10px] text-zinc-500 mt-1.5">
+                      Deal token = XLM SAC. Fund + release in XLM. No aggregator needed.
+                    </p>
+                  )}
+                  {sourceAsset === 'USDC' && (
+                    <p className="text-[10px] text-zinc-500 mt-1.5">
+                      Deal token = USDC SAC. Requires USDC balance to fund milestones.
+                    </p>
+                  )}
                   {needsSwap && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
                       A swap step will run before deal creation. Routed via Soroswap · Phoenix · Aqua.
                     </p>
                   )}
-                  {!canSwap && (
+                  {!canSwap && sourceAsset === 'XLM_SWAP' && (
                     <p className="text-[10px] text-amber-500 mt-1.5">
-                      Connect a wallet to enable non-USDC source assets.
+                      Connect a wallet to enable the swap path.
                     </p>
                   )}
                 </div>
