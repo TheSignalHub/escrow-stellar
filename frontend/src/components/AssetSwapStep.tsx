@@ -55,10 +55,11 @@ export function AssetSwapStep({
   useEffect(() => {
     swap.reset();
     void swap.getQuote({
-      assetIn: sourceAssetAddress,
-      assetOutUsdc: usdcAddress,
-      targetUsdcUnits,
-    });
+        assetIn: sourceAssetAddress,
+        assetOutUsdc: usdcAddress,
+        targetUsdcUnits,
+        sourceAddress: walletAddress,
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceAssetAddress, usdcAddress, targetUsdcUnits]);
 
@@ -112,10 +113,11 @@ export function AssetSwapStep({
             icon={RefreshCw}
             onClick={() =>
               swap.getQuote({
-                assetIn: sourceAssetAddress,
-                assetOutUsdc: usdcAddress,
-                targetUsdcUnits,
-              })
+        assetIn: sourceAssetAddress,
+        assetOutUsdc: usdcAddress,
+        targetUsdcUnits,
+        sourceAddress: walletAddress,
+      })
             }
           >
             Retry
@@ -267,10 +269,11 @@ export function AssetSwapStep({
           icon={RefreshCw}
           onClick={() =>
             swap.getQuote({
-              assetIn: sourceAssetAddress,
-              assetOutUsdc: usdcAddress,
-              targetUsdcUnits,
-            })
+        assetIn: sourceAssetAddress,
+        assetOutUsdc: usdcAddress,
+        targetUsdcUnits,
+        sourceAddress: walletAddress,
+      })
           }
           disabled={swap.status === 'quoting' || swap.status === 'swapping'}
         >

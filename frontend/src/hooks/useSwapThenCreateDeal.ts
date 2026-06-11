@@ -20,7 +20,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 
-import { soroswapClient, type SwapQuote } from '../lib/soroswap';
+import { soroswapOnchainClient as soroswapClient, type SwapQuote } from '../lib/soroswapOnchain';
 import { unitsToStroops } from '../lib/swapRoute';
 import { NETWORK_PASSPHRASE } from '../lib/stellar';
 
@@ -48,6 +48,7 @@ export interface UseSwapThenCreateDealReturn {
     assetIn: string;
     assetOutUsdc: string;
     targetUsdcUnits: number;
+    sourceAddress?: string;
   }) => Promise<SwapQuote>;
   /** Execute the previously fetched quote (build → sign → submit) */
   executeSwap: (params: {
@@ -76,14 +77,20 @@ export function useSwapThenCreateDeal(): UseSwapThenCreateDealReturn {
   }, []);
 
   const getQuote = useCallback<UseSwapThenCreateDealReturn['getQuote']>(
-    async ({ assetIn, assetOutUsdc, targetUsdcUnits }) => {
+    async ({ assetIn, assetOutUsdc, targetUsdcUnits, sourceAddress }) => {
       setStatus('quoting');
       setError('');
       try {
         const amount = unitsToStroops(targetUsdcUnits);
-        // EXACT_OUT — we want a specific USDC amount delivered; the aggregator
-        // tells us how much of `assetIn` to spend.
-        const quote = await soroswapClient.getQuote(assetIn, assetOutUsdc, amount, 'EXACT_OUT');
+        // EXACT_OUT — we want a specific USDC amount delivered; the router's
+        // router_get_amounts_in tells us how much of `assetIn` to spend.
+        const quote = await soroswapClient.getQuote(
+          assetIn,
+          assetOutUsdc,
+          amount,
+          'EXACT_OUT',
+          sourceAddress,
+        );
         quoteRef.current = quote;
         setLastQuote(quote);
         setStatus('quoted');
