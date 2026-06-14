@@ -18,11 +18,6 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 5**: DealEscrow event topics and Payload CMS indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with a smoke-test procedure in [`docs/scf/tranche2-d5-smoke-test.md`](docs/scf/tranche2-d5-smoke-test.md).
 - **Deliverable 6**: The frontend exposes a Stellar Broker funding step. On testnet, the broker adapter routes through a seeded Soroswap pool because public indexed testnet liquidity may be unavailable after resets.
 
-Reviewer packet:
-
-- [`docs/scf/TRANCHE_2_REVIEW_NOTES.md`](docs/scf/TRANCHE_2_REVIEW_NOTES.md)
-- [`docs/scf/TRANCHE_2_VIDEO_SCRIPT.md`](docs/scf/TRANCHE_2_VIDEO_SCRIPT.md)
-
 Current testnet funding configuration:
 
 ```text
