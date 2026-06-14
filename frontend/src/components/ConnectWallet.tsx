@@ -32,7 +32,7 @@ export function ConnectWallet({ wallet, onConnect }: Props) {
         </span>
         {wallet.usdcBalance !== '0' && (
           <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
-            {wallet.usdcBalance} USDC
+            {wallet.usdcBalance} test USDC
           </span>
         )}
       </div>

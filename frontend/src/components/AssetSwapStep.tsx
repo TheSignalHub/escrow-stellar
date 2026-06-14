@@ -4,11 +4,12 @@
  * Step 1.5 of the CreateDeal wizard for SCF #42 — Deliverable 6.
  *
  * Shown only when the user picks a source asset OTHER than USDC. Fetches a
- * Soroswap Aggregator quote for `sourceAsset → USDC`, displays the route,
+ * quote for `sourceAsset → configured test USDC`, displays the seeded route,
  * price impact, and amounts, and runs the swap when the user confirms.
  *
  * On success, the parent CreateDeal proceeds to the existing review screen
- * with the settlement token forcibly set to USDC.
+ * with the settlement token forcibly set to the configured USDC-compatible
+ * testnet asset.
  */
 import { useEffect, useState } from 'react';
 
@@ -90,7 +91,7 @@ export function AssetSwapStep({
       <Card className="p-8">
         <div className="flex items-center gap-3 text-zinc-400">
           <Loader2 className="animate-spin" size={20} />
-          <span>Fetching best route across Soroswap, Phoenix, Aqua…</span>
+          <span>Fetching quote from the Stellar Broker testnet route…</span>
         </div>
       </Card>
     )
@@ -135,14 +136,14 @@ export function AssetSwapStep({
       <div className="mb-6">
         <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
           <ShieldCheck size={14} />
-          Step 1.5 — Asset Conversion
+          Step 1.5 — Stellar Broker Conversion
         </div>
         <h2 className="text-xl lg:text-2xl font-black text-white tracking-tight">
-          Swap {sourceAssetSymbol} → USDC before escrow
+          Swap {sourceAssetSymbol} → test USDC before escrow
         </h2>
         <p className="text-zinc-500 text-sm mt-1">
-          The DealEscrow contract settles in USDC. We&apos;ll route your {sourceAssetSymbol}{' '}
-          through the aggregator before creating the deal.
+          The DealEscrow contract settles in the configured demo test USDC asset.
+          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter before creating the deal.
         </p>
       </div>
 
@@ -165,7 +166,7 @@ export function AssetSwapStep({
             </p>
             <p className="font-mono text-xl lg:text-2xl text-white font-bold">
               {amountOutUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
-              <span className="text-emerald-400">USDC</span>
+              <span className="text-emerald-400">test USDC</span>
             </p>
           </div>
         </div>
@@ -219,8 +220,8 @@ export function AssetSwapStep({
               High price impact ({impact.display})
             </p>
             <p className="text-zinc-400 text-xs mt-1">
-              Testnet liquidity is thin for this pair. You may receive significantly less than
-              the quoted USDC amount. Check the box to confirm you want to proceed.
+              This is seeded demo liquidity on testnet, so price impact can be visible. You may receive significantly less than
+              the quoted test USDC amount. Check the box to confirm you want to proceed.
             </p>
           </div>
         </label>

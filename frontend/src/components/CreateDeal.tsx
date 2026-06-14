@@ -8,7 +8,8 @@ import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle
 
 // Source asset = what the client pays with.
 // USDC | XLM_DIRECT settle directly in that asset (deal token = asset SAC).
-// XLM_SWAP routes XLM → USDC via the aggregator before create_deal (D6 path).
+// XLM_SWAP routes XLM → the configured USDC-compatible testnet settlement
+// asset before create_deal (D6 path).
 type SourceAsset = 'USDC' | 'XLM_DIRECT' | 'XLM_SWAP';
 
 interface MilestoneInput {
@@ -77,9 +78,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   const [provider, setProvider] = useState('');
   const [connector, setConnector] = useState('');
   const [totalAmount, setTotalAmount] = useState(500);
-  // Source asset selector — see SourceAsset type. Default to XLM_DIRECT for
-  // the Tranche 2 demo because Soroswap testnet pools are dry and Circle's
-  // USDC SAC requires an extra wrap step. Mainnet ships with USDC default.
+  // Source asset selector — see SourceAsset type. Default to XLM_DIRECT so a
+  // dry testnet route never blocks the base escrow lifecycle.
   const [sourceAsset, setSourceAsset] = useState<SourceAsset>('XLM_DIRECT');
   const [platformFee, setPlatformFee] = useState(10);
   const [connectorShare, setConnectorShare] = useState(50);
@@ -100,7 +100,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   // Settlement token = SAC the deal contract will hold:
   //   USDC       → USDC SAC (deal token = USDC)
   //   XLM_DIRECT → XLM SAC  (deal token = XLM, no swap)
-  //   XLM_SWAP   → USDC SAC after aggregator swap (D6 flow)
+  //   XLM_SWAP   → USDC SAC after Stellar Broker conversion (D6 flow)
   const settlementSymbol: 'XLM' | 'USDC' = sourceAsset === 'XLM_DIRECT' ? 'XLM' : 'USDC';
   const settlementTokenAddress = sourceAsset === 'XLM_DIRECT' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
   const tokenSymbol = TOKENS[settlementSymbol].symbol;
@@ -197,7 +197,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     setSwapTxHash(params.txHash);
     setShowSwap(false);
     setShowReview(true);
-    toast(`Swap confirmed — escrow will settle in USDC`, 'success');
+    toast(`Broker swap confirmed — escrow will settle in test USDC`, 'success');
   };
 
   const handleSwapCancel = () => {
@@ -316,8 +316,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
             Multi-Asset Funding
           </h2>
           <p className="text-zinc-500 font-medium text-sm lg:text-base">
-            Route XLM → USDC through the aggregator (Soroswap · Phoenix · Aqua) before
-            creating the escrow deal.
+            Route XLM through Stellar Broker into the configured USDC-compatible testnet settlement asset before creating the escrow deal.
           </p>
         </div>
         <AssetSwapStep
@@ -420,7 +419,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                       Swap completed
                     </div>
                     <p className="text-zinc-400 mb-1">
-                      Source XLM → USDC routed via aggregator. Escrow will receive USDC.
+                      Source XLM → test USDC routed through the Stellar Broker testnet adapter. Escrow will receive the configured settlement asset.
                     </p>
                     <a
                       href={getExplorerTxLink(swapTxHash)}
@@ -684,8 +683,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">
                       Total Amount ({settlementSymbol})
                     </label>
-                    <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
-                      Escrow settles in {settlementSymbol}
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                      Escrow settles in {settlementSymbol === 'USDC' ? 'test USDC' : settlementSymbol}
                     </span>
                   </div>
                   <input
@@ -708,9 +707,9 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
                     <option value="XLM_DIRECT">XLM — direct (no swap, settles in XLM)</option>
-                    <option value="USDC">USDC — direct (no swap, settles in USDC)</option>
+                    <option value="USDC">test USDC — direct demo settlement asset</option>
                     <option value="XLM_SWAP" disabled={!canSwap}>
-                      XLM → USDC — swap via aggregator (D6 path)
+                      XLM → test USDC — Stellar Broker testnet route (D6 path)
                     </option>
                   </select>
                   {sourceAsset === 'XLM_DIRECT' && (
@@ -720,12 +719,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                   )}
                   {sourceAsset === 'USDC' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = USDC SAC. Requires USDC balance to fund milestones.
+                      Deal token = configured demo test USDC SAC. This is not production Circle USDC.
                     </p>
                   )}
                   {needsSwap && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      A swap step will run before deal creation. Routed via Soroswap · Phoenix · Aqua.
+                      A demo swap step will run before deal creation through the configured Stellar Broker testnet route.
                     </p>
                   )}
                   {!canSwap && sourceAsset === 'XLM_SWAP' && (

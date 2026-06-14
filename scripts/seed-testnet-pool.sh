@@ -3,12 +3,12 @@
 # seed-testnet-pool.sh — one-shot seeding for the SCF #42 Tranche 2 demo.
 #
 # Builds + deploys a SEP-41 test USDC SAC, mints a large balance to the
-# operator, prints the address to drop into the frontend env, and walks
-# through the Soroswap testnet LP step (the only manual click).
+# operator, and prints the address to drop into the frontend env. Pool seeding
+# for the demo can be done directly with Stellar CLI against the Soroswap router.
 #
 # Prerequisites:
 #   - stellar CLI v23+        (`stellar --version`)
-#   - cargo + wasm32 target   (`rustup target add wasm32-unknown-unknown`)
+#   - cargo + wasm32 target   (`rustup target add wasm32v1-none`)
 #   - a Stellar testnet identity loaded into the CLI
 #     (`stellar keys generate <name> --network testnet --fund`)
 #
@@ -25,7 +25,7 @@
 #   3. Initializes (admin = identity_name, name=USDC, symbol=USDC, decimals=7)
 #   4. Mints mint_amount_units to identity_name
 #   5. Prints the SAC address + suggested .env edit
-#   6. Prints the Soroswap LP UI link to seed the XLM/USDC pool
+#   6. Prints the router env needed by the frontend demo
 
 set -euo pipefail
 
@@ -33,8 +33,8 @@ IDENTITY="${1:-deployer}"
 MINT_UNITS="${2:-100000}"
 MINT_STROOPS=$((MINT_UNITS * 10000000))   # 7 decimals
 NETWORK="testnet"
-WASM="target/wasm32-unknown-unknown/release/test_usdc.wasm"
-WASM_OPT="target/wasm32-unknown-unknown/release/test_usdc.optimized.wasm"
+WASM="target/wasm32v1-none/release/test_usdc.wasm"
+WASM_OPT="target/wasm32v1-none/release/test_usdc.optimized.wasm"
 
 # ── Pre-flight ──────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ if ! command -v stellar >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! stellar keys address "$IDENTITY" --network "$NETWORK" >/dev/null 2>&1; then
+if ! stellar keys address "$IDENTITY" >/dev/null 2>&1; then
   red "stellar identity '$IDENTITY' not found on $NETWORK"
   echo "Create one: stellar keys generate $IDENTITY --network $NETWORK --fund"
   exit 1
@@ -87,7 +87,7 @@ echo
 
 # ── 2. Deploy ───────────────────────────────────────────────────────────────
 
-cyan "▶ Deploying to $NETWORK…"
+cyan "▶ Deploying to ${NETWORK}…"
 USDC_CONTRACT="$(stellar contract deploy \
   --wasm "$WASM_OPT" \
   --source-account "$IDENTITY" \
@@ -112,7 +112,7 @@ echo
 
 # ── 4. Mint ─────────────────────────────────────────────────────────────────
 
-cyan "▶ Minting $MINT_UNITS USDC ($MINT_STROOPS stroops) to $DEPLOYER_ADDR…"
+cyan "▶ Minting ${MINT_UNITS} USDC (${MINT_STROOPS} stroops) to ${DEPLOYER_ADDR}…"
 stellar contract invoke \
   --id "$USDC_CONTRACT" \
   --source-account "$IDENTITY" \
@@ -139,26 +139,25 @@ bold "Next steps — drop these into the frontend env and redeploy:"
 cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo
 echo "  VITE_USDC_TOKEN_ADDRESS=$USDC_CONTRACT"
+echo "  VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD"
 echo
 echo "Stellar Expert: https://stellar.expert/explorer/testnet/contract/$USDC_CONTRACT"
 echo
 
-# ── 6. LP step ──────────────────────────────────────────────────────────────
+# ── 6. Pool note ────────────────────────────────────────────────────────────
 
 cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-bold "Final step — seed the XLM/USDC pool on Soroswap testnet"
+bold "Pool note — seed liquidity directly with the Soroswap router"
 cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo
-echo "  1. Open https://testnet.soroswap.finance/pools in a browser"
-echo "  2. Connect Freighter (testnet) holding the same address: $DEPLOYER_ADDR"
-echo "  3. Click 'Add Liquidity'"
-echo "  4. Token A = XLM"
-echo "  5. Token B = paste this address →  $USDC_CONTRACT"
-echo "  6. Deposit a starting pair (e.g. 5000 XLM + 500 USDC → 0.1 USDC/XLM)"
-echo "  7. Sign in Freighter, confirm"
+echo "This token is demo-only test USDC, not production Circle USDC."
+echo "For the current SCF #42 demo, the seeded pool is:"
 echo
-echo "Once the LP tx confirms, the Soroswap Aggregator API will find a route"
-echo "for XLM → USDC, the D6 swap flow in the demo unlocks, and the Tranche 2"
-echo "submission can show the full multi-asset funding path on-chain."
+echo "  XLM SAC:  CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
+echo "  test USDC: $USDC_CONTRACT"
+echo "  router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD"
+echo
+echo "Seed the pool from CLI by approving both assets for the router, then calling"
+echo "add_liquidity. Keep enough XLM in the deployer for gas and reserves."
 echo
 green "Done."

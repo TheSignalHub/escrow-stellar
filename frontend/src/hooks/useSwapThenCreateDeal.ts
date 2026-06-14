@@ -20,7 +20,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 
-import { soroswapOnchainClient as soroswapClient, type SwapQuote } from '../lib/soroswapOnchain';
+import { stellarBrokerClient, type BrokerQuote } from '../lib/stellarBroker';
 import { unitsToStroops } from '../lib/swapRoute';
 import { NETWORK_PASSPHRASE } from '../lib/stellar';
 
@@ -33,14 +33,14 @@ export type SwapStatus =
   | 'error';
 
 export interface SwapResult {
-  quote: SwapQuote;
+  quote: BrokerQuote;
   signedXdr: string;
   txHash: string;
 }
 
 export interface UseSwapThenCreateDealReturn {
   status: SwapStatus;
-  lastQuote: SwapQuote | null;
+  lastQuote: BrokerQuote | null;
   lastTxHash: string | null;
   error: string;
   /** Fetch a swap quote (assetIn → USDC, EXACT_OUT on the USDC settlement amount) */
@@ -49,7 +49,7 @@ export interface UseSwapThenCreateDealReturn {
     assetOutUsdc: string;
     targetUsdcUnits: number;
     sourceAddress?: string;
-  }) => Promise<SwapQuote>;
+  }) => Promise<BrokerQuote>;
   /** Execute the previously fetched quote (build → sign → submit) */
   executeSwap: (params: {
     walletAddress: string;
@@ -60,13 +60,13 @@ export interface UseSwapThenCreateDealReturn {
 
 export function useSwapThenCreateDeal(): UseSwapThenCreateDealReturn {
   const [status, setStatus] = useState<SwapStatus>('idle');
-  const [lastQuote, setLastQuote] = useState<SwapQuote | null>(null);
+  const [lastQuote, setLastQuote] = useState<BrokerQuote | null>(null);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   // Keep the latest quote in a ref so executeSwap doesn't race against React
   // batching when called immediately after getQuote() resolves.
-  const quoteRef = useRef<SwapQuote | null>(null);
+  const quoteRef = useRef<BrokerQuote | null>(null);
 
   const reset = useCallback(() => {
     setStatus('idle');
@@ -84,7 +84,7 @@ export function useSwapThenCreateDeal(): UseSwapThenCreateDealReturn {
         const amount = unitsToStroops(targetUsdcUnits);
         // EXACT_OUT — we want a specific USDC amount delivered; the router's
         // router_get_amounts_in tells us how much of `assetIn` to spend.
-        const quote = await soroswapClient.getQuote(
+        const quote = await stellarBrokerClient.getQuote(
           assetIn,
           assetOutUsdc,
           amount,
@@ -118,12 +118,12 @@ export function useSwapThenCreateDeal(): UseSwapThenCreateDealReturn {
       setStatus('swapping');
       setError('');
       try {
-        const xdr = await soroswapClient.buildTransaction(quote, walletAddress);
+        const xdr = await stellarBrokerClient.buildTransaction(quote, walletAddress);
         const signedXdr = await signTransaction(xdr, {
           networkPassphrase: NETWORK_PASSPHRASE,
           address: walletAddress,
         });
-        const { txHash } = await soroswapClient.sendTransaction(signedXdr);
+        const { txHash } = await stellarBrokerClient.sendTransaction(signedXdr);
         setLastTxHash(txHash);
         setStatus('confirmed');
         return { quote, signedXdr, txHash };

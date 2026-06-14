@@ -2,29 +2,28 @@
 
 ## `seed-testnet-pool.sh`
 
-Seeds the XLM/USDC liquidity pool on Soroswap testnet that the SCF #42
-Tranche 2 D6 demo (multi-asset funding via the aggregator) needs to
-prove the swap path on-chain.
+Deploys a demo test USDC token and supports seeding an XLM/test-USDC
+liquidity pool used by the Stellar Broker testnet route for the SCF #42
+Tranche 2 D6 demo.
 
 ### Why this exists
 
-At Tranche 2 submission time the XLM/USDC pair has zero liquidity across
-all three aggregator-routed DEXes on Soroban Testnet (Soroswap, Phoenix,
-Aqua). The DealEscrow integration is fully shipped, but the swap can't
-settle because there is no pool to route through. This script deploys
-a SEP-41 test USDC SAC, mints a large balance to the operator, and walks
-through the single manual click required to LP it against XLM on
-Soroswap's testnet UI.
+At Tranche 2 submission time the public XLM/USDC route had no reliable
+liquidity on Soroban Testnet after network resets. The demo therefore uses
+a clearly labeled SEP-41 test USDC token and a seeded XLM/test-USDC pool.
+This proves the multi-asset escrow funding path without claiming the token
+is production Circle USDC.
 
-The whole thing takes ~5 minutes wall-clock.
+The token deployment/mint takes ~5 minutes wall-clock. Pool seeding is done
+directly from the Stellar CLI against the Soroswap router.
 
 ### Prerequisites
 
 - Stellar CLI v23+ — <https://developers.stellar.org/docs/tools/developer-tools/cli/stellar-cli>
-- Rust + `wasm32-unknown-unknown` target
+- Rust + `wasm32v1-none` target
 
   ```bash
-  rustup target add wasm32-unknown-unknown
+  rustup target add wasm32v1-none
   ```
 
 - A Stellar testnet identity with the CLI:
@@ -57,10 +56,8 @@ Override either:
 2. Deploys it to Soroban testnet
 3. Initializes the contract (`admin`, `name=USDC`, `symbol=USDC`, `decimals=7`)
 4. Mints the requested amount to the deployer
-5. Prints the SAC address — paste it into `VITE_USDC_TOKEN_ADDRESS` in the
-   frontend env and redeploy
-6. Prints instructions for the final manual click: LP a XLM/USDC pair on
-   <https://testnet.soroswap.finance/pools>
+5. Prints the SAC address — paste it into `VITE_USDC_TOKEN_ADDRESS`
+6. Prints the router address required by the frontend demo
 
 ### After running
 
@@ -68,13 +65,28 @@ Override either:
 
    ```
    VITE_USDC_TOKEN_ADDRESS=<address printed by the script>
+   VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
    ```
 
 2. Trigger a redeploy on Coolify / Vercel / wherever
-3. Open <https://stellar.thesignal.directory/>, connect Freighter
-4. Open Create Deal → Source Asset = "XLM → USDC — swap via aggregator (D6 path)"
-5. The aggregator now finds the XLM/USDC pool we just seeded and returns
-   a real quote → sign the swap → sign create_deal → demo continues
+3. Open <https://stellar.thesignal.directory/> and connect with Privy
+4. Open Create Deal → Source Asset = "XLM → test USDC — seeded testnet route"
+5. The Stellar Broker testnet route should return a test USDC estimate → sign
+   the swap → sign create_deal → demo continues
+
+### Current demo pool
+
+For the current local demo setup:
+
+```text
+XLM SAC:        CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+test USDC:      CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
+Soroswap router: CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
+pool/pair:      CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
+seeded reserves: 9,000 XLM + 2,000 test USDC
+```
+
+This is demo-only liquidity. It is intentionally disclosed in the frontend.
 
 ### Verification
 
@@ -104,7 +116,7 @@ The token also appears on Stellar Expert:
   SEP-41 (the soroban-sdk `TokenInterface`) plus an admin-only `mint`. The
   admin can mint freely and reassign via `set_admin`. This is fine for a
   testnet demo — do not reuse on mainnet.
-- The LP step uses Soroswap's testnet UI because the router's `add_liquidity`
-  call requires assembling a multi-instruction tx that is more painful via
-  CLI than via the well-tested UI. If Soroswap's UI moves, the script's
-  final instructions need to be updated.
+- The demo frontend exposes this as the Stellar Broker funding path. On
+  testnet, the broker adapter calls the Soroswap router directly because public
+  indexed testnet liquidity may be unavailable after resets.
+  `VITE_SOROSWAP_API_KEY` is not required for this path.

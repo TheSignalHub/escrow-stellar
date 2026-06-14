@@ -15,17 +15,14 @@ export const EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
 export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
-// USDC Testnet token address.
-// Default = the SCF #42 demo test USDC SAC we deployed + LP'd against XLM on
-// the live Soroswap testnet router (the canonical Soroswap testnet USDC was
-// wiped in a testnet reset, so we seed our own pool — see scripts/seed-testnet-pool.sh).
+// Demo test USDC token address.
+// Default = the SCF #42 demo test USDC SAC deployed and seeded against XLM for
+// the Stellar Broker testnet route. This is not production Circle USDC.
 export const USDC_TOKEN_ADDRESS =
   import.meta.env.VITE_USDC_TOKEN_ADDRESS ||
-  'CCFJDQ3HDXEYLS77CTS5VGJSEXXPD52PUSA65AVDSA5E5P7FMCFHKOG2';
+  'CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX';
 
-// Soroswap testnet router (Uniswap-V2-style AMM router).
-// We call this contract directly for the D6 swap because the Soroswap
-// Aggregator API has no indexed pools on testnet post-reset.
+// Soroswap testnet router used by the Stellar Broker testnet adapter.
 export const SOROSWAP_ROUTER_ADDRESS =
   import.meta.env.VITE_SOROSWAP_ROUTER_ADDRESS ||
   'CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD';
@@ -43,7 +40,7 @@ export const DEMO_ACCOUNTS = {
 // Token metadata
 export const TOKENS: Record<string, { name: string; symbol: string; decimals: number; address: string }> = {
   XLM: { name: 'Stellar Lumens', symbol: 'XLM', decimals: 7, address: XLM_SAC_ADDRESS },
-  USDC: { name: 'USD Coin', symbol: 'USDC', decimals: 7, address: USDC_TOKEN_ADDRESS },
+  USDC: { name: 'Test USD Coin', symbol: 'USDC', decimals: 7, address: USDC_TOKEN_ADDRESS },
 };
 
 // Resolve token symbol from contract address

@@ -1,7 +1,7 @@
 /**
  * soroswapOnchain.ts — direct Soroswap AMM router client.
  *
- * SCF #42 Deliverable 6 (Stellar Broker / multi-asset funding).
+ * Low-level testnet adapter for SCF #42 Deliverable 6.
  *
  * The Soroswap Aggregator REST API (api.soroswap.finance) has NO indexed pools
  * on Soroban Testnet after the network reset — its curated token list points at

@@ -10,14 +10,39 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
+## SCF #42 Tranche 2 Testnet Notes
+
+This repository is configured for the Tranche 2 testnet review:
+
+- **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
+- **Deliverable 5**: DealEscrow event topics and Payload CMS indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with a smoke-test procedure in [`docs/scf/tranche2-d5-smoke-test.md`](docs/scf/tranche2-d5-smoke-test.md).
+- **Deliverable 6**: The frontend exposes a Stellar Broker funding step. On testnet, the broker adapter routes through a seeded Soroswap pool because public indexed testnet liquidity may be unavailable after resets.
+
+Reviewer packet:
+
+- [`docs/scf/TRANCHE_2_REVIEW_NOTES.md`](docs/scf/TRANCHE_2_REVIEW_NOTES.md)
+- [`docs/scf/TRANCHE_2_VIDEO_SCRIPT.md`](docs/scf/TRANCHE_2_VIDEO_SCRIPT.md)
+
+Current testnet funding configuration:
+
+```text
+DealEscrow:        CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
+XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
+Seeded pool:       CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
+```
+
+The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued USDC.
+
 ## Key Features
 
 - **Milestone-Based Escrow** — Deals split into milestones (e.g., 30/50/20). Each funded independently, released only on client approval.
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
-- **Soroswap DEX Integration** — Swap XLM to USDC via the Soroswap aggregator API.
-- **Multi-Wallet Support** — Freighter, xBull, or Albedo via Stellar Wallets Kit.
+- **Stellar Broker Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
+- **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
 
 ## Architecture Overview
@@ -62,7 +87,7 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 - [Rust](https://rustup.rs/) with `wasm32v1-none` target
 - [Stellar CLI](https://developers.stellar.org/docs/tools/developer-tools/cli/stellar-cli)
 - Node.js 18+
-- A Stellar wallet extension ([Freighter](https://freighter.app/), xBull, or Albedo)
+- A Privy app ID for the embedded wallet path, or a Stellar wallet extension for the fallback wallet-kit path
 
 ### 1. Build the Smart Contract
 
@@ -96,7 +121,8 @@ cd frontend
 npm install
 
 cp .env.example .env
-# Edit .env: set VITE_DEAL_ESCROW_CONTRACT to your deployed address
+# Edit .env: set VITE_PRIVY_APP_ID, VITE_DEAL_ESCROW_CONTRACT,
+# VITE_USDC_TOKEN_ADDRESS, and VITE_SOROSWAP_ROUTER_ADDRESS
 
 npm run dev
 ```
@@ -104,7 +130,7 @@ npm run dev
 ### 4. Try It
 
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
-2. Click **Connect Wallet** and select your wallet (set to Testnet)
+2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot (Liquidity tab)
 4. Create a deal using a Quick Start scenario
 5. Fund milestones, release them, watch the 3-way split visualization
@@ -130,7 +156,8 @@ escrow-stellar/
 │       │   └── useDealEscrow.ts    # Contract interaction layer
 │       ├── lib/
 │       │   ├── stellar.ts          # Stellar SDK config + helpers
-│       │   ├── soroswap.ts         # Soroswap DEX API client
+│       │   ├── stellarBroker.ts    # Deliverable 6 broker-facing adapter
+│       │   ├── soroswapOnchain.ts  # Testnet route adapter via seeded Soroswap pool
 │       │   └── dealMetadata.ts     # Local milestone naming + event log
 │       └── components/
 │           ├── ui/
@@ -139,7 +166,7 @@ escrow-stellar/
 │           ├── ConnectWallet.tsx   # Multi-wallet connect UI
 │           ├── CreateDeal.tsx      # Deal creation with review + success screens
 │           ├── DealDashboard.tsx   # Full deal lifecycle (split-panel, search, filters)
-│           ├── SoroswapWidget.tsx  # Friendbot + XLM→USDC swap
+│           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker testnet funding
 │           └── ReputationBadge.tsx # On-chain reputation with radar animation
 └── docs/
     ├── ARCHITECTURE.md             # System design + integration patterns
@@ -210,8 +237,8 @@ cargo test
 | Icons | Lucide React | 0.577+ |
 | Fonts | Space Grotesk, JetBrains Mono | Google Fonts |
 | Stellar SDK | @stellar/stellar-sdk | 14.6.1 |
-| Wallet Kit | @creit.tech/stellar-wallets-kit | 2.0.1 |
-| DEX | Soroswap Aggregator API | Testnet |
+| Wallet | Privy + Stellar Wallets Kit fallback | Testnet |
+| Broker route | Stellar Broker adapter + Soroswap router testnet route | Testnet |
 | Network | Stellar Testnet | Soroban RPC |
 
 ## Production Parity

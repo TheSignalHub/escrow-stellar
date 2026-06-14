@@ -1,10 +1,10 @@
 /**
- * swapRoute.ts — helpers for surfacing the multi-DEX aggregator routing info
- * returned by the Soroswap Aggregator API. Used by AssetSwapStep to render
- * the route badges ("Routed via Soroswap + Phoenix") that satisfy the SCF
- * D6 requirement of demonstrating aggregated liquidity sources.
+ * swapRoute.ts — helpers for surfacing Stellar Broker routing info.
+ * The testnet demo currently receives route metadata from the seeded Soroswap
+ * adapter, but the UI can render multiple broker liquidity sources when they
+ * are present.
  */
-import type { SwapQuote } from './soroswap';
+import type { BrokerQuote } from './stellarBroker';
 
 const PROTOCOL_LABELS: Record<string, string> = {
   soroswap: 'Soroswap',
@@ -20,7 +20,7 @@ const PROTOCOL_LABELS: Record<string, string> = {
  * this quote. The Soroswap API returns the route shape as an array of legs,
  * each with `protocol` (or `path[*].protocol`). We dedupe + pretty-print.
  */
-export function extractRouteProtocols(quote: SwapQuote): string[] {
+export function extractRouteProtocols(quote: BrokerQuote): string[] {
   const protocols = new Set<string>();
 
   const harvest = (value: unknown) => {

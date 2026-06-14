@@ -6,12 +6,11 @@ A step-by-step walkthrough of the complete DealEscrow demo flow on Stellar Testn
 
 Before starting, ensure you have:
 
-1. **A Stellar wallet extension** installed in your browser:
-   - [Freighter](https://freighter.app/) (recommended)
-   - [xBull](https://xbull.app/)
-   - [Albedo](https://albedo.link/)
+1. **Wallet access**:
+   - Privy embedded Stellar wallet for the Tranche 2 demo path
+   - Optional fallback: Freighter, xBull, or Albedo via Stellar Wallets Kit
 
-2. **Wallet set to Testnet**: In Freighter, go to Settings → Network → select "Test Net"
+2. **Wallet set to Testnet**: Privy is configured for the app's testnet flow. For extension wallets, select "Test Net".
 
 3. **The frontend running** at `http://localhost:5173`:
    ```bash
@@ -36,12 +35,12 @@ Open `http://localhost:5173`. The landing page shows:
 To connect:
 
 1. Click **Connect Wallet**
-2. The Stellar Wallets Kit modal appears — select your wallet (e.g., Freighter)
-3. Approve the connection in your wallet extension
-4. Your truncated address and XLM/USDC balances appear in the top-right header
+2. The connect modal appears — use Privy for the main Tranche 2 path, or choose an extension wallet fallback
+3. Approve the connection/sign-in
+4. Your truncated address and XLM/test USDC balances appear in the top-right header
 5. The Live Network Ticker disappears and the app tabs appear
 
-**What happens**: The app initializes a `StellarWalletsKit` instance with Freighter, xBull, and Albedo modules. On successful connection, it starts polling your XLM and USDC balances every 15 seconds.
+**What happens**: The app uses the unified wallet hook. Privy is preferred for the embedded Stellar wallet path, and Stellar Wallets Kit remains available as a fallback. On successful connection, it starts polling your XLM and test USDC balances every 15 seconds.
 
 ---
 
@@ -58,16 +57,16 @@ Navigate to the **Liquidity** tab (`Alt+1`).
 
 If your wallet was already funded, you'll see an info message instead: "Wallet already funded! You're ready to go."
 
-### Option B: Swap XLM to USDC (Soroswap)
+### Option B: Stellar Broker Funding Route
 
-1. Enter the XLM amount to swap (e.g., `10`)
-2. Click **Get Quote** to fetch a rate from the Soroswap Aggregator
+1. Enter the XLM amount to swap (for the 500 test USDC demo, use about `3050`)
+2. Click **Calculate Route** to fetch a broker quote
 3. Review the rate and slippage tolerance (1%)
-4. Click **Swap XLM for USDC**
-5. Approve the transaction in your wallet extension
-6. On success, see the USDC amount received with an Explorer link
+4. Click **Execute Swap**
+5. Approve the transaction in Privy or your wallet
+6. On success, see the test USDC amount received with an Explorer link
 
-> **Note**: Testnet liquidity pools may be empty. If quotes fail, use XLM directly as the payment token when creating deals — it works identically.
+> **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 
 ---
 
@@ -81,9 +80,9 @@ Click one of the **Quick Start** scenario buttons to pre-fill the form:
 
 | Scenario | Amount | Milestones | Fee | Connector Share |
 |----------|--------|------------|-----|-----------------|
-| Security Audit | 500 XLM | 3 (30/50/20) | 10% | 40% |
-| Dev Sprint | 1,200 XLM | 2 (50/50) | 8% | 50% |
-| Advisory Retainer | 3,000 XLM | 4 (25/25/25/25) | 15% | 30% |
+| Security Audit | 500 settlement units | 3 (30/50/20) | 10% | 40% |
+| Dev Sprint | 1,200 settlement units | 2 (50/50) | 8% | 50% |
+| Advisory Retainer | 3,000 settlement units | 4 (25/25/25/25) | 15% | 30% |
 
 Quick Start also fills in demo testnet addresses for the provider and connector.
 
@@ -91,7 +90,7 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 
 1. **Provider Address**: Paste the Stellar public key (G...) of the service provider
 2. **Connector Address**: Paste the BD referrer's address
-3. **Payment Token**: Select XLM or USDC
+3. **Source Asset**: Select XLM direct, test USDC direct, or XLM -> test USDC through the Stellar Broker testnet route
 4. **Total Amount**: Enter the deal total in the selected token
 5. **Platform Fee**: Set the total platform fee percentage (e.g., 10%)
 6. **Connector Share**: Set the connector's share of the platform fee (e.g., 40%)

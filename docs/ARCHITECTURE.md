@@ -9,7 +9,7 @@ The Signal's Stellar integration follows a dual-rail architecture: the productio
 1. **Production Parity** — The contract replicates exact split calculations from production code. A deal created through either system produces identical financial outcomes.
 2. **Atomic Execution** — All milestone releases execute three token transfers in a single transaction. Either all three succeed, or none do. No partial states.
 3. **Minimal Trust** — Funds never pass through The Signal's servers. They go directly from the client's wallet to the contract, and from the contract to each recipient.
-4. **Composability** — The contract uses Stellar Asset Contracts (SAC) for token transfers, making it compatible with any Stellar token (XLM, USDC, or custom tokens).
+4. **Composability** — The contract uses Stellar Asset Contracts (SAC) for token transfers, making it compatible with any Stellar token (XLM, USDC-compatible settlement tokens, or custom tokens).
 
 ## Contract Architecture
 
@@ -128,7 +128,7 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Liquidity              — SoroswapWidget (Friendbot + XLM→USDC)
+    ├── Liquidity              — SoroswapWidget (Friendbot + Stellar Broker route)
     ├── Deploy Contract        — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle)
     └── Oracle                 — ReputationBadge (on-chain reputation)

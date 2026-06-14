@@ -1,8 +1,15 @@
 import { useState } from 'react';
-import { fundTestnetAccount, getExplorerTxLink } from '../lib/stellar';
-import { soroswapClient, TESTNET_TOKENS } from '../lib/soroswap';
+import {
+  fundTestnetAccount,
+  getExplorerTxLink,
+  NETWORK_PASSPHRASE,
+  SOROSWAP_ROUTER_ADDRESS,
+  USDC_TOKEN_ADDRESS,
+  XLM_SAC_ADDRESS,
+} from '../lib/stellar';
+import { stellarBrokerClient } from '../lib/stellarBroker';
 import { useToast } from '../App';
-import type { SwapQuote } from '../lib/soroswap';
+import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
@@ -21,9 +28,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [fundingLoading, setFundingLoading] = useState(false);
   const [fundingResult, setFundingResult] = useState<'success' | 'error' | null>(null);
 
-  // Soroswap section
-  const [xlmAmount, setXlmAmount] = useState('10');
-  const [quote, setQuote] = useState<SwapQuote | null>(null);
+  // Stellar Broker section
+  const [xlmAmount, setXlmAmount] = useState('3050');
+  const [quote, setQuote] = useState<BrokerQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,18 +61,20 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setPoolEmpty(false);
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
-      const q = await soroswapClient.getQuote(
-        TESTNET_TOKENS.XLM,
-        TESTNET_TOKENS.USDC,
-        stroops
+      const q = await stellarBrokerClient.getQuote(
+        XLM_SAC_ADDRESS,
+        USDC_TOKEN_ADDRESS,
+        stroops,
+        'EXACT_IN',
+        walletAddress
       );
       setQuote(q);
     } catch (err: any) {
       const msg = (err.message || '').toLowerCase();
-      if (msg.includes('no path') || msg.includes('no route')) {
+      if (msg.includes('no path') || msg.includes('no route') || msg.includes('no liquidity')) {
         setPoolEmpty(true);
       } else {
-        setError(err.message || 'Failed to fetch swap quote. The Soroswap API may be temporarily unavailable.');
+        setError(err.message || 'Failed to fetch a Stellar Broker quote from the seeded testnet route.');
       }
       setQuote(null);
     } finally {
@@ -79,12 +88,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setError('');
 
     try {
-      const xdr = await soroswapClient.buildTransaction(quote, walletAddress);
+      const xdr = await stellarBrokerClient.buildTransaction(quote, walletAddress);
       const signedXdr = await signTransaction(xdr, {
-        networkPassphrase: 'Test SDF Network ; September 2015',
+        networkPassphrase: NETWORK_PASSPHRASE,
         address: walletAddress,
       });
-      const result = await soroswapClient.sendTransaction(signedXdr);
+      const result = await stellarBrokerClient.sendTransaction(signedXdr);
       setTxHash(result.txHash);
       toast('Swap completed!', 'success');
       if (onSwapComplete && quote.amountOut) {
@@ -168,19 +177,29 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
         </Card>
 
-        {/* Section 2: Soroswap Integration */}
+        {/* Section 2: Stellar Broker testnet swap */}
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">2</div>
-              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Acquire USDC</h3>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Stellar Broker Funding</h3>
             </div>
-            <Tag color="zinc">Soroswap DEX</Tag>
+            <Tag color="zinc">Testnet Adapter</Tag>
           </div>
 
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
-            Swap XLM for USDC using testnet liquidity pools. If pools are empty, use XLM directly for escrow deals.
+            Demo-only Stellar Broker route: swap XLM into the configured test USDC settlement asset through the seeded Soroswap testnet adapter. This is not production Circle USDC liquidity.
           </p>
+          <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
+            <div className="flex items-center justify-between gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+              <span className="uppercase tracking-widest">Test USDC</span>
+              <span className="truncate text-zinc-300">{USDC_TOKEN_ADDRESS || 'not configured'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+              <span className="uppercase tracking-widest">Router</span>
+              <span className="truncate text-zinc-300">{SOROSWAP_ROUTER_ADDRESS || 'not configured'}</span>
+            </div>
+          </div>
 
           {txHash ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 animate-fade-in py-8">
@@ -188,9 +207,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <CheckCircle2 size={32} className="text-emerald-400" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Atomic Swap Executed</h4>
+                <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Testnet Swap Executed</h4>
                 <p className="text-zinc-400 text-sm font-mono mb-6">
-                  {xlmAmount} XLM → {quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} USDC
+                  {xlmAmount} XLM → {quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} test USDC
                 </p>
                 <div className="flex flex-col gap-3">
                   <a
@@ -202,7 +221,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     View TX on Explorer <ExternalLink size={14} />
                   </a>
                   <Button
-                    onClick={() => { setTxHash(''); setQuote(null); setXlmAmount('10'); }}
+                    onClick={() => { setTxHash(''); setQuote(null); setXlmAmount('3050'); }}
                     variant="secondary"
                   >
                     Initialize New Swap
@@ -261,7 +280,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     />
                     <div className="flex items-center gap-2 bg-[#2775ca]/20 rounded-lg px-3 py-1.5 shrink-0 border border-[#2775ca]/30">
                       <div className="w-5 h-5 rounded-full bg-[#2775ca] text-white text-[10px] font-black flex items-center justify-center">$</div>
-                      <span className="font-bold text-sm text-[#2775ca]">USDC</span>
+                      <span className="font-bold text-sm text-[#2775ca]">tUSDC</span>
                     </div>
                   </div>
                 </div>
@@ -271,7 +290,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <div className="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50 text-xs font-mono text-zinc-400 flex flex-col gap-2">
                    <div className="flex justify-between">
                      <span>Exchange Rate</span>
-                     <span className="text-white">1 XLM = {(parseFloat(quote.amountOut) / 1e7 / parseFloat(xlmAmount)).toFixed(4)} USDC</span>
+                     <span className="text-white">1 XLM = {(parseFloat(quote.amountOut) / 1e7 / parseFloat(xlmAmount)).toFixed(4)} test USDC</span>
                    </div>
                    <div className="flex justify-between">
                      <span>Slippage Tolerance</span>
@@ -286,21 +305,21 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   <div className="flex items-start gap-2">
                     <Droplets size={16} className="text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-amber-400 font-bold text-sm mb-1">No Liquidity Pool Found</p>
+                      <p className="text-amber-400 font-bold text-sm mb-1">Broker Route Not Found</p>
                       <p className="text-zinc-400 text-xs leading-relaxed">
-                        The XLM → USDC pool on testnet is currently empty. Testnet pools are periodically wiped during network resets. You can add liquidity yourself or use XLM directly for escrow deals.
+                        The configured demo XLM → test-USDC broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <a
-                      href={`https://testnet.soroswap.finance/#/liquidity/add/${TESTNET_TOKENS.XLM}/${TESTNET_TOKENS.USDC}`}
+                      href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1"
                     >
                       <Button variant="secondary" className="w-full py-2 text-xs" icon={ExternalLink}>
-                        Add Liquidity
+                        View Pool Setup
                       </Button>
                     </a>
                     {onFundComplete && (

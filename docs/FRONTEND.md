@@ -22,7 +22,7 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Liquidity              — SoroswapWidget (Friendbot + XLM→USDC)
+    ├── Liquidity              — SoroswapWidget (Friendbot + Stellar Broker testnet route)
     ├── Deploy Contract        — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle)
     └── Oracle                 — ReputationBadge (on-chain reputation)
@@ -115,8 +115,8 @@ interface WalletState {
 ```
 
 **Key features**:
-- **Multi-wallet support**: Initializes Freighter, xBull, and Albedo modules. Users select via the Stellar Wallets Kit auth modal.
-- **Auto-refresh balances**: Polls XLM and USDC balances every 15 seconds using ref-based intervals.
+- **Privy-first wallet support**: Uses Privy embedded Stellar wallets for the main demo path, with Freighter, xBull, and Albedo retained through Stellar Wallets Kit as fallbacks.
+- **Auto-refresh balances**: Polls XLM and test USDC balances every 15 seconds using ref-based intervals.
 - **Error-categorized signing**: Catches wallet errors and provides user-friendly messages (cancelled, unavailable, or generic failure).
 - **Event-driven state**: Listens to `STATE_UPDATED` and `DISCONNECT` events from the wallet kit.
 - **Disconnect resets app**: `disconnect()` clears address + balances, returning the user to the landing page (logo click when connected also calls `disconnect()`).
@@ -179,7 +179,7 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 
 **File**: `src/components/ConnectWallet.tsx`
 
-Wallet connection button displayed in the header when disconnected. Opens the Stellar Wallets Kit modal to select Freighter, xBull, or Albedo.
+Wallet connection button displayed in the header when disconnected. Opens the unified connect modal with Privy as the primary path and extension wallets as fallback.
 
 ### SoroswapWidget
 
@@ -189,7 +189,7 @@ Two-part funding interface (Liquidity tab):
 
 **Section 1 — Friendbot**: One-click 10,000 XLM testnet funding with duplicate-funding detection.
 
-**Section 2 — Soroswap DEX**: Quote → Sign → Swap for XLM→USDC via the Soroswap Aggregator API (multi-protocol routing: Soroswap, Phoenix, Aqua). 1% slippage tolerance.
+**Section 2 — Stellar Broker Funding**: Quote → Sign → Swap for XLM -> test USDC through the Stellar Broker testnet route. The current testnet adapter executes against the seeded Soroswap router pool and uses 1% slippage tolerance.
 
 ### CreateDeal
 
@@ -295,8 +295,9 @@ Only active when wallet is connected.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_DEAL_ESCROW_CONTRACT` | Yes | Deployed DealEscrow contract address |
-| `VITE_USDC_TOKEN_ADDRESS` | No | Testnet USDC SAC address |
-| `VITE_SOROSWAP_API_KEY` | No | Soroswap Aggregator API key |
+| `VITE_USDC_TOKEN_ADDRESS` | No | Demo test USDC SAC address |
+| `VITE_SOROSWAP_ROUTER_ADDRESS` | No | Soroswap router used by the Stellar Broker testnet adapter |
+| `VITE_SOROSWAP_API_KEY` | No | Legacy REST key, not required for the router-direct testnet route |
 
 ## Build and Development
 
