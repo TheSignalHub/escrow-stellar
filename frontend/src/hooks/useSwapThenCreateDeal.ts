@@ -43,7 +43,7 @@ export interface UseSwapThenCreateDealReturn {
   lastQuote: BrokerQuote | null;
   lastTxHash: string | null;
   error: string;
-  /** Fetch a swap quote (assetIn → USDC, EXACT_OUT on the USDC settlement amount) */
+  /** Fetch a swap quote (assetIn → settlement token, EXACT_OUT on the settlement amount) */
   getQuote: (params: {
     assetIn: string;
     assetOutUsdc: string;
@@ -82,7 +82,7 @@ export function useSwapThenCreateDeal(): UseSwapThenCreateDealReturn {
       setError('');
       try {
         const amount = unitsToStroops(targetUsdcUnits);
-        // EXACT_OUT — we want a specific USDC amount delivered; the router's
+        // EXACT_OUT — we want a specific settlement amount delivered; the router's
         // router_get_amounts_in tells us how much of `assetIn` to spend.
         const quote = await stellarBrokerClient.getQuote(
           assetIn,

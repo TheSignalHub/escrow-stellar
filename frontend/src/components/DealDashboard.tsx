@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
-import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, USDC_TOKEN_ADDRESS } from '../lib/stellar';
+import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, SETTLEMENT_TOKEN_SYMBOL, USDC_TOKEN_ADDRESS } from '../lib/stellar';
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
@@ -251,10 +251,10 @@ export function DealDashboard({
     const available = isConfiguredUsdcDeal ? parseFloat(usdcBalance) : null;
 
     if (available !== null && available < requiredAmount) {
-      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} test USDC, have ${available.toFixed(2)} test USDC.`);
+      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}, have ${available.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}.`);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: 'You are the deal client, but this milestone needs test USDC. Use the Fund tab to swap XLM into test USDC, then retry the deposit.',
+        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use the Fund tab to swap XLM into ${SETTLEMENT_TOKEN_SYMBOL}, then retry the deposit.`,
       });
       return;
     }
@@ -274,7 +274,7 @@ export function DealDashboard({
       setError(msg);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: 'Only the deal client can fund milestones. Make sure the milestone is pending and your wallet has enough test USDC for the deposit.',
+        suggestion: `Only the deal client can fund milestones. Make sure the milestone is pending and your wallet has enough ${SETTLEMENT_TOKEN_SYMBOL} for the deposit.`,
       });
       toast(`Deposit failed: ${msg.slice(0, 80)}`, 'error');
     } finally {

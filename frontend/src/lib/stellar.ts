@@ -15,19 +15,26 @@ export const EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
 export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
-// Demo test USDC token address.
-// Default = the SCF #42 demo test USDC SAC deployed and seeded against XLM for
-// the Stellar Broker testnet route. This is not production Circle USDC.
+// Demo settlement token address.
+// Default = the SCF #42 demo test USD-compatible SAC deployed and seeded
+// against XLM for the Stellar Broker testnet route. This is not production
+// Circle USDC.
 export const USDC_TOKEN_ADDRESS =
   import.meta.env.VITE_USDC_TOKEN_ADDRESS ||
   'CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX';
+
+export const SETTLEMENT_TOKEN_SYMBOL =
+  import.meta.env.VITE_SETTLEMENT_TOKEN_SYMBOL || 'tUSDC';
+
+export const SETTLEMENT_TOKEN_NAME =
+  import.meta.env.VITE_SETTLEMENT_TOKEN_NAME || 'Demo Test USD';
 
 // Soroswap testnet router used by the Stellar Broker testnet adapter.
 export const SOROSWAP_ROUTER_ADDRESS =
   import.meta.env.VITE_SOROSWAP_ROUTER_ADDRESS ||
   'CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD';
 
-// Seeded Soroswap XLM/test-USDC pool used for the SCF #42 testnet demo.
+// Seeded Soroswap XLM/demo-settlement-token pool used for the SCF #42 testnet demo.
 export const SOROSWAP_POOL_ADDRESS =
   import.meta.env.VITE_SOROSWAP_POOL_ADDRESS ||
   'CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5';
@@ -45,7 +52,7 @@ export const DEMO_ACCOUNTS = {
 // Token metadata
 export const TOKENS: Record<string, { name: string; symbol: string; decimals: number; address: string }> = {
   XLM: { name: 'Stellar Lumens', symbol: 'XLM', decimals: 7, address: XLM_SAC_ADDRESS },
-  USDC: { name: 'Test USD Coin', symbol: 'USDC', decimals: 7, address: USDC_TOKEN_ADDRESS },
+  USDC: { name: SETTLEMENT_TOKEN_NAME, symbol: SETTLEMENT_TOKEN_SYMBOL, decimals: 7, address: USDC_TOKEN_ADDRESS },
 };
 
 // Resolve token symbol from contract address

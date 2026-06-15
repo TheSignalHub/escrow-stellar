@@ -4,6 +4,7 @@ import {
   getExplorerContractLink,
   getExplorerTxLink,
   NETWORK_PASSPHRASE,
+  SETTLEMENT_TOKEN_SYMBOL,
   SOROSWAP_POOL_ADDRESS,
   SOROSWAP_ROUTER_ADDRESS,
   USDC_TOKEN_ADDRESS,
@@ -75,8 +76,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     resetQuoteState();
   };
 
-  const inputSymbol = swapMode === 'buy-exact-in' ? 'XLM' : 'tUSDC';
-  const outputSymbol = swapMode === 'sell-exact-in' || swapMode === 'buy-exact-out' ? 'XLM' : 'tUSDC';
+  const inputSymbol = swapMode === 'buy-exact-in' ? 'XLM' : SETTLEMENT_TOKEN_SYMBOL;
+  const outputSymbol = swapMode === 'sell-exact-in' || swapMode === 'buy-exact-out' ? 'XLM' : SETTLEMENT_TOKEN_SYMBOL;
   const inputLabel = swapMode === 'buy-exact-out' ? 'Target Receive' : 'Pay Amount';
   const outputLabel = swapMode === 'buy-exact-out' ? 'Pay Estimate' : 'Receive Estimate';
   const outputAmount = quote
@@ -254,7 +255,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
 
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
-            Demo-only Stellar Broker route: swap XLM into the configured test USDC settlement asset by calling the seeded{' '}
+            Demo-only Stellar Broker route: swap XLM into the configured {SETTLEMENT_TOKEN_SYMBOL} settlement asset by calling the seeded{' '}
             <a
               href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
               target="_blank"
@@ -263,12 +264,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
             >
               Soroswap testnet router path
             </a>
-            . This is not production Circle USDC liquidity, and the demo token may not appear in Soroswap&apos;s public token picker.
+            . This is a demo settlement token for testnet liquidity, and it may not appear in Soroswap&apos;s public token picker.
           </p>
           <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
             {[
               { label: 'XLM SAC', value: XLM_SAC_ADDRESS },
-              { label: 'Test USDC', value: USDC_TOKEN_ADDRESS },
+              { label: SETTLEMENT_TOKEN_SYMBOL, value: USDC_TOKEN_ADDRESS },
               { label: 'Router', value: SOROSWAP_ROUTER_ADDRESS },
               { label: 'Pool', value: SOROSWAP_POOL_ADDRESS },
             ].map((item) => (
@@ -309,8 +310,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Testnet Swap Executed</h4>
                 <p className="text-zinc-400 text-sm font-mono mb-6">
                   {swapMode === 'buy-exact-out'
-                    ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} XLM -> ${swapAmount} test USDC`
-                    : `${swapAmount} ${inputSymbol} -> ${quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} ${outputSymbol === 'tUSDC' ? 'test USDC' : 'XLM'}`}
+                    ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} XLM -> ${swapAmount} ${SETTLEMENT_TOKEN_SYMBOL}`
+                    : `${swapAmount} ${inputSymbol} -> ${quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} ${outputSymbol}`}
                 </p>
                 <div className="flex flex-col gap-3">
                   <a
@@ -335,8 +336,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { mode: 'buy-exact-in' as const, label: 'Pay XLM' },
-                  { mode: 'buy-exact-out' as const, label: 'Target USDC' },
-                  { mode: 'sell-exact-in' as const, label: 'Sell USDC' },
+                  { mode: 'buy-exact-out' as const, label: `Target ${SETTLEMENT_TOKEN_SYMBOL}` },
+                  { mode: 'sell-exact-in' as const, label: `Sell ${SETTLEMENT_TOKEN_SYMBOL}` },
                 ].map((option) => (
                   <button
                     key={option.mode}
@@ -418,8 +419,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                      <span>Exchange Rate</span>
                      <span className="text-white">
                        {swapMode === 'sell-exact-in'
-                         ? `1 test USDC = ${(parseFloat(quote.amountOut) / 1e7 / parseFloat(swapAmount)).toFixed(4)} XLM`
-                         : `1 XLM = ${(parseFloat(quote.amountOut) / 1e7 / (parseFloat(quote.amountIn) / 1e7)).toFixed(4)} test USDC`}
+                         ? `1 ${SETTLEMENT_TOKEN_SYMBOL} = ${(parseFloat(quote.amountOut) / 1e7 / parseFloat(swapAmount)).toFixed(4)} XLM`
+                         : `1 XLM = ${(parseFloat(quote.amountOut) / 1e7 / (parseFloat(quote.amountIn) / 1e7)).toFixed(4)} ${SETTLEMENT_TOKEN_SYMBOL}`}
                      </span>
                    </div>
                    <div className="flex justify-between">
@@ -508,7 +509,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     <div>
                       <p className="text-amber-400 font-bold text-sm mb-1">Broker Route Not Found</p>
                       <p className="text-zinc-400 text-xs leading-relaxed">
-                        The configured demo XLM → test-USDC broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.
+                        The configured demo XLM → {SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.
                       </p>
                     </div>
                   </div>

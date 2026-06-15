@@ -1,4 +1,4 @@
-import { truncateAddress } from '../lib/stellar';
+import { SETTLEMENT_TOKEN_SYMBOL, truncateAddress } from '../lib/stellar';
 import type { WalletState } from '../hooks/useStellarWallet';
 import { Button } from './ui/Components';
 import { Wallet } from 'lucide-react';
@@ -32,7 +32,7 @@ export function ConnectWallet({ wallet, onConnect }: Props) {
         </span>
         {wallet.usdcBalance !== '0' && (
           <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
-            {wallet.usdcBalance} test USDC
+            {wallet.usdcBalance} {SETTLEMENT_TOKEN_SYMBOL}
           </span>
         )}
       </div>

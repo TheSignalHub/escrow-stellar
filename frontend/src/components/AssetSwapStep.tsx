@@ -3,13 +3,13 @@
  *
  * Step 1.5 of the CreateDeal wizard for SCF #42 — Deliverable 6.
  *
- * Shown only when the user picks a source asset OTHER than USDC. Fetches a
- * quote for `sourceAsset → configured test USDC`, displays the seeded route,
+ * Shown only when the user picks a source asset OTHER than the settlement
+ * token. Fetches a quote for `sourceAsset → configured settlement token`,
+ * displays the seeded route,
  * price impact, and amounts, and runs the swap when the user confirms.
  *
  * On success, the parent CreateDeal proceeds to the existing review screen
- * with the settlement token forcibly set to the configured USDC-compatible
- * testnet asset.
+ * with the settlement token forcibly set to the configured testnet asset.
  */
 import { useEffect, useState } from 'react';
 
@@ -19,17 +19,17 @@ import {
   formatPriceImpact,
   stroopsToUnits,
 } from '../lib/swapRoute';
-import { getExplorerTxLink, SOROSWAP_POOL_ADDRESS, SOROSWAP_ROUTER_ADDRESS } from '../lib/stellar';
+import { getExplorerTxLink, SETTLEMENT_TOKEN_SYMBOL, SOROSWAP_POOL_ADDRESS, SOROSWAP_ROUTER_ADDRESS } from '../lib/stellar';
 import { Card, Button } from './ui/Components';
 import { ArrowRight, AlertTriangle, ExternalLink, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 
 interface Props {
-  /** Source asset SAC address (must differ from USDC) */
+  /** Source asset SAC address (must differ from the settlement token) */
   sourceAssetAddress: string;
   sourceAssetSymbol: string;
-  /** Destination USDC token address */
+  /** Destination settlement token address */
   usdcAddress: string;
-  /** USDC amount the escrow needs (whole units, not stroops) */
+  /** Settlement token amount the escrow needs (whole units, not stroops) */
   targetUsdcUnits: number;
   /** Connected wallet that pays */
   walletAddress: string;
@@ -70,7 +70,7 @@ export function AssetSwapStep({
   const amountInUnits = quote ? stroopsToUnits(quote.amountIn) : 0;
   const amountOutUnits = quote ? stroopsToUnits(quote.amountOut) : 0;
   const tradeTypeLabel = quote?.rawQuote.tradeType === 'EXACT_OUT'
-    ? 'Exact test USDC settlement'
+    ? `Exact ${SETTLEMENT_TOKEN_SYMBOL} settlement`
     : 'Exact source asset spend';
 
   const isHighImpact = impact.severity === 'danger';
@@ -142,14 +142,14 @@ export function AssetSwapStep({
           Step 1.5 — Stellar Broker Conversion
         </div>
         <h2 className="text-xl lg:text-2xl font-black text-white tracking-tight">
-          Swap {sourceAssetSymbol} → test USDC before escrow
+          Swap {sourceAssetSymbol} → {SETTLEMENT_TOKEN_SYMBOL} before escrow
         </h2>
         <p className="text-zinc-500 text-sm mt-1">
-          The DealEscrow contract settles in the configured demo test USDC asset.
+          The DealEscrow contract settles in the configured demo settlement asset.
           We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter by calling the seeded Soroswap router path directly before creating the deal.
         </p>
         <p className="text-zinc-600 text-xs mt-2">
-          Demo note: this test USDC may not appear in Soroswap&apos;s public token picker; the route is configured by contract address for this testnet walkthrough.
+          Demo note: this {SETTLEMENT_TOKEN_SYMBOL} token may not appear in Soroswap&apos;s public token picker; the route is configured by contract address for this testnet walkthrough.
         </p>
         <a
           href={`https://testnet.soroswap.finance/#/liquidity/add/${sourceAssetAddress}/${usdcAddress}`}
@@ -180,7 +180,7 @@ export function AssetSwapStep({
             </p>
             <p className="font-mono text-xl lg:text-2xl text-white font-bold">
               {amountOutUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
-              <span className="text-emerald-400">test USDC</span>
+              <span className="text-emerald-400">{SETTLEMENT_TOKEN_SYMBOL}</span>
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function AssetSwapStep({
           </div>
           <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
             <p className="text-zinc-500 uppercase tracking-widest mb-1">Path</p>
-            <p className="text-white font-bold">{sourceAssetSymbol} → test USDC</p>
+            <p className="text-white font-bold">{sourceAssetSymbol} → {SETTLEMENT_TOKEN_SYMBOL}</p>
           </div>
           <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2 md:col-span-2">
             <p className="text-zinc-500 uppercase tracking-widest mb-1">Router contract</p>
@@ -258,7 +258,7 @@ export function AssetSwapStep({
           )}
         </div>
         <p className="text-[11px] text-zinc-500 mt-4 leading-relaxed">
-          Testnet proof: this transaction calls the Soroswap router directly against seeded demo liquidity. The escrow contract receives the standardized test USDC settlement asset.
+          Testnet proof: this transaction calls the Soroswap router directly against seeded demo liquidity. The escrow contract receives the standardized {SETTLEMENT_TOKEN_SYMBOL} settlement asset.
         </p>
       </div>
 
@@ -277,7 +277,7 @@ export function AssetSwapStep({
             </p>
             <p className="text-zinc-400 text-xs mt-1">
               This is seeded demo liquidity on testnet, so price impact can be visible. You may receive significantly less than
-              the quoted test USDC amount. Check the box to confirm you want to proceed.
+              the quoted {SETTLEMENT_TOKEN_SYMBOL} amount. Check the box to confirm you want to proceed.
             </p>
           </div>
         </label>
