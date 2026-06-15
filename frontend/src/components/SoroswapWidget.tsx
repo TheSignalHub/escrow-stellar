@@ -13,6 +13,8 @@ import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
+type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
+
 interface Props {
   walletAddress: string;
   signTransaction: (xdr: string, opts?: any) => Promise<string>;
@@ -29,7 +31,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [fundingResult, setFundingResult] = useState<'success' | 'error' | null>(null);
 
   // Stellar Broker section
-  const [xlmAmount, setXlmAmount] = useState('2260');
+  const [swapMode, setSwapMode] = useState<SwapMode>('buy-exact-in');
+  const [swapAmount, setSwapAmount] = useState('2260');
   const [quote, setQuote] = useState<BrokerQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
@@ -52,8 +55,31 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     }
   };
 
+  const resetQuoteState = () => {
+    setQuote(null);
+    setPoolEmpty(false);
+    setError('');
+  };
+
+  const handleModeChange = (mode: SwapMode) => {
+    setSwapMode(mode);
+    setSwapAmount(mode === 'buy-exact-in' ? '2260' : mode === 'buy-exact-out' ? '500' : '100');
+    setTxHash('');
+    resetQuoteState();
+  };
+
+  const inputSymbol = swapMode === 'buy-exact-in' ? 'XLM' : 'tUSDC';
+  const outputSymbol = swapMode === 'sell-exact-in' || swapMode === 'buy-exact-out' ? 'XLM' : 'tUSDC';
+  const inputLabel = swapMode === 'buy-exact-out' ? 'Target Receive' : 'Pay Amount';
+  const outputLabel = swapMode === 'buy-exact-out' ? 'Pay Estimate' : 'Receive Estimate';
+  const outputAmount = quote
+    ? swapMode === 'buy-exact-out'
+      ? quote.amountIn
+      : quote.amountOut
+    : '';
+
   const fetchQuote = async () => {
-    const amount = parseFloat(xlmAmount);
+    const amount = parseFloat(swapAmount);
     if (!amount || amount <= 0) return;
 
     setQuoteLoading(true);
@@ -61,11 +87,14 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setPoolEmpty(false);
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
+      const assetIn = swapMode === 'sell-exact-in' ? USDC_TOKEN_ADDRESS : XLM_SAC_ADDRESS;
+      const assetOut = swapMode === 'sell-exact-in' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
+      const tradeType = swapMode === 'buy-exact-out' ? 'EXACT_OUT' : 'EXACT_IN';
       const q = await stellarBrokerClient.getQuote(
-        XLM_SAC_ADDRESS,
-        USDC_TOKEN_ADDRESS,
+        assetIn,
+        assetOut,
         stroops,
-        'EXACT_IN',
+        tradeType,
         walletAddress
       );
       setQuote(q);
@@ -96,7 +125,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       const result = await stellarBrokerClient.sendTransaction(signedXdr);
       setTxHash(result.txHash);
       toast('Swap completed!', 'success');
-      if (onSwapComplete && quote.amountOut) {
+      if (onSwapComplete && swapMode !== 'sell-exact-in' && quote.amountOut) {
         onSwapComplete(quote.amountOut);
       }
     } catch (err: any) {
@@ -218,7 +247,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div>
                 <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Testnet Swap Executed</h4>
                 <p className="text-zinc-400 text-sm font-mono mb-6">
-                  {xlmAmount} XLM → {quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} test USDC
+                  {swapMode === 'buy-exact-out'
+                    ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} XLM -> ${swapAmount} test USDC`
+                    : `${swapAmount} ${inputSymbol} -> ${quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} ${outputSymbol === 'tUSDC' ? 'test USDC' : 'XLM'}`}
                 </p>
                 <div className="flex flex-col gap-3">
                   <a
@@ -230,7 +261,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     View TX on Explorer <ExternalLink size={14} />
                   </a>
                   <Button
-                    onClick={() => { setTxHash(''); setQuote(null); setXlmAmount('2260'); }}
+                    onClick={() => { setTxHash(''); resetQuoteState(); setSwapAmount(swapMode === 'buy-exact-in' ? '2260' : swapMode === 'buy-exact-out' ? '500' : '100'); }}
                     variant="secondary"
                   >
                     Initialize New Swap
@@ -240,26 +271,49 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
             </div>
           ) : (
             <div className="flex-1 flex flex-col space-y-6">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { mode: 'buy-exact-in' as const, label: 'Pay XLM' },
+                  { mode: 'buy-exact-out' as const, label: 'Target USDC' },
+                  { mode: 'sell-exact-in' as const, label: 'Sell USDC' },
+                ].map((option) => (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    onClick={() => handleModeChange(option.mode)}
+                    className={`rounded-lg border px-2 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                      swapMode === option.mode
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                        : 'border-zinc-800 bg-zinc-900/60 text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Swap Inputs */}
               <div className="space-y-2 relative">
                 {/* Pay */}
                 <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 focus-within:border-emerald-500/50 transition-colors shadow-inner">
                   <div className="flex justify-between mb-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Pay Amount</label>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{inputLabel}</label>
                   </div>
                   <div className="flex items-center gap-4">
                     <input
                       type="number"
-                      value={xlmAmount}
-                      onChange={(e) => { setXlmAmount(e.target.value); setQuote(null); setPoolEmpty(false); }}
+                      value={swapAmount}
+                      onChange={(e) => { setSwapAmount(e.target.value); resetQuoteState(); }}
                       placeholder="0.0"
                       min="0"
                       step="any"
                       className="bg-transparent text-3xl font-mono text-white outline-none w-full placeholder:text-zinc-700 appearance-none"
                     />
                     <div className="flex items-center gap-2 bg-zinc-800/80 rounded-lg px-3 py-1.5 shrink-0 border border-zinc-700">
-                      <div className="w-5 h-5 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center">X</div>
-                      <span className="font-bold text-sm">XLM</span>
+                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${inputSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
+                        {inputSymbol === 'XLM' ? 'X' : '$'}
+                      </div>
+                      <span className="font-bold text-sm">{inputSymbol}</span>
                     </div>
                   </div>
                 </div>
@@ -272,7 +326,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 {/* Receive */}
                 <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 shadow-inner opacity-80">
                   <div className="flex justify-between mb-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Receive Estimate</label>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{outputLabel}</label>
                   </div>
                   <div className="flex items-center gap-4">
                     <input
@@ -280,16 +334,18 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       value={
                         quoteLoading
                           ? 'Computing...'
-                          : quote
-                            ? (parseFloat(quote.amountOut) / 1e7).toFixed(2)
+                          : outputAmount
+                            ? (parseFloat(outputAmount) / 1e7).toFixed(2)
                             : '0.00'
                       }
                       readOnly
                       className="bg-transparent text-3xl font-mono text-white outline-none w-full truncate"
                     />
-                    <div className="flex items-center gap-2 bg-[#2775ca]/20 rounded-lg px-3 py-1.5 shrink-0 border border-[#2775ca]/30">
-                      <div className="w-5 h-5 rounded-full bg-[#2775ca] text-white text-[10px] font-black flex items-center justify-center">$</div>
-                      <span className="font-bold text-sm text-[#2775ca]">tUSDC</span>
+                    <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 shrink-0 border ${outputSymbol === 'XLM' ? 'bg-zinc-800/80 border-zinc-700' : 'bg-[#2775ca]/20 border-[#2775ca]/30'}`}>
+                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${outputSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
+                        {outputSymbol === 'XLM' ? 'X' : '$'}
+                      </div>
+                      <span className={`font-bold text-sm ${outputSymbol === 'XLM' ? 'text-white' : 'text-[#2775ca]'}`}>{outputSymbol}</span>
                     </div>
                   </div>
                 </div>
@@ -299,7 +355,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <div className="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50 text-xs font-mono text-zinc-400 flex flex-col gap-2">
                    <div className="flex justify-between">
                      <span>Exchange Rate</span>
-                     <span className="text-white">1 XLM = {(parseFloat(quote.amountOut) / 1e7 / parseFloat(xlmAmount)).toFixed(4)} test USDC</span>
+                     <span className="text-white">
+                       {swapMode === 'sell-exact-in'
+                         ? `1 test USDC = ${(parseFloat(quote.amountOut) / 1e7 / parseFloat(swapAmount)).toFixed(4)} XLM`
+                         : `1 XLM = ${(parseFloat(quote.amountOut) / 1e7 / (parseFloat(quote.amountIn) / 1e7)).toFixed(4)} test USDC`}
+                     </span>
                    </div>
                    <div className="flex justify-between">
                      <span>Slippage Tolerance</span>
@@ -352,7 +412,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div className="grid grid-cols-2 gap-4 mt-auto pt-4">
                 <Button
                   onClick={fetchQuote}
-                  disabled={quoteLoading || !xlmAmount || parseFloat(xlmAmount) <= 0}
+                  disabled={quoteLoading || !swapAmount || parseFloat(swapAmount) <= 0}
                   variant="secondary"
                   className="py-4"
                 >
