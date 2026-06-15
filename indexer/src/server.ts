@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { serve } from 'inngest/express';
@@ -13,6 +14,10 @@ const config = getConfig();
 const app = express();
 const require = createRequire(import.meta.url);
 const payload = require('payload') as any;
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const payloadConfigPath = path.join(currentDir, 'payload.config.js');
+
+process.env.PAYLOAD_CONFIG_PATH ||= payloadConfigPath;
 
 app.use(express.json());
 
