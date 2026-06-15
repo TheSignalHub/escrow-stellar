@@ -382,6 +382,13 @@ export default function App() {
                       {tab.label}
                     </button>
                   ))}
+                  <a
+                    href="/market_dashboard"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border border-transparent text-zinc-500 hover:text-emerald-400 hover:bg-zinc-900/60"
+                  >
+                    <Activity size={14} />
+                    Market Dashboard
+                  </a>
                 </nav>
                 
                 {/* Connected Wallet Info */}
@@ -613,6 +620,13 @@ export default function App() {
                 <span className="text-[9px] font-bold uppercase tracking-wider">{tab.id === 'create' ? 'Deploy' : tab.label}</span>
               </button>
             ))}
+            <a
+              href="/market_dashboard"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative text-zinc-500 active:text-zinc-300"
+            >
+              <Activity size={20} />
+              <span className="text-[9px] font-bold uppercase tracking-wider">Events</span>
+            </a>
           </div>
         </nav>
       )}
