@@ -41,7 +41,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [error, setError] = useState('');
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [publicTargetToken, setPublicTargetToken] = useState(USDC_TOKEN_ADDRESS);
   const [publicQuote, setPublicQuote] = useState<PublicAggregatorQuote | null>(null);
   const [publicQuoteLoading, setPublicQuoteLoading] = useState(false);
@@ -418,69 +417,73 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
               )}
 
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedOpen((open) => !open)}
-                  className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
-                >
-                  <span>
-                    <span className="block text-xs font-black uppercase tracking-widest text-zinc-300">Advanced Public Aggregator Check</span>
-                    <span className="block text-[10px] text-zinc-500 mt-1">Paste a target token contract to test public Soroswap aggregator depth.</span>
-                  </span>
-                  <span className="text-zinc-500 text-xs font-mono">{advancedOpen ? 'Hide' : 'Show'}</span>
-                </button>
-
-                {advancedOpen && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-zinc-800/70">
-                    <p className="text-[10px] text-zinc-500 leading-relaxed pt-3">
-                      This check is informational. The executable demo route above uses the seeded on-chain router path for reliability; the public aggregator may return no route on testnet if indexed liquidity is thin.
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Public Soroswap Aggregator API</h4>
+                    <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
+                      Informational route check against the public aggregator. The executable demo route uses the seeded on-chain router path above.
                     </p>
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Target token contract</label>
-                      <textarea
-                        value={publicTargetToken}
-                        onChange={(event) => {
-                          setPublicTargetToken(event.target.value);
-                          setPublicQuote(null);
-                          setPublicQuoteError('');
-                        }}
-                        rows={2}
-                        spellCheck={false}
-                        className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none break-all"
-                      />
+                  </div>
+                  <Tag color="zinc">API Check</Tag>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { name: 'Soroswap', status: 'AMM' },
+                    { name: 'Phoenix', status: 'AMM' },
+                    { name: 'Aquarius', status: 'Soon' },
+                  ].map((amm) => (
+                    <div key={amm.name} className="rounded-lg border border-zinc-800 bg-black/30 px-2 py-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300 truncate">{amm.name}</p>
+                      <p className="text-[9px] font-mono text-zinc-600 mt-1">{amm.status}</p>
                     </div>
-                    <Button
-                      onClick={checkPublicAggregatorRoute}
-                      disabled={publicQuoteLoading || !publicTargetToken.trim() || !swapAmount || parseFloat(swapAmount) <= 0}
-                      variant="secondary"
-                      className="w-full py-3 text-xs"
-                    >
-                      {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Public Aggregator Route'}
-                    </Button>
+                  ))}
+                </div>
 
-                    {publicQuote && (
-                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-mono text-zinc-300 space-y-2">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-zinc-500">Amount in</span>
-                          <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-zinc-500">Amount out</span>
-                          <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })}</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-zinc-500">Route legs</span>
-                          <span>{publicQuote.route?.length || 0}</span>
-                        </div>
-                      </div>
-                    )}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Target token contract</label>
+                  <textarea
+                    value={publicTargetToken}
+                    onChange={(event) => {
+                      setPublicTargetToken(event.target.value);
+                      setPublicQuote(null);
+                      setPublicQuoteError('');
+                    }}
+                    rows={2}
+                    spellCheck={false}
+                    className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none break-all"
+                  />
+                </div>
+                <Button
+                  onClick={checkPublicAggregatorRoute}
+                  disabled={publicQuoteLoading || !publicTargetToken.trim() || !swapAmount || parseFloat(swapAmount) <= 0}
+                  variant="secondary"
+                  className="w-full py-3 text-xs"
+                >
+                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Public Aggregator Route'}
+                </Button>
 
-                    {publicQuoteError && (
-                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 leading-relaxed">
-                        {publicQuoteError}
-                      </div>
-                    )}
+                {publicQuote && (
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-mono text-zinc-300 space-y-2">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-500">Amount in</span>
+                      <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-500">Amount out</span>
+                      <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-500">Route legs</span>
+                      <span>{publicQuote.route?.length || 0}</span>
+                    </div>
+                  </div>
+                )}
+
+                {publicQuoteError && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 leading-relaxed">
+                    {publicQuoteError}
                   </div>
                 )}
               </div>
