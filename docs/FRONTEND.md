@@ -258,7 +258,9 @@ Core Stellar SDK configuration and utilities:
 
 ### soroswap.ts
 
-Soroswap DEX Aggregator API client with `getQuote()`, `buildTransaction()`, `sendTransaction()` methods. API key via `VITE_SOROSWAP_API_KEY`.
+Soroswap public aggregator quote client. The frontend calls the local backend
+proxy at `/api/soroswap/quote`; the Soroswap API key stays server-side in
+`SOROSWAP_API_KEY`.
 
 ### dealMetadata.ts
 
@@ -297,7 +299,9 @@ Only active when wallet is connected.
 | `VITE_DEAL_ESCROW_CONTRACT` | Yes | Deployed DealEscrow contract address |
 | `VITE_USDC_TOKEN_ADDRESS` | No | Demo test USDC SAC address |
 | `VITE_SOROSWAP_ROUTER_ADDRESS` | No | Soroswap router used by the Stellar Broker testnet adapter |
-| `VITE_SOROSWAP_API_KEY` | No | Legacy REST key, not required for the router-direct testnet route |
+
+The public aggregator API key belongs on the backend as `SOROSWAP_API_KEY`,
+not as a `VITE_` variable.
 
 ## Build and Development
 

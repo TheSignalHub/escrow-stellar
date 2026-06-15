@@ -37,6 +37,51 @@ app.post('/api/indexer/run-once', requireAdminAuth, async (_req, res) => {
   }
 });
 
+app.post('/api/soroswap/quote', async (req, res) => {
+  if (!config.soroswapApiKey) {
+    res.status(503).json({ error: 'Soroswap API is not configured.' });
+    return;
+  }
+
+  const { assetIn, assetOut, amount, tradeType, protocols, slippageBps } = req.body || {};
+  if (!assetIn || !assetOut || !amount) {
+    res.status(400).json({ error: 'assetIn, assetOut, and amount are required.' });
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://api.soroswap.finance/quote?network=${config.network}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.soroswapApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        assetIn,
+        assetOut,
+        amount,
+        tradeType: tradeType || 'EXACT_IN',
+        protocols: Array.isArray(protocols) ? protocols : ['soroswap', 'phoenix', 'aqua'],
+        slippageBps: Number.isFinite(Number(slippageBps)) ? Number(slippageBps) : 100,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({ message: response.statusText }));
+    if (!response.ok) {
+      const message =
+        payload.detail || payload.title || payload.error || payload.message || response.statusText;
+      res.status(response.status).json({ error: message, detail: payload });
+      return;
+    }
+
+    res.json(payload);
+  } catch (error) {
+    res.status(502).json({
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 app.use(
   '/api/inngest',
   serve({

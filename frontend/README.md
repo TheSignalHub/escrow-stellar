@@ -47,6 +47,9 @@ VITE_USDC_TOKEN_ADDRESS=
 VITE_SOROSWAP_ROUTER_ADDRESS=
 ```
 
+The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
+For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
+
 > Without `VITE_PRIVY_APP_ID`, the **Email / Social** tab shows a warning but the
 > **Freighter / Albedo** path remains fully functional.
 

@@ -67,6 +67,7 @@ ADMIN_PASSWORD=<strong-password>
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+SOROSWAP_API_KEY=<server-only-key>
 INDEXER_ENABLED=true
 INDEXER_OVERLAP_LEDGERS=5
 ```
@@ -149,6 +150,7 @@ The runtime server exposes:
 - `/admin` — protected internal operations path for future open-deal/dispute/action queues
 - `/health` — indexer health
 - `/api/indexer/run-once` — protected manual indexer tick
+- `/api/soroswap/quote` — server-side Soroswap public aggregator quote proxy
 - `/api/market-dashboard/summary` — indexer status, deal summary, and recent events
 - `/api/market-dashboard/escrow-events` — recent decoded escrow events
 - `/api/inngest` — Inngest sync endpoint
@@ -158,6 +160,9 @@ not `frontend/Dockerfile`. Set `PORT=3000` or let the Dockerfile default handle
 it.
 
 `INNGEST_ID` is optional. If omitted, the app uses `escrow-stellar-indexer`.
+
+Use `SOROSWAP_API_KEY` for the public aggregator quote check. Do not expose this
+as a `VITE_` variable; Vite variables are bundled into browser JavaScript.
 
 Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the deployed environment before
 using `/admin`. The browser will show a Basic Auth sign-in prompt. The public

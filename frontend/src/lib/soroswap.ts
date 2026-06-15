@@ -1,7 +1,3 @@
-const API_BASE = 'https://api.soroswap.finance';
-const API_KEY = import.meta.env.VITE_SOROSWAP_API_KEY || '';
-const NETWORK = 'testnet';
-
 // Known testnet token addresses
 export const TESTNET_TOKENS = {
   XLM: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
@@ -17,20 +13,11 @@ export interface SwapQuote {
 }
 
 export class SoroswapClient {
-  private apiKey: string;
-  private network: string;
-
-  constructor(apiKey?: string, network?: string) {
-    this.apiKey = apiKey || API_KEY;
-    this.network = network || NETWORK;
-  }
-
   private async apiRequest(endpoint: string, data: any): Promise<any> {
-    const url = `${API_BASE}${endpoint}?network=${this.network}`;
+    const url = `/api/soroswap${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),

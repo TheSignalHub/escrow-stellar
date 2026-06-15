@@ -422,7 +422,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Public Soroswap Aggregator API</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
-                      Informational route check against the public aggregator. The executable demo route uses the seeded on-chain router path above.
+                      Checks whether the public aggregator can discover a route from XLM into a target SAC. The executable demo route uses the seeded router path above.
                     </p>
                   </div>
                   <Tag color="zinc">API Check</Tag>
@@ -442,7 +442,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Target token contract</label>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Route check: XLM → target SAC</label>
                   <textarea
                     value={publicTargetToken}
                     onChange={(event) => {
@@ -461,7 +461,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   variant="secondary"
                   className="w-full py-3 text-xs"
                 >
-                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Public Aggregator Route'}
+                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check XLM → Target Route'}
                 </Button>
 
                 {publicQuote && (

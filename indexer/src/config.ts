@@ -7,6 +7,7 @@ export interface IndexerConfig {
   contractAddress: string;
   network: StellarNetwork;
   rpcUrl: string;
+  soroswapApiKey?: string;
   enabled: boolean;
   overlapLedgers: number;
   startLedger?: number;
@@ -42,6 +43,7 @@ export function getConfig(): IndexerConfig {
     contractAddress: readRequired('DEAL_ESCROW_CONTRACT', 'VITE_DEAL_ESCROW_CONTRACT'),
     network,
     rpcUrl: process.env.STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org',
+    soroswapApiKey: process.env.SOROSWAP_API_KEY,
     enabled: process.env.INDEXER_ENABLED !== 'false',
     overlapLedgers: readOptionalInt('INDEXER_OVERLAP_LEDGERS') ?? 5,
     startLedger: readOptionalInt('INDEXER_START_LEDGER'),

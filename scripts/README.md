@@ -119,4 +119,5 @@ The token also appears on Stellar Expert:
 - The demo frontend exposes this as the Stellar Broker funding path. On
   testnet, the broker adapter calls the Soroswap router directly because public
   indexed testnet liquidity may be unavailable after resets.
-  `VITE_SOROSWAP_API_KEY` is not required for this path.
+  The public aggregator quote check uses the backend `SOROSWAP_API_KEY`; do not
+  expose the key as a `VITE_` browser variable.
