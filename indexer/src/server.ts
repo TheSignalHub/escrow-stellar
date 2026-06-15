@@ -16,6 +16,8 @@ const require = createRequire(import.meta.url);
 const payload = require('payload') as any;
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const payloadConfigPath = path.join(currentDir, 'payload.config.js');
+const payloadAdminBuildPath =
+  process.env.PAYLOAD_ADMIN_BUILD_PATH || path.resolve(currentDir, '..', 'build');
 
 process.env.PAYLOAD_CONFIG_PATH ||= payloadConfigPath;
 
@@ -26,6 +28,10 @@ await payload.init({
   express: app as any,
   config: payloadConfig,
 });
+
+if (fs.existsSync(payloadAdminBuildPath)) {
+  app.use('/admin', express.static(payloadAdminBuildPath));
+}
 
 app.get('/health', (_req, res) => {
   res.json({
