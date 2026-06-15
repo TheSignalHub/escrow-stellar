@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "payload:build": "payload build --config src/payload.config.ts",
+    "payload:build": "payload build --config src/payload.config.ts && node scripts/patch-payload-admin.cjs",
     "indexer:once": "tsx src/run-once.ts",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js"
