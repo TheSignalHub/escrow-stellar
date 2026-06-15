@@ -15,8 +15,21 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 This repository is configured for the Tranche 2 testnet review:
 
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
-- **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built event dashboard in [`indexer`](indexer).
-- **Deliverable 6**: The frontend exposes a Stellar Broker funding step. On testnet, the broker adapter routes through a seeded Soroswap pool because public indexed testnet liquidity may be unavailable after resets.
+- **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
+- **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
+
+Reviewer links:
+
+```text
+Frontend:             https://stellar.thesignal.directory
+Event dashboard:      https://stellar.thesignal.directory/market_dashboard
+Internal admin:       https://stellar.thesignal.directory/admin
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+```
+
+`/market_dashboard` is intentionally public and read-only for review. `/admin`
+and manual indexer controls are protected by `ADMIN_USERNAME` /
+`ADMIN_PASSWORD`.
 
 Current testnet funding configuration:
 
@@ -28,7 +41,14 @@ Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
 Seeded pool:       CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
 ```
 
-The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued USDC.
+The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued
+USDC. The Soroswap route is used to prove the non-USDC source asset flow on
+testnet: XLM in, demo test USDC settlement asset out, then escrow funding.
+
+The indexer database is not the source of truth for funds or deal state. The
+Soroban contract remains the source of truth; the isolated MongoDB indexer
+database is a read model for marketplace-style status sync and reviewer
+visibility.
 
 ## Key Features
 
@@ -36,8 +56,9 @@ The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued USDC.
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
-- **Stellar Broker Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
+- **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
+- **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
 
 ## Architecture Overview
@@ -72,6 +93,13 @@ The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued USDC.
 │  │     │  (90%)   │  (4%)    │  (6%)    │         │  │
 │  │     └──────────┴──────────┴──────────┘         │  │
 │  └────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────┘
+                      │ Soroban RPC events
+┌─────────────────────┼────────────────────────────────┐
+│          Off-chain Indexer / Read Model               │
+│  Soroban RPC getEvents → decode DealEscrow topics     │
+│  → MongoDB escrow-transfers + indexer checkpoint      │
+│  → /market_dashboard reviewer dashboard               │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -127,10 +155,12 @@ npm run dev
 
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
-3. Fund your wallet with 10,000 XLM via Friendbot (Liquidity tab)
-4. Create a deal using a Quick Start scenario
-5. Fund milestones, release them, watch the 3-way split visualization
-6. Check the provider's on-chain reputation in the Oracle tab
+3. Fund your wallet with 10,000 XLM via Friendbot
+4. Use the **Fund** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
+5. Create a deal using a Quick Start scenario
+6. Fund milestones, release them, and watch the 3-way split visualization
+7. Check synced events in `/market_dashboard`
+8. Check the provider's on-chain reputation in the Oracle tab
 
 ## Project Structure
 
@@ -168,6 +198,7 @@ escrow-stellar/
     ├── ARCHITECTURE.md             # System design + integration patterns
     ├── SMART_CONTRACT.md           # Contract API reference
     ├── FRONTEND.md                 # Frontend architecture details
+    ├── EVENT_SCHEMA.md             # Published DealEscrow event schema
     └── DEMO_GUIDE.md              # Step-by-step demo walkthrough
 ```
 
@@ -234,7 +265,8 @@ cargo test
 | Fonts | Space Grotesk, JetBrains Mono | Google Fonts |
 | Stellar SDK | @stellar/stellar-sdk | 14.6.1 |
 | Wallet | Privy + Stellar Wallets Kit fallback | Testnet |
-| Broker route | Stellar Broker adapter + Soroswap router testnet route | Testnet |
+| Broker route | Broker-style adapter + Soroswap router testnet route | Testnet |
+| Indexer | Express + Inngest + MongoDB | Testnet read model |
 | Network | Stellar Testnet | Soroban RPC |
 
 ## Production Parity
@@ -247,6 +279,23 @@ cargo test
 | Dispute escalation | Admin dashboard + Stripe | Smart contract + admin auth |
 | Reputation | Database counter | Persistent storage on-chain |
 | Payment | Stripe Connect | SAC token transfers |
+
+## Tranche 2 Demo Positioning
+
+For SCF review, describe the demo as:
+
+```text
+The Tranche 2 testnet deployment demonstrates a complete Soroban B2B escrow
+lifecycle with Privy wallet connection, testnet deal creation, milestone
+funding/release with automatic multi-party payout split, Soroban RPC event
+indexing into an isolated backend dashboard, and XLM-to-demo-test-USDC
+multi-asset funding through a seeded Soroswap testnet route.
+```
+
+Avoid overclaiming the testnet route as production Circle USDC or a live
+multi-venue aggregator path. The demo token and seeded pool are intentionally
+testnet-only so reviewers can reproduce the flow even when public testnet
+liquidity is empty.
 
 ## Documentation
 

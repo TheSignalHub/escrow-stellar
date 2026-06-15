@@ -40,8 +40,11 @@ VITE_PRIVY_APP_ID=your-privy-app-id-here
 # Set after deploying the contract to Testnet
 VITE_DEAL_ESCROW_CONTRACT=
 
-# Testnet USDC token address (SAC)
+# Demo testnet USDC-compatible token address (SAC)
 VITE_USDC_TOKEN_ADDRESS=
+
+# Soroswap router used by the Broker-style testnet route
+VITE_SOROSWAP_ROUTER_ADDRESS=
 ```
 
 > Without `VITE_PRIVY_APP_ID`, the **Email / Social** tab shows a warning but the
@@ -93,10 +96,19 @@ The client UI surfaces an "Under review" banner and an optional release override
 ## Features
 
 - **Deal Terminal** — browse all on-chain escrows, filter by status, search by ID / address
-- **New Contract** — create milestone-based escrow deals with custom splits
-- **Fund** — deposit XLM into milestone vaults via Soroswap widget
+- **New Contract** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
+- **Fund** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
+
+For the SCF #42 Tranche 2 demo, the Fund/Create Deal flows demonstrate
+Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
+the seeded Soroswap testnet route converts it into the configured demo test
+USDC settlement asset, and the escrow contract settles against that configured
+asset. The demo test USDC token is not Circle-issued production USDC.
+
+The Oracle tab is separate: it is a reputation and on-chain activity reader,
+not the swap proof or indexer dashboard.
 
 ---
 
@@ -111,6 +123,8 @@ frontend/src/
 │   └── useDealEscrow.ts       # Soroban contract calls
 ├── lib/
 │   ├── stellar.ts             # RPC URLs, Stellar SDK helpers
+│   ├── stellarBroker.ts       # Broker-facing adapter for the testnet route
+│   ├── soroswapOnchain.ts     # Direct seeded Soroswap router path
 │   ├── privy-stellar.ts       # Signing bridge: XDR ↔ Privy raw hash
 │   └── dealMetadata.ts        # Local event log
 ├── components/
