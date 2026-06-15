@@ -13,7 +13,6 @@
   "dependencies": {
     "@payloadcms/bundler-webpack": "^1.0.7",
     "@payloadcms/db-mongodb": "^2.0.1",
-    "@payloadcms/richtext-slate": "^1.5.2",
     "@stellar/stellar-sdk": "^14.1.0",
     "dotenv": "^17.2.3",
     "express": "^4.22.2",

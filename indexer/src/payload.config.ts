@@ -1,7 +1,14 @@
-import { webpackBundler } from '@payloadcms/bundler-webpack';
-import { mongooseAdapter } from '@payloadcms/db-mongodb';
-import { slateEditor } from '@payloadcms/richtext-slate';
-import { buildConfig } from 'payload/dist/exports/config.js';
+import * as payloadBundlerExports from '@payloadcms/bundler-webpack';
+import * as payloadMongoExports from '@payloadcms/db-mongodb';
+import * as payloadConfigExports from 'payload/dist/exports/config.js';
+
+const { webpackBundler } = (payloadBundlerExports as any).default ?? payloadBundlerExports;
+const { mongooseAdapter } = (payloadMongoExports as any).default ?? payloadMongoExports;
+const { buildConfig } = (payloadConfigExports as any).default ?? payloadConfigExports;
+
+const noopEditor = {
+  validate: () => true,
+};
 
 const DATABASE_URI = process.env.DATABASE_URI || '';
 const SERVER_URL = process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_SERVER_URL;
@@ -97,7 +104,7 @@ export default buildConfig({
     bundler: webpackBundler(),
     buildPath: process.env.PAYLOAD_ADMIN_BUILD_PATH,
   },
-  editor: slateEditor({}),
+  editor: noopEditor,
   db: mongooseAdapter({
     url: DATABASE_URI,
     autoPluralization: false,
