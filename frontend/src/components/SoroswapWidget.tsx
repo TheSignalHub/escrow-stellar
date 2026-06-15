@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   fundTestnetAccount,
+  getExplorerContractLink,
   getExplorerTxLink,
   NETWORK_PASSPHRASE,
   SOROSWAP_POOL_ADDRESS,
@@ -275,14 +276,25 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <span className="uppercase tracking-widest leading-5">{item.label}</span>
                 <span className="text-zinc-300 leading-5 break-all">{item.value || 'not configured'}</span>
                 {item.value && (
-                  <button
-                    type="button"
-                    onClick={() => copyRouteValue(item.label, item.value)}
-                    title={`Copy ${item.label}`}
-                    className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
-                  >
-                    <Copy size={12} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <a
+                      href={getExplorerContractLink(item.value)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`View ${item.label} on Stellar Expert`}
+                      className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => copyRouteValue(item.label, item.value)}
+                      title={`Copy ${item.label}`}
+                      className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
