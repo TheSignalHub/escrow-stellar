@@ -9,6 +9,7 @@ import {
   XLM_SAC_ADDRESS,
 } from '../lib/stellar';
 import { stellarBrokerClient } from '../lib/stellarBroker';
+import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/soroswap';
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
@@ -40,6 +41,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [error, setError] = useState('');
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [publicTargetToken, setPublicTargetToken] = useState(USDC_TOKEN_ADDRESS);
+  const [publicQuote, setPublicQuote] = useState<PublicAggregatorQuote | null>(null);
+  const [publicQuoteLoading, setPublicQuoteLoading] = useState(false);
+  const [publicQuoteError, setPublicQuoteError] = useState('');
 
   const handleFundbot = async () => {
     setFundingLoading(true);
@@ -83,6 +89,30 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     if (!value) return;
     await navigator.clipboard.writeText(value);
     toast(`${label} copied`, 'success');
+  };
+
+  const checkPublicAggregatorRoute = async () => {
+    const amount = parseFloat(swapAmount);
+    const targetToken = publicTargetToken.trim();
+    if (!amount || amount <= 0 || !targetToken) return;
+
+    setPublicQuoteLoading(true);
+    setPublicQuote(null);
+    setPublicQuoteError('');
+    try {
+      const stroops = BigInt(Math.round(amount * 1e7)).toString();
+      const result = await soroswapClient.getQuote(
+        XLM_SAC_ADDRESS,
+        targetToken,
+        stroops,
+        'EXACT_IN'
+      );
+      setPublicQuote(result);
+    } catch (err: any) {
+      setPublicQuoteError(err.message || 'No public aggregator route found for this target token.');
+    } finally {
+      setPublicQuoteLoading(false);
+    }
   };
 
   const fetchQuote = async () => {
@@ -387,6 +417,73 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                    </div>
                 </div>
               )}
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen((open) => !open)}
+                  className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
+                >
+                  <span>
+                    <span className="block text-xs font-black uppercase tracking-widest text-zinc-300">Advanced Public Aggregator Check</span>
+                    <span className="block text-[10px] text-zinc-500 mt-1">Paste a target token contract to test public Soroswap aggregator depth.</span>
+                  </span>
+                  <span className="text-zinc-500 text-xs font-mono">{advancedOpen ? 'Hide' : 'Show'}</span>
+                </button>
+
+                {advancedOpen && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-zinc-800/70">
+                    <p className="text-[10px] text-zinc-500 leading-relaxed pt-3">
+                      This check is informational. The executable demo route above uses the seeded on-chain router path for reliability; the public aggregator may return no route on testnet if indexed liquidity is thin.
+                    </p>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Target token contract</label>
+                      <textarea
+                        value={publicTargetToken}
+                        onChange={(event) => {
+                          setPublicTargetToken(event.target.value);
+                          setPublicQuote(null);
+                          setPublicQuoteError('');
+                        }}
+                        rows={2}
+                        spellCheck={false}
+                        className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none break-all"
+                      />
+                    </div>
+                    <Button
+                      onClick={checkPublicAggregatorRoute}
+                      disabled={publicQuoteLoading || !publicTargetToken.trim() || !swapAmount || parseFloat(swapAmount) <= 0}
+                      variant="secondary"
+                      className="w-full py-3 text-xs"
+                    >
+                      {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Public Aggregator Route'}
+                    </Button>
+
+                    {publicQuote && (
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-mono text-zinc-300 space-y-2">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500">Amount in</span>
+                          <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500">Amount out</span>
+                          <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-zinc-500">Route legs</span>
+                          <span>{publicQuote.route?.length || 0}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {publicQuoteError && (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 leading-relaxed">
+                        {publicQuoteError}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Empty pool notice */}
               {poolEmpty && (
