@@ -143,7 +143,10 @@ export function AssetSwapStep({
         </h2>
         <p className="text-zinc-500 text-sm mt-1">
           The DealEscrow contract settles in the configured demo test USDC asset.
-          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter via seeded Soroswap liquidity before creating the deal.
+          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter by calling the seeded Soroswap router path directly before creating the deal.
+        </p>
+        <p className="text-zinc-600 text-xs mt-2">
+          Demo note: this test USDC may not appear in Soroswap&apos;s public token picker; the route is configured by contract address for this testnet walkthrough.
         </p>
         <a
           href={`https://testnet.soroswap.finance/#/liquidity/add/${sourceAssetAddress}/${usdcAddress}`}
