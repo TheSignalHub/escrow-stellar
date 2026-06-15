@@ -2,8 +2,8 @@
 
 > Reference for the off-chain indexer (SCF #42 — Deliverable 5).
 >
-> Source of truth: `stellar-demo/contracts/deal_escrow/src/lib.rs`
-> Indexer implementation: `the-signal/src/lib/inngest/functions/sorobanEventListener.ts`
+> Source of truth: `contracts/deal_escrow/src/lib.rs`
+> Indexer implementation: `indexer/src/runStellarIndexerOnce.ts`
 
 The DealEscrow Soroban contract emits seven event topics over the course of a deal's lifecycle. Each event carries:
 

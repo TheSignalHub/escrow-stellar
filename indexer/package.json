@@ -1,0 +1,25 @@
+{
+  "name": "@the-signal/escrow-stellar-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "indexer:once": "tsx src/run-once.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^14.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "inngest": "^3.51.1",
+    "mongodb": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,110 +1,143 @@
-# D5 Smoke Test — How to Verify the Indexer End-to-End
+# D5 Smoke Test — Verify the Isolated Indexer
 
-This procedure proves the Soroban event indexer works against the live Testnet contract. Use it before submitting Tranche 2 and again whenever the indexer is touched.
+This procedure proves Deliverable 5 without touching production marketplace
+dealflow. The isolated indexer lives in [`indexer`](../../indexer).
 
-## Step 1 — Static pipeline check (no Payload involvement)
+## Step 1 — Configure the Demo Database
 
-Run the offline smoke test:
+Use a separate Mongo database, not production:
+
+```env
+DATABASE_URI=mongodb+srv://<user>:<password>@<cluster>/escrow-stellar-demo?retryWrites=true&w=majority
+STELLAR_NETWORK=testnet
+STELLAR_RPC_URL=https://soroban-testnet.stellar.org
+DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+INDEXER_ENABLED=true
+INDEXER_OVERLAP_LEDGERS=5
+```
+
+Optional: set `INDEXER_START_LEDGER` to a recent ledger before a known escrow
+transaction. If omitted, the first run starts near the recent ledger window.
+
+## Step 2 — Run Once Locally
 
 ```bash
-cd the-signal
-npx tsx scripts/verify-soroban-indexer.ts
+cd indexer
+npm install
+cp .env.example .env
+npm run indexer:once
 ```
 
-**Pass criteria:**
+Pass criteria:
 
-- RPC reachable (`latestLedger` printed)
-- No parse errors (`parseErrors=0`)
-- Script exits 0
+- RPC is reachable.
+- The command exits 0.
+- `stellar-indexer-state` is created or updated.
+- Any recent DealEscrow events are inserted into `escrow-transfers`.
 
-This validates `sorobanRpc.ts` + `eventParser.ts` against the real testnet endpoint without writing anything to the DB. Existing testnet events outside the ~7-day retention window will not appear (this is expected — the RPC simply doesn't keep them).
+Expected output shape:
 
-To target a specific older window:
+```json
+{
+  "enabled": true,
+  "fromLedger": 123,
+  "latestLedger": 456,
+  "fetched": 1,
+  "parsed": 1,
+  "inserted": 1,
+  "deduped": 0,
+  "skipped": 0
+}
+```
+
+## Step 3 — Generate a Fresh Testnet Event
+
+The Soroban RPC retention window is limited, so generate a fresh event if the
+indexer sees no records:
+
+1. Open <https://stellar.thesignal.directory/>
+2. Connect with Privy.
+3. Create a deal, fund a milestone, or release a milestone.
+4. Copy the Stellar Expert transaction hash.
+5. Run `npm run indexer:once` again.
+
+You should see `created`, `funded`, `released`, or `done` in
+`escrow-transfers.sorobanEventTopic`.
+
+## Step 4 — Verify Stored Rows
+
+Check Mongo collection `escrow-transfers`.
+
+Expected fields:
+
+- `chain = "stellar"`
+- `sorobanContractAddress`
+- `sorobanDealId`
+- `sorobanMilestoneIdx` when applicable
+- `sorobanEventTopic`
+- `sorobanEventId`
+- `sorobanLedgerSeq`
+- `sorobanEventData`
+- `onchainTxHash`
+- `amount`
+- `platformCommission`
+- `metadata.source = "scf-tranche-2-demo"`
+- `metadata.linkedToMarketplaceDeal = false`
+
+Check Mongo collection `stellar-indexer-state`.
+
+Expected fields:
+
+- `contractAddress`
+- `network`
+- `rpcUrl`
+- `lastSeenLedger`
+- `lastTickAt`
+- `lastTickStatus`
+- `lastTickEventsProcessed`
+- `totalEventsProcessed`
+- `enabled`
+
+## Step 5 — Dedupe Check
+
+Run the indexer twice:
 
 ```bash
-STELLAR_START_LEDGER=2588800 npx tsx scripts/verify-soroban-indexer.ts
+npm run indexer:once
+npm run indexer:once
 ```
 
-If `startLedger` is outside the retention window the RPC returns `-32600` with a clear error message — that's expected behavior, not a regression.
+The second run should report already-seen events as `deduped`, not duplicate
+rows.
 
-## Step 2 — Generate a fresh testnet event
+## Step 6 — Optional Inngest Check
 
-The retention window only goes back ~7 days, so to exercise the live indexer you need a recent event:
+Deploy the separate indexer app, then sync this endpoint in Inngest:
 
-1. Open the demo: <https://stellar.thesignal.directory/>
-2. Connect a wallet (Freighter or Privy)
-3. Fund a milestone OR release one — either action emits a contract event
-4. Note the resulting tx hash from Stellar Expert
-
-Re-run the smoke test:
-
-```bash
-npx tsx scripts/verify-soroban-indexer.ts
+```txt
+https://<indexer-domain>/api/inngest
 ```
 
-You should now see at least one event with the corresponding topic (`funded` or `released`).
+Health check:
 
-## Step 3 — Seed the indexer cursor and turn it on
-
-1. Open `/admin/globals/stellar-indexer-state`
-2. Set:
-   - `contractAddress`: `CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC`
-   - `network`: `testnet`
-   - `rpcUrl`: `https://soroban-testnet.stellar.org`
-   - `lastSeenLedger`: the value suggested by Step 1's script (a few hundred ledgers before your fresh event)
-   - `overlapLedgers`: `5`
-   - `enabled`: `true`
-3. Save
-
-The Inngest cron `soroban-event-listener` will fire on the next minute boundary. Watch:
-
-- Telegram **SYSTEM_LOGS** thread for the indexer summary (only fires when events are processed)
-- `/admin/collections/escrow-transfers?where[chain][equals]=stellar` — new rows should appear
-- `/admin/globals/stellar-indexer-state` — `lastTickAt`, `lastTickStatus`, `lastTickEventsProcessed` update each tick
-
-## Step 4 — Verify the data shape
-
-Open one of the new rows. Expected fields populated:
-
-- `chain` = `stellar`
-- `sorobanContractAddress` = the contract address
-- `sorobanDealId` = the on-chain `deal_id`
-- `sorobanMilestoneIdx` = milestone index (if topic carries it)
-- `sorobanEventTopic` = `created` / `funded` / `released` / etc.
-- `sorobanEventId` = `<ledger>-<seq>` (unique)
-- `sorobanLedgerSeq` = ledger number
-- `sorobanEventData` = full parsed payload as JSON (source of truth for i128 precision)
-- `onchainTxHash` = tx hash on Stellar Expert
-- `amount` = whole-unit USDC amount (converted from stroops)
-- For `released`: `platformCommission` = `connectorCut + protocolCut`
-
-## Step 5 — Dedupe sanity check
-
-Trigger the indexer twice in a row from the Admin (or wait for two cron ticks):
-
-```
-POST /api/inngest/trigger
-{ "agentId": "soroban-event-listener" }
+```txt
+https://<indexer-domain>/health
 ```
 
-The second run should report `deduped > 0, inserted = 0` for the events it already processed. No duplicate rows should appear in `escrow-transfers`.
+Manual tick:
 
-## Step 6 — Failure path
+```txt
+POST https://<indexer-domain>/api/indexer/run-once
+```
 
-Temporarily set `rpcUrl` to a bad URL in the global, trigger the agent. Expected:
-
-- The tick fails
-- The DLQ handler routes a failure notification to the Telegram **ERRORS** thread
-- The next successful tick (after fixing the URL) resumes from the same `lastSeenLedger` — no events lost
-
----
+Inngest cannot sync until `/api/inngest` is publicly deployed and reachable.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `startLedger must be within ledger range X - Y` | Cursor older than retention | Update `lastSeenLedger` to a value inside the window |
-| `parsed=0` despite known events | Wrong `contractAddress` or events past retention | Verify the address in the global matches what's deployed |
-| All events skip with `skipped > 0` | Events are not from DealEscrow (e.g. diagnostic events on the same contract address) | Expected — `parseEvents` skips them silently |
-| Tick succeeds but no row in Payload | Indexer disabled or kill-switch on | Check `enabled = true` in the global |
-| Tick succeeds but Telegram silent | Quiet-mode behavior — Telegram only fires when `inserted > 0` | Expected — check `/admin/globals/stellar-indexer-state` for `lastTickAt` |
+| `enabled=false` in result | Kill switch disabled | Set `INDEXER_ENABLED=true` or enable the state row |
+| No events found | No recent Soroban events | Create/fund/release a fresh deal and run again |
+| RPC retention error | Cursor too old | Set `INDEXER_START_LEDGER` to a recent ledger |
+| Duplicate key behavior | Event already indexed | Expected; second run should dedupe |
+| Inngest sync cannot reach URL | App not deployed or wrong path | Deploy first, then sync `/api/inngest` |
