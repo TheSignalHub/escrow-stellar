@@ -36,14 +36,11 @@ FROM node:22.16-bookworm-slim AS indexer-build
 
 WORKDIR /app/indexer
 
-ENV PAYLOAD_ADMIN_BUILD_PATH=/app/indexer/build
-
 COPY indexer/package*.json ./
 RUN npm ci
 
 COPY indexer ./
 RUN npm run build
-RUN npm run payload:build
 RUN npm prune --omit=dev
 
 FROM node:22.16-bookworm-slim
@@ -53,12 +50,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV FRONTEND_DIST_PATH=/app/frontend-dist
-ENV PAYLOAD_ADMIN_BUILD_PATH=/app/indexer/build
 
 COPY --from=indexer-build /app/indexer/package*.json ./indexer/
 COPY --from=indexer-build /app/indexer/node_modules ./indexer/node_modules
 COPY --from=indexer-build /app/indexer/dist ./indexer/dist
-COPY --from=indexer-build /app/indexer/build ./indexer/build
 COPY --from=frontend-build /app/frontend/dist ./frontend-dist
 
 EXPOSE 3000

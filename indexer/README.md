@@ -3,8 +3,8 @@
 Small isolated indexer for SCF #42 Tranche 2 Deliverable 5.
 
 It reads DealEscrow events from Soroban RPC, decodes the known escrow topics,
-writes `chain=stellar` rows into a Mongo collection shaped like Payload's
-`escrow-transfers`, and stores its checkpoint in `stellar-indexer-state`.
+writes `chain=stellar` rows into a Mongo `escrow-transfers` collection, and
+stores its checkpoint in `stellar-indexer-state`.
 
 It does not:
 
@@ -143,9 +143,11 @@ The repo root `Dockerfile` builds both:
 The runtime server exposes:
 
 - `/` — frontend app
-- `/admin` — Payload CMS admin for the isolated demo indexer DB
+- `/admin` — lightweight Stellar indexer dashboard for the isolated demo DB
 - `/health` — indexer health
 - `/api/indexer/run-once` — manual indexer tick
+- `/api/admin/summary` — indexer status, deal summary, and recent events
+- `/api/admin/escrow-events` — recent decoded escrow events
 - `/api/inngest` — Inngest sync endpoint
 
 For this mode, deploy from the repository root and use the root `Dockerfile`,
@@ -154,19 +156,11 @@ it.
 
 `INNGEST_ID` is optional. If omitted, the app uses `escrow-stellar-indexer`.
 
-Payload uses `PAYLOAD_SECRET` for admin auth cookies. On first visit to
-`/admin`, create the first admin user. The visible collections are intentionally
-limited to:
-
-- `escrow-transfers`
-- `stellar-indexer-state`
-- `users`
-
 ## Review Positioning
 
 For Tranche 2 review, describe this as:
 
-> An isolated testnet Payload-compatible indexer that reads DealEscrow Soroban
-> events, stores decoded `chain=stellar` escrow-transfer rows, and persists its
-> cursor in `stellar-indexer-state`. It does not touch the production
-> marketplace dealflow.
+> An isolated testnet indexer that reads DealEscrow Soroban events, stores
+> decoded `chain=stellar` escrow-transfer rows in MongoDB, persists its cursor
+> in `stellar-indexer-state`, and exposes a focused dashboard for reviewer
+> verification. It does not touch the production marketplace dealflow.

@@ -15,7 +15,7 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 This repository is configured for the Tranche 2 testnet review:
 
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
-- **Deliverable 5**: DealEscrow event topics and Payload CMS indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer in [`indexer`](indexer).
+- **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built event dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Stellar Broker funding step. On testnet, the broker adapter routes through a seeded Soroswap pool because public indexed testnet liquidity may be unavailable after resets.
 
 Current testnet funding configuration:

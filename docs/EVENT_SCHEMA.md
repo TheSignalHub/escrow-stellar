@@ -137,14 +137,14 @@ created → funded ── deposit──→ funded ────┤
                                                                   refund ←── (any time on any funded/disputed milestone)
 ```
 
-Each event maps 1:1 to an `escrow-transfers` row in The Signal Payload CMS, with `chain = "stellar"` and the topic stored in `sorobanEventTopic`.
+Each event maps 1:1 to a Mongo `escrow-transfers` row, with `chain = "stellar"` and the topic stored in `sorobanEventTopic`.
 
-## Payload row mapping
+## Indexer row mapping
 
 | Field on `escrow-transfers` | Source |
 |---|---|
 | `chain` | always `"stellar"` for these events |
-| `sorobanContractAddress` | contract being indexed (from `stellar-indexer-state` global) |
+| `sorobanContractAddress` | contract being indexed (from `stellar-indexer-state`) |
 | `sorobanDealId` | `deal_id` (u64 → number, safe within JS precision for foreseeable use) |
 | `sorobanMilestoneIdx` | `milestone_idx` if topic carries it |
 | `sorobanEventTopic` | the topic string |
@@ -170,7 +170,7 @@ The indexer uses `@stellar/stellar-base`'s `scValToNative()` to convert each `Sc
 | `ScAddress` (G… or C…) | `string` |
 | `ScVec` | recursively decoded `Array` |
 
-Since `bigint` doesn't serialize cleanly through MongoDB/Payload, the indexer converts to **decimal strings** for u64 / i128 (preserves full precision) and **JS number** for u32 (always safe).
+Since `bigint` doesn't serialize cleanly through MongoDB JSON responses, the indexer converts to **decimal strings** for u64 / i128 (preserves full precision) and **JS number** for u32 (always safe).
 
 ---
 

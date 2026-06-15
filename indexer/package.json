@@ -5,20 +5,16 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "payload:build": "payload build --config src/payload.config.ts && node scripts/patch-payload-admin.cjs",
     "indexer:once": "tsx src/run-once.ts",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@payloadcms/bundler-webpack": "^1.0.7",
-    "@payloadcms/db-mongodb": "^2.0.1",
     "@stellar/stellar-sdk": "^14.1.0",
     "dotenv": "^17.2.3",
     "express": "^4.22.2",
     "inngest": "^3.51.1",
-    "mongodb": "^7.0.0",
-    "payload": "^2.32.3"
+    "mongodb": "^7.0.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",

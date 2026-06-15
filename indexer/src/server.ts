@@ -1,37 +1,18 @@
 import express from 'express';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { serve } from 'inngest/express';
+import { registerAdminDashboard } from './adminDashboard.js';
 import { getConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
 import { functions, inngest } from './inngest.js';
-import payloadConfig from './payload.config.js';
 import { runStellarIndexerOnce } from './runStellarIndexerOnce.js';
 
 const config = getConfig();
 const app = express();
-const require = createRequire(import.meta.url);
-const payload = require('payload') as any;
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const payloadConfigPath = path.join(currentDir, 'payload.config.js');
-const payloadAdminBuildPath =
-  process.env.PAYLOAD_ADMIN_BUILD_PATH || path.resolve(currentDir, '..', 'build');
-
-process.env.PAYLOAD_CONFIG_PATH ||= payloadConfigPath;
 
 app.use(express.json());
-
-await payload.init({
-  secret: process.env.PAYLOAD_SECRET || 'escrow-stellar-demo-secret',
-  express: app as any,
-  config: payloadConfig,
-});
-
-if (fs.existsSync(payloadAdminBuildPath)) {
-  app.use('/admin', express.static(payloadAdminBuildPath));
-}
+registerAdminDashboard(app, config);
 
 app.get('/health', (_req, res) => {
   res.json({
