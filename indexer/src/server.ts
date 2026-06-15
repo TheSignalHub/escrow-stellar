@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve } from 'inngest/express';
-import { registerAdminDashboard } from './adminDashboard.js';
+import { registerAdminDashboard, requireAdminAuth } from './adminDashboard.js';
 import { getConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
 import { functions, inngest } from './inngest.js';
@@ -23,7 +23,7 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.post('/api/indexer/run-once', async (_req, res) => {
+app.post('/api/indexer/run-once', requireAdminAuth, async (_req, res) => {
   const indexerDb = await connectIndexerDb(config.databaseUri);
   try {
     const result = await runStellarIndexerOnce(config, indexerDb);

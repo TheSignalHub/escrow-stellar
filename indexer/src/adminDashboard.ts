@@ -1,4 +1,5 @@
-import type { Express, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import type { IndexerConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
 
@@ -10,7 +11,49 @@ const escapeHtml = (value: unknown): string =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
-const numberFormatter = new Intl.NumberFormat('en-US');
+function safeEqual(actual: string, expected: string): boolean {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function getBasicAuthCredentials(header: string | undefined): { username: string; password: string } {
+  if (!header?.startsWith('Basic ')) return { username: '', password: '' };
+  const decoded = Buffer.from(header.slice('Basic '.length), 'base64').toString('utf8');
+  const separatorIndex = decoded.indexOf(':');
+  if (separatorIndex === -1) return { username: '', password: '' };
+  return {
+    username: decoded.slice(0, separatorIndex),
+    password: decoded.slice(separatorIndex + 1),
+  };
+}
+
+export function requireAdminAuth(req: Request, res: Response, next: NextFunction): void {
+  const expectedUsername = process.env.ADMIN_USERNAME;
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+
+  if (!expectedUsername || !expectedPassword) {
+    res
+      .status(503)
+      .type('text')
+      .send('Internal admin is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD.');
+    return;
+  }
+
+  const credentials = getBasicAuthCredentials(req.headers.authorization);
+  const isAuthorized =
+    safeEqual(credentials.username, expectedUsername) &&
+    safeEqual(credentials.password, expectedPassword);
+
+  if (!isAuthorized) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="The Signal Internal Admin"');
+    res.status(401).type('text').send('Authentication required');
+    return;
+  }
+
+  next();
+}
 
 function getExplorerTxUrl(txHash?: string): string | undefined {
   if (!txHash) return undefined;
@@ -121,7 +164,6 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
         </div>
         <div class="actions">
           <button id="refresh">Refresh</button>
-          <button id="run" class="primary">Run Indexer</button>
         </div>
       </header>
 
@@ -191,25 +233,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
         document.getElementById('lastUpdated').textContent = 'Last refreshed ' + new Date().toLocaleString();
       }
 
-      async function runIndexer() {
-        const button = document.getElementById('run');
-        button.disabled = true;
-        button.textContent = 'Running...';
-        try {
-          const response = await fetch('/api/indexer/run-once', { method: 'POST' });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'Indexer run failed');
-          await load();
-        } catch (error) {
-          alert(error.message);
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Run Indexer';
-        }
-      }
-
       document.getElementById('refresh').addEventListener('click', load);
-      document.getElementById('run').addEventListener('click', runIndexer);
       load().catch((error) => {
         document.getElementById('stats').innerHTML = stat('Dashboard Error', error.message, 'error');
       });
@@ -233,6 +257,8 @@ function renderInternalAdminPlaceholder(): string {
       h1 { margin: 0; font-size: 26px; letter-spacing: 0; }
       p { color: var(--muted); line-height: 1.6; }
       a { color: var(--green); font-weight: 800; }
+      button { appearance: none; border: 1px solid var(--green); background: var(--green); color: #06110c; min-height: 42px; padding: 0 14px; border-radius: 8px; font-weight: 800; cursor: pointer; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
       code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--text); }
     </style>
   </head>
@@ -241,7 +267,22 @@ function renderInternalAdminPlaceholder(): string {
       <h1>Internal Admin</h1>
       <p>This path is reserved for future operational workflows such as open deal monitoring, dispute queues, action-required reviews, and refund resolution.</p>
       <p>The current Tranche 2 read-only event dashboard is available at <a href="/market_dashboard"><code>/market_dashboard</code></a>.</p>
+      <p><button id="run-indexer">Run Indexer Once</button></p>
+      <pre id="result"></pre>
     </main>
+    <script>
+      document.getElementById('run-indexer').addEventListener('click', async () => {
+        const result = document.getElementById('result');
+        result.textContent = 'Running...';
+        try {
+          const response = await fetch('/api/indexer/run-once', { method: 'POST' });
+          const data = await response.json();
+          result.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          result.textContent = error.message;
+        }
+      });
+    </script>
   </body>
 </html>`;
 }
@@ -263,7 +304,7 @@ async function withIndexerDb<T>(
 }
 
 export function registerAdminDashboard(app: Express, config: IndexerConfig): void {
-  app.get('/admin', (_req: Request, res: Response) => {
+  app.get('/admin', requireAdminAuth, (_req: Request, res: Response) => {
     res.type('html').send(renderInternalAdminPlaceholder());
   });
 
@@ -348,5 +389,3 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
     );
   });
 }
-
-export { numberFormatter };

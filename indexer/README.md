@@ -62,6 +62,8 @@ Minimum env:
 
 ```env
 DATABASE_URI=mongodb://127.0.0.1:27017/escrow-stellar-demo
+ADMIN_USERNAME=reviewer
+ADMIN_PASSWORD=<strong-password>
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
@@ -122,7 +124,7 @@ npm run dev
 Routes:
 
 - `GET /health`
-- `POST /api/indexer/run-once`
+- `POST /api/indexer/run-once` — protected by `ADMIN_USERNAME` / `ADMIN_PASSWORD`
 - `POST /api/inngest` / `GET /api/inngest`
 
 After deployment, sync this URL in Inngest:
@@ -144,9 +146,9 @@ The runtime server exposes:
 
 - `/` — frontend app
 - `/market_dashboard` — read-only Stellar event dashboard for reviewer/demo visibility
-- `/admin` — reserved internal operations path for future open-deal/dispute/action queues
+- `/admin` — protected internal operations path for future open-deal/dispute/action queues
 - `/health` — indexer health
-- `/api/indexer/run-once` — manual indexer tick
+- `/api/indexer/run-once` — protected manual indexer tick
 - `/api/market-dashboard/summary` — indexer status, deal summary, and recent events
 - `/api/market-dashboard/escrow-events` — recent decoded escrow events
 - `/api/inngest` — Inngest sync endpoint
@@ -156,6 +158,12 @@ not `frontend/Dockerfile`. Set `PORT=3000` or let the Dockerfile default handle
 it.
 
 `INNGEST_ID` is optional. If omitted, the app uses `escrow-stellar-indexer`.
+
+Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the deployed environment before
+using `/admin`. The browser will show a Basic Auth sign-in prompt. The public
+`/market_dashboard` route is intentionally read-only and has no buttons that
+can mutate indexer state. Inngest scheduled runs do not depend on the admin
+session.
 
 ## Review Positioning
 
