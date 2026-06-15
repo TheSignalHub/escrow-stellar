@@ -19,7 +19,7 @@ import {
   formatPriceImpact,
   stroopsToUnits,
 } from '../lib/swapRoute';
-import { getExplorerTxLink } from '../lib/stellar';
+import { getExplorerTxLink, SOROSWAP_POOL_ADDRESS, SOROSWAP_ROUTER_ADDRESS } from '../lib/stellar';
 import { Card, Button } from './ui/Components';
 import { ArrowRight, AlertTriangle, ExternalLink, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 
@@ -69,6 +69,9 @@ export function AssetSwapStep({
   const impact = formatPriceImpact(quote?.priceImpact);
   const amountInUnits = quote ? stroopsToUnits(quote.amountIn) : 0;
   const amountOutUnits = quote ? stroopsToUnits(quote.amountOut) : 0;
+  const tradeTypeLabel = quote?.rawQuote.tradeType === 'EXACT_OUT'
+    ? 'Exact test USDC settlement'
+    : 'Exact source asset spend';
 
   const isHighImpact = impact.severity === 'danger';
   const blockingSwap = isHighImpact && !acceptedHighImpact;
@@ -215,6 +218,48 @@ export function AssetSwapStep({
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 mb-5">
+        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-widest mb-4">
+          <ShieldCheck size={14} />
+          Route proof
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Provider</p>
+            <p className="text-white font-bold">Soroswap on-chain AMM</p>
+          </div>
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Path</p>
+            <p className="text-white font-bold">{sourceAssetSymbol} → test USDC</p>
+          </div>
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2 md:col-span-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Router contract</p>
+            <p className="text-zinc-300 font-mono break-all">{SOROSWAP_ROUTER_ADDRESS}</p>
+          </div>
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2 md:col-span-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Seeded pool contract</p>
+            <p className="text-zinc-300 font-mono break-all">{SOROSWAP_POOL_ADDRESS}</p>
+          </div>
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Source asset</p>
+            <p className="text-zinc-300 font-mono break-all">{sourceAssetAddress}</p>
+          </div>
+          <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">Settlement asset</p>
+            <p className="text-zinc-300 font-mono break-all">{usdcAddress}</p>
+          </div>
+          {quote && (
+            <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2 md:col-span-2">
+              <p className="text-zinc-500 uppercase tracking-widest mb-1">Trade type</p>
+              <p className="text-white font-bold">{tradeTypeLabel}</p>
+            </div>
+          )}
+        </div>
+        <p className="text-[11px] text-zinc-500 mt-4 leading-relaxed">
+          Testnet proof: this transaction calls the Soroswap router directly against seeded demo liquidity. The escrow contract receives the standardized test USDC settlement asset.
+        </p>
       </div>
 
       {/* High-impact warning */}

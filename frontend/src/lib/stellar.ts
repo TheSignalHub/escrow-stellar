@@ -27,6 +27,11 @@ export const SOROSWAP_ROUTER_ADDRESS =
   import.meta.env.VITE_SOROSWAP_ROUTER_ADDRESS ||
   'CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD';
 
+// Seeded Soroswap XLM/test-USDC pool used for the SCF #42 testnet demo.
+export const SOROSWAP_POOL_ADDRESS =
+  import.meta.env.VITE_SOROSWAP_POOL_ADDRESS ||
+  'CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5';
+
 // DealEscrow contract address (set after deployment)
 export const DEAL_ESCROW_CONTRACT = import.meta.env.VITE_DEAL_ESCROW_CONTRACT || '';
 

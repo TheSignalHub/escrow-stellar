@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { toContractAmount, XLM_SAC_ADDRESS, USDC_TOKEN_ADDRESS, TOKENS, DEMO_ACCOUNTS, isValidStellarAddress, getExplorerTxLink } from '../lib/stellar';
+import {
+  toContractAmount,
+  XLM_SAC_ADDRESS,
+  USDC_TOKEN_ADDRESS,
+  TOKENS,
+  DEMO_ACCOUNTS,
+  isValidStellarAddress,
+  getExplorerTxLink,
+  SOROSWAP_ROUTER_ADDRESS,
+  SOROSWAP_POOL_ADDRESS,
+} from '../lib/stellar';
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
 import { Card, Button } from './ui/Components';
@@ -11,6 +21,18 @@ import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle
 // XLM_SWAP routes XLM → the configured USDC-compatible testnet settlement
 // asset before create_deal (D6 path).
 type SourceAsset = 'USDC' | 'XLM_DIRECT' | 'XLM_SWAP';
+
+interface SwapProof {
+  txHash: string;
+  usdcReceivedUnits: number;
+  sourceAsset: 'XLM';
+  settlementAsset: 'test USDC';
+  routeProvider: 'Soroswap on-chain AMM';
+  routerContract: string;
+  poolContract: string;
+  path: 'XLM → test USDC';
+  tradeType: 'Exact test USDC settlement';
+}
 
 interface MilestoneInput {
   name: string;
@@ -95,7 +117,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   const [showSwap, setShowSwap] = useState(false);
   const [showReview, setShowReview] = useState(false);
   // Captured when a swap completes — surfaced in review screen for audit trail
-  const [swapTxHash, setSwapTxHash] = useState<string | null>(null);
+  const [swapProof, setSwapProof] = useState<SwapProof | null>(null);
 
   // Settlement token = SAC the deal contract will hold:
   //   USDC       → USDC SAC (deal token = USDC)
@@ -118,7 +140,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     setConnectorShare(scenario.connectorShare);
     setMilestones(scenario.milestones.map((m) => ({ ...m })));
     setError('');
-    setSwapTxHash(null);
+    setSwapProof(null);
   };
 
   const updateMilestonePercentage = (index: number, value: number) => {
@@ -193,8 +215,18 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   };
 
   // Step 1.5 callbacks — wired into <AssetSwapStep />
-  const handleSwapConfirmed = (params: { txHash: string }) => {
-    setSwapTxHash(params.txHash);
+  const handleSwapConfirmed = (params: { txHash: string; usdcReceivedUnits: number }) => {
+    setSwapProof({
+      txHash: params.txHash,
+      usdcReceivedUnits: params.usdcReceivedUnits,
+      sourceAsset: 'XLM',
+      settlementAsset: 'test USDC',
+      routeProvider: 'Soroswap on-chain AMM',
+      routerContract: SOROSWAP_ROUTER_ADDRESS,
+      poolContract: SOROSWAP_POOL_ADDRESS,
+      path: 'XLM → test USDC',
+      tradeType: 'Exact test USDC settlement',
+    });
     setShowSwap(false);
     setShowReview(true);
     toast(`Broker swap confirmed — escrow will settle in test USDC`, 'success');
@@ -237,6 +269,18 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
         milestoneNames: milestones.map((m) => m.name),
         createdAt: new Date().toISOString(),
         txHash: res.txHash,
+        fundingRoute: swapProof
+          ? {
+              sourceAsset: swapProof.sourceAsset,
+              settlementAsset: swapProof.settlementAsset,
+              routeProvider: swapProof.routeProvider,
+              routerContract: swapProof.routerContract,
+              poolContract: swapProof.poolContract,
+              path: swapProof.path,
+              swapTxHash: swapProof.txHash,
+              usdcReceivedUnits: swapProof.usdcReceivedUnits,
+            }
+          : undefined,
       });
 
       setTxStep('confirming');
@@ -412,22 +456,46 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                   </span>
                 </div>
 
-                {swapTxHash && (
+                {swapProof && (
                   <div className="mb-6 p-3 rounded-xl bg-zinc-900/60 border border-emerald-500/20 text-xs">
                     <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest mb-1.5">
                       <ShieldCheck size={12} />
-                      Swap completed
+                      Soroswap route proof
                     </div>
                     <p className="text-zinc-400 mb-1">
-                      Source XLM → test USDC routed through the Stellar Broker testnet adapter. Escrow will receive the configured settlement asset.
+                      Source XLM was swapped into test USDC before escrow creation. The escrow contract will receive the configured settlement asset.
                     </p>
+                    <div className="mt-3 space-y-2 text-[11px]">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-500">Provider</span>
+                        <span className="text-white font-bold text-right">{swapProof.routeProvider}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-500">Path</span>
+                        <span className="text-white font-bold">{swapProof.path}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-500">Received</span>
+                        <span className="text-emerald-400 font-mono">
+                          {swapProof.usdcReceivedUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })} test USDC
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 block mb-1">Router</span>
+                        <span className="text-zinc-300 font-mono break-all">{swapProof.routerContract}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 block mb-1">Seeded pool</span>
+                        <span className="text-zinc-300 font-mono break-all">{swapProof.poolContract}</span>
+                      </div>
+                    </div>
                     <a
-                      href={getExplorerTxLink(swapTxHash)}
+                      href={getExplorerTxLink(swapProof.txHash)}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-emerald-400 font-mono underline hover:text-emerald-300 break-all"
+                      className="inline-block mt-3 text-emerald-400 font-mono underline hover:text-emerald-300 break-all"
                     >
-                      {swapTxHash.slice(0, 16)}…
+                      Swap tx: {swapProof.txHash.slice(0, 16)}…
                     </a>
                   </div>
                 )}
@@ -703,7 +771,10 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                   </label>
                   <select
                     value={sourceAsset}
-                    onChange={(e) => setSourceAsset(e.target.value as SourceAsset)}
+                    onChange={(e) => {
+                      setSourceAsset(e.target.value as SourceAsset);
+                      setSwapProof(null);
+                    }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
                     <option value="XLM_DIRECT">XLM — direct (no swap, settles in XLM)</option>

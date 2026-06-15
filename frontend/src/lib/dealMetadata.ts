@@ -29,6 +29,16 @@ export interface DealMetadata {
   milestoneNames: string[];
   createdAt: string; // ISO 8601
   txHash: string; // creation tx
+  fundingRoute?: {
+    sourceAsset: string;
+    settlementAsset: string;
+    routeProvider: string;
+    routerContract: string;
+    poolContract: string;
+    path: string;
+    swapTxHash?: string;
+    usdcReceivedUnits?: number;
+  };
 }
 
 // =====================================================
