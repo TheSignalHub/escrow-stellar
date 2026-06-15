@@ -677,9 +677,23 @@ export function DealDashboard({
                       {selectedMeta?.description && <p className="text-zinc-400 mt-2 text-sm">{selectedMeta.description}</p>}
                     </div>
                     
-                    {selectedMeta?.createdAt && (
-                      <div className="text-xs text-zinc-500 flex items-center gap-1.5">
-                        <Clock size={14} /> Created {formatEventDateTime(selectedMeta.createdAt)}
+                    {(selectedMeta?.createdAt || selectedMeta?.txHash) && (
+                      <div className="text-xs text-zinc-500 flex flex-wrap items-center gap-2">
+                        {selectedMeta?.createdAt && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Clock size={14} /> Created {formatEventDateTime(selectedMeta.createdAt)}
+                          </span>
+                        )}
+                        {selectedMeta?.txHash && (
+                          <a
+                            href={getExplorerTxLink(selectedMeta.txHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10"
+                          >
+                            Creation Tx <ArrowRight size={10} className="-rotate-45" />
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
