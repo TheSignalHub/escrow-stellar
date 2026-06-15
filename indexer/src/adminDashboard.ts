@@ -17,13 +17,13 @@ function getExplorerTxUrl(txHash?: string): string | undefined {
   return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
 }
 
-function renderAdminPage(config: IndexerConfig): string {
+function renderMarketDashboardPage(config: IndexerConfig): string {
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>The Signal Stellar Indexer</title>
+    <title>The Signal Market Dashboard</title>
     <style>
       :root {
         color-scheme: dark;
@@ -116,8 +116,8 @@ function renderAdminPage(config: IndexerConfig): string {
     <main>
       <header>
         <div>
-          <h1>Stellar Indexer</h1>
-          <div class="sub">Soroban DealEscrow events synchronized into MongoDB for the Tranche 2 testnet demo.</div>
+          <h1>Market Dashboard</h1>
+          <div class="sub">Read-only Soroban DealEscrow events synchronized into MongoDB for the Tranche 2 testnet demo.</div>
         </div>
         <div class="actions">
           <button id="refresh">Refresh</button>
@@ -177,7 +177,7 @@ function renderAdminPage(config: IndexerConfig): string {
       }
 
       async function load() {
-        const response = await fetch('/api/admin/summary', { cache: 'no-store' });
+        const response = await fetch('/api/market-dashboard/summary', { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load dashboard');
         const state = data.state || {};
@@ -218,6 +218,34 @@ function renderAdminPage(config: IndexerConfig): string {
 </html>`;
 }
 
+function renderInternalAdminPlaceholder(): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Signal Internal Admin</title>
+    <style>
+      :root { color-scheme: dark; --bg: #050807; --panel: #0c1110; --line: #22312d; --text: #eef8f3; --muted: #8c9994; --green: #4ac08b; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      main { width: min(720px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 28px; }
+      h1 { margin: 0; font-size: 26px; letter-spacing: 0; }
+      p { color: var(--muted); line-height: 1.6; }
+      a { color: var(--green); font-weight: 800; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Internal Admin</h1>
+      <p>This path is reserved for future operational workflows such as open deal monitoring, dispute queues, action-required reviews, and refund resolution.</p>
+      <p>The current Tranche 2 read-only event dashboard is available at <a href="/market_dashboard"><code>/market_dashboard</code></a>.</p>
+    </main>
+  </body>
+</html>`;
+}
+
 async function withIndexerDb<T>(
   config: IndexerConfig,
   res: Response,
@@ -236,10 +264,14 @@ async function withIndexerDb<T>(
 
 export function registerAdminDashboard(app: Express, config: IndexerConfig): void {
   app.get('/admin', (_req: Request, res: Response) => {
-    res.type('html').send(renderAdminPage(config));
+    res.type('html').send(renderInternalAdminPlaceholder());
   });
 
-  app.get('/api/admin/summary', async (_req: Request, res: Response) => {
+  app.get('/market_dashboard', (_req: Request, res: Response) => {
+    res.type('html').send(renderMarketDashboardPage(config));
+  });
+
+  app.get('/api/market-dashboard/summary', async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) => {
       const [state, recentEvents, countsByTopic, deals] = await Promise.all([
         indexerDb.state.findOne({ contractAddress: config.contractAddress, network: config.network }),
@@ -298,13 +330,13 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
     });
   });
 
-  app.get('/api/admin/indexer-state', async (_req: Request, res: Response) => {
+  app.get('/api/market-dashboard/indexer-state', async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) =>
       indexerDb.state.findOne({ contractAddress: config.contractAddress, network: config.network })
     );
   });
 
-  app.get('/api/admin/escrow-events', async (req: Request, res: Response) => {
+  app.get('/api/market-dashboard/escrow-events', async (req: Request, res: Response) => {
     const rawLimit = Number.parseInt(String(req.query.limit || '50'), 10);
     const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
     await withIndexerDb(config, res, async (indexerDb) =>

@@ -143,11 +143,12 @@ The repo root `Dockerfile` builds both:
 The runtime server exposes:
 
 - `/` — frontend app
-- `/admin` — lightweight Stellar indexer dashboard for the isolated demo DB
+- `/market_dashboard` — read-only Stellar event dashboard for reviewer/demo visibility
+- `/admin` — reserved internal operations path for future open-deal/dispute/action queues
 - `/health` — indexer health
 - `/api/indexer/run-once` — manual indexer tick
-- `/api/admin/summary` — indexer status, deal summary, and recent events
-- `/api/admin/escrow-events` — recent decoded escrow events
+- `/api/market-dashboard/summary` — indexer status, deal summary, and recent events
+- `/api/market-dashboard/escrow-events` — recent decoded escrow events
 - `/api/inngest` — Inngest sync endpoint
 
 For this mode, deploy from the repository root and use the root `Dockerfile`,
