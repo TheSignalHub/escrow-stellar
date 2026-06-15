@@ -188,7 +188,16 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
 
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
-            Demo-only Stellar Broker route: swap XLM into the configured test USDC settlement asset through the seeded Soroswap testnet adapter. This is not production Circle USDC liquidity.
+            Demo-only Stellar Broker route: swap XLM into the configured test USDC settlement asset through seeded{' '}
+            <a
+              href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 underline decoration-emerald-500/40 underline-offset-2 hover:text-emerald-300"
+            >
+              Soroswap testnet liquidity
+            </a>
+            . This is not production Circle USDC liquidity.
           </p>
           <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
             <div className="flex items-center justify-between gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">

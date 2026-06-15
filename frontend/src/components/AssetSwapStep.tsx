@@ -21,7 +21,7 @@ import {
 } from '../lib/swapRoute';
 import { getExplorerTxLink } from '../lib/stellar';
 import { Card, Button } from './ui/Components';
-import { ArrowRight, AlertTriangle, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowRight, AlertTriangle, ExternalLink, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 
 interface Props {
   /** Source asset SAC address (must differ from USDC) */
@@ -143,8 +143,16 @@ export function AssetSwapStep({
         </h2>
         <p className="text-zinc-500 text-sm mt-1">
           The DealEscrow contract settles in the configured demo test USDC asset.
-          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter before creating the deal.
+          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter via seeded Soroswap liquidity before creating the deal.
         </p>
+        <a
+          href={`https://testnet.soroswap.finance/#/liquidity/add/${sourceAssetAddress}/${usdcAddress}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+        >
+          View Soroswap testnet route <ExternalLink size={12} />
+        </a>
       </div>
 
       {/* Quote summary */}
