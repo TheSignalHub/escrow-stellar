@@ -1,16 +1,26 @@
 import express from 'express';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { serve } from 'inngest/express';
 import { getConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
 import { functions, inngest } from './inngest.js';
+import payloadConfig from './payload.config.js';
 import { runStellarIndexerOnce } from './runStellarIndexerOnce.js';
 
 const config = getConfig();
 const app = express();
+const require = createRequire(import.meta.url);
+const payload = require('payload') as any;
 
 app.use(express.json());
+
+await payload.init({
+  secret: process.env.PAYLOAD_SECRET || 'escrow-stellar-demo-secret',
+  express: app as any,
+  config: payloadConfig,
+});
 
 app.get('/health', (_req, res) => {
   res.json({

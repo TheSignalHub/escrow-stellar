@@ -143,6 +143,7 @@ The repo root `Dockerfile` builds both:
 The runtime server exposes:
 
 - `/` — frontend app
+- `/admin` — Payload CMS admin for the isolated demo indexer DB
 - `/health` — indexer health
 - `/api/indexer/run-once` — manual indexer tick
 - `/api/inngest` — Inngest sync endpoint
@@ -152,6 +153,14 @@ not `frontend/Dockerfile`. Set `PORT=3000` or let the Dockerfile default handle
 it.
 
 `INNGEST_ID` is optional. If omitted, the app uses `escrow-stellar-indexer`.
+
+Payload uses `PAYLOAD_SECRET` for admin auth cookies. On first visit to
+`/admin`, create the first admin user. The visible collections are intentionally
+limited to:
+
+- `escrow-transfers`
+- `stellar-indexer-state`
+- `users`
 
 ## Review Positioning
 
