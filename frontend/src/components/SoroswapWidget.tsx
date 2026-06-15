@@ -29,7 +29,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [fundingResult, setFundingResult] = useState<'success' | 'error' | null>(null);
 
   // Stellar Broker section
-  const [xlmAmount, setXlmAmount] = useState('3050');
+  const [xlmAmount, setXlmAmount] = useState('2260');
   const [quote, setQuote] = useState<BrokerQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
@@ -221,7 +221,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     View TX on Explorer <ExternalLink size={14} />
                   </a>
                   <Button
-                    onClick={() => { setTxHash(''); setQuote(null); setXlmAmount('3050'); }}
+                    onClick={() => { setTxHash(''); setQuote(null); setXlmAmount('2260'); }}
                     variant="secondary"
                   >
                     Initialize New Swap

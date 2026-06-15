@@ -59,7 +59,7 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 ### Option B: Stellar Broker Funding Route
 
-1. Enter the XLM amount to swap (for the 500 test USDC demo, use about `3050`)
+1. Enter the XLM amount to swap (for the 500 test USDC demo, use about `2260`)
 2. Click **Calculate Route** to fetch a broker quote
 3. Review the rate and slippage tolerance (1%)
 4. Click **Execute Swap**
