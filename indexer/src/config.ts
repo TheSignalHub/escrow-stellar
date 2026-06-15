@@ -13,9 +13,13 @@ export interface IndexerConfig {
   port: number;
 }
 
-function readRequired(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
+function readRequired(name: string, fallbackName?: string): string {
+  const value = process.env[name] || (fallbackName ? process.env[fallbackName] : undefined);
+  if (!value) {
+    throw new Error(
+      fallbackName ? `${name} or ${fallbackName} is required` : `${name} is required`
+    );
+  }
   return value;
 }
 
@@ -35,7 +39,7 @@ export function getConfig(): IndexerConfig {
 
   return {
     databaseUri: readRequired('DATABASE_URI'),
-    contractAddress: readRequired('DEAL_ESCROW_CONTRACT'),
+    contractAddress: readRequired('DEAL_ESCROW_CONTRACT', 'VITE_DEAL_ESCROW_CONTRACT'),
     network,
     rpcUrl: process.env.STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org',
     enabled: process.env.INDEXER_ENABLED !== 'false',

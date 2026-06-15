@@ -64,10 +64,14 @@ Minimum env:
 DATABASE_URI=mongodb://127.0.0.1:27017/escrow-stellar-demo
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
 INDEXER_ENABLED=true
 INDEXER_OVERLAP_LEDGERS=5
 ```
+
+The backend also accepts `DEAL_ESCROW_CONTRACT`. If both are present,
+`DEAL_ESCROW_CONTRACT` wins. For the single Coolify app, using only
+`VITE_DEAL_ESCROW_CONTRACT` is fine.
 
 Optional first-run cursor:
 
@@ -146,6 +150,8 @@ The runtime server exposes:
 For this mode, deploy from the repository root and use the root `Dockerfile`,
 not `frontend/Dockerfile`. Set `PORT=3000` or let the Dockerfile default handle
 it.
+
+`INNGEST_ID` is optional. If omitted, the app uses `escrow-stellar-indexer`.
 
 ## Review Positioning
 
