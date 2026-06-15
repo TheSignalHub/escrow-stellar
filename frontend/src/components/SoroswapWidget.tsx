@@ -3,6 +3,7 @@ import {
   fundTestnetAccount,
   getExplorerTxLink,
   NETWORK_PASSPHRASE,
+  SOROSWAP_POOL_ADDRESS,
   SOROSWAP_ROUTER_ADDRESS,
   USDC_TOKEN_ADDRESS,
   XLM_SAC_ADDRESS,
@@ -11,7 +12,7 @@ import { stellarBrokerClient } from '../lib/stellarBroker';
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
-import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
+import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
 
 type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
 
@@ -77,6 +78,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       ? quote.amountIn
       : quote.amountOut
     : '';
+
+  const copyRouteValue = async (label: string, value: string) => {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    toast(`${label} copied`, 'success');
+  };
 
   const fetchQuote = async () => {
     const amount = parseFloat(swapAmount);
@@ -229,14 +236,27 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
             . This is not production Circle USDC liquidity, and the demo token may not appear in Soroswap&apos;s public token picker.
           </p>
           <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
-            <div className="flex items-center justify-between gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
-              <span className="uppercase tracking-widest">Test USDC</span>
-              <span className="truncate text-zinc-300">{USDC_TOKEN_ADDRESS || 'not configured'}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
-              <span className="uppercase tracking-widest">Router</span>
-              <span className="truncate text-zinc-300">{SOROSWAP_ROUTER_ADDRESS || 'not configured'}</span>
-            </div>
+            {[
+              { label: 'XLM SAC', value: XLM_SAC_ADDRESS },
+              { label: 'Test USDC', value: USDC_TOKEN_ADDRESS },
+              { label: 'Router', value: SOROSWAP_ROUTER_ADDRESS },
+              { label: 'Pool', value: SOROSWAP_POOL_ADDRESS },
+            ].map((item) => (
+              <div key={item.label} className="grid grid-cols-[5.75rem_minmax(0,1fr)_auto] items-start gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
+                <span className="uppercase tracking-widest leading-5">{item.label}</span>
+                <span className="text-zinc-300 leading-5 break-all">{item.value || 'not configured'}</span>
+                {item.value && (
+                  <button
+                    type="button"
+                    onClick={() => copyRouteValue(item.label, item.value)}
+                    title={`Copy ${item.label}`}
+                    className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
+                  >
+                    <Copy size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           {txHash ? (
