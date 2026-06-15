@@ -509,7 +509,7 @@ export default function App() {
                   onRelease={escrow.releaseMilestone}
                   onDispute={escrow.dispute}
                   walletAddress={wallet.address}
-                  xlmBalance={wallet.xlmBalance}
+                  usdcBalance={wallet.usdcBalance}
                   initialDealId={lastCreatedDealId}
                   onNavigateToCreate={() => setActiveTab('create')}
                   onNavigateToFund={() => setActiveTab('fund')}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
-import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol } from '../lib/stellar';
+import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, USDC_TOKEN_ADDRESS } from '../lib/stellar';
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
@@ -88,7 +88,7 @@ interface Props {
   onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   walletAddress: string;
-  xlmBalance: string;
+  usdcBalance: string;
   initialDealId?: number | null;
   onNavigateToCreate?: () => void;
   onNavigateToFund?: () => void;
@@ -100,7 +100,7 @@ interface Props {
 
 export function DealDashboard({
   getDeal, getDealCount, onDeposit, onRelease, onDispute,
-  walletAddress, xlmBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
+  walletAddress, usdcBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
 }: Props) {
   const toast = useToast();
 
@@ -247,9 +247,15 @@ export function DealDashboard({
     if (!milestone) return;
 
     const requiredAmount = Number(milestone.amount) / 1e7;
-    const available = parseFloat(xlmBalance);
-    if (available < requiredAmount) {
-      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} XLM, have ${available.toFixed(2)} XLM.`);
+    const isConfiguredUsdcDeal = selectedDeal.token === USDC_TOKEN_ADDRESS;
+    const available = isConfiguredUsdcDeal ? parseFloat(usdcBalance) : null;
+
+    if (available !== null && available < requiredAmount) {
+      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} test USDC, have ${available.toFixed(2)} test USDC.`);
+      setErrorContext({
+        title: 'Deposit Failed',
+        suggestion: 'You are the deal client, but this milestone needs test USDC. Use the Fund tab to swap XLM into test USDC, then retry the deposit.',
+      });
       return;
     }
 
@@ -268,7 +274,7 @@ export function DealDashboard({
       setError(msg);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: 'Only the deal client can fund milestones. Make sure you have sufficient balance and the milestone is still pending.',
+        suggestion: 'Only the deal client can fund milestones. Make sure the milestone is pending and your wallet has enough test USDC for the deposit.',
       });
       toast(`Deposit failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
