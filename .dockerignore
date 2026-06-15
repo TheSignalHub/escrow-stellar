@@ -1,0 +1,8 @@
+.git
+target
+frontend/node_modules
+frontend/dist
+indexer/node_modules
+indexer/dist
+indexer/.env
+*.log

@@ -129,6 +129,24 @@ https://<indexer-domain>/api/inngest
 
 Inngest cannot sync until the deployed endpoint is publicly reachable.
 
+## Single Coolify Service
+
+The repo root `Dockerfile` builds both:
+
+- `frontend` Vite static assets
+- `indexer` Express API server
+
+The runtime server exposes:
+
+- `/` — frontend app
+- `/health` — indexer health
+- `/api/indexer/run-once` — manual indexer tick
+- `/api/inngest` — Inngest sync endpoint
+
+For this mode, deploy from the repository root and use the root `Dockerfile`,
+not `frontend/Dockerfile`. Set `PORT=3000` or let the Dockerfile default handle
+it.
+
 ## Review Positioning
 
 For Tranche 2 review, describe this as:

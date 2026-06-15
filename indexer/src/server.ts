@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 import { serve } from 'inngest/express';
 import { getConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
@@ -40,6 +42,14 @@ app.use(
     functions,
   })
 );
+
+const frontendDistPath = process.env.FRONTEND_DIST_PATH;
+if (frontendDistPath && fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get(/.*/, (_req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 app.listen(config.port, () => {
   console.log(`escrow-stellar-indexer listening on :${config.port}`);
