@@ -12,6 +12,23 @@ export interface SwapQuote {
   rawQuote: any;
 }
 
+function stringifyApiError(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return undefined;
+
+  const record = value as Record<string, unknown>;
+  for (const key of ['detail', 'title', 'message', 'error', 'reason']) {
+    const nested = stringifyApiError(record[key]);
+    if (nested) return nested;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
+}
+
 export class SoroswapClient {
   private async apiRequest(endpoint: string, data: any): Promise<any> {
     const url = `/api/soroswap${endpoint}`;
@@ -25,7 +42,7 @@ export class SoroswapClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
-      const msg = error.detail || error.title || error.error || error.message || response.statusText;
+      const msg = stringifyApiError(error) || response.statusText;
       throw new Error(`Soroswap API error: ${msg}`);
     }
     return response.json();

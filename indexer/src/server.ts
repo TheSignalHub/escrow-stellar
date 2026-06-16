@@ -14,6 +14,23 @@ const app = express();
 app.use(express.json());
 registerAdminDashboard(app, config);
 
+function stringifyApiError(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return undefined;
+
+  const record = value as Record<string, unknown>;
+  for (const key of ['detail', 'title', 'message', 'error', 'reason']) {
+    const nested = stringifyApiError(record[key]);
+    if (nested) return nested;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
+}
+
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
@@ -69,7 +86,7 @@ app.post('/api/soroswap/quote', async (req, res) => {
     const payload = await response.json().catch(() => ({ message: response.statusText }));
     if (!response.ok) {
       const message =
-        payload.detail || payload.title || payload.error || payload.message || response.statusText;
+        stringifyApiError(payload) || response.statusText;
       res.status(response.status).json({ error: message, detail: payload });
       return;
     }
