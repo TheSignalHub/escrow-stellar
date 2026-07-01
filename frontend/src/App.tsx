@@ -16,7 +16,7 @@ import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
-import { DEAL_ESCROW_CONTRACT, getExplorerContractLink } from './lib/stellar';
+import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, getExplorerContractLink } from './lib/stellar';
 import { SignalLogo, GlowingBackground } from './components/ui/Branding';
 import { Button, Card } from './components/ui/Components';
 
@@ -561,7 +561,7 @@ export default function App() {
                     Smart Contract
                   </a>
                 )}
-                <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">
+                <a href={EXPLORER_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">
                   Stellar Explorer
                 </a>
               </div>

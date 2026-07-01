@@ -125,10 +125,10 @@ App.tsx (Root)
 │   └── ConnectWallet / Nav    — Wallet info + tab navigation when connected
 ├── LandingView (when disconnected)
 │   ├── "Trust Engine." hero   — Glitch effect, always-on RGB aberration
-│   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
+│   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Liquidity              — SoroswapWidget (Friendbot + Stellar Broker route)
+    ├── Liquidity              — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents panel)
     ├── Deploy Contract        — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle)
     └── Oracle                 — ReputationBadge (on-chain reputation)
@@ -165,8 +165,8 @@ Every contract interaction follows this pipeline:
    └── rpc.assembleTransaction() adds simulation results
 
 4. Sign
-   └── StellarWalletsKit.signTransaction()
-   └── User approves in wallet extension
+   └── Unified wallet hook signs through Privy embedded wallet or Stellar Wallets Kit
+   └── User approves in Privy or the selected wallet extension
 
 5. Submit
    └── sorobanServer.sendTransaction()
@@ -233,19 +233,25 @@ This is parameterized per deal via `connector_share_bps`, so different connector
 
 ### Testnet
 
-The current deployment uses Stellar's public testnet:
+The current demo deployment uses Stellar's public testnet by default:
 
 - **RPC**: `https://soroban-testnet.stellar.org`
 - **Horizon**: `https://horizon-testnet.stellar.org`
 - **Explorer**: [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet)
 - **Friendbot**: Available for free 10,000 XLM funding
 
+Frontend network endpoints are environment-driven through
+`VITE_STELLAR_NETWORK`, `VITE_STELLAR_RPC_URL`,
+`VITE_STELLAR_HORIZON_URL`, `VITE_STELLAR_EXPLORER_URL`, and
+`VITE_FRIENDBOT_URL`. Testnet remains the default for SCF review. Friendbot is
+disabled outside testnet.
+
 ### Mainnet Considerations
 
 For production deployment:
 
 1. **Storage rent**: Persistent storage requires rent payments. Deals should include a rent reserve or use TTL management.
-2. **Fee estimation**: Production should use dynamic fee estimation instead of the fixed 1 XLM max fee used in testnet.
+2. **Fee estimation**: Production should continue relying on simulation-driven Soroban fee assembly and add monitoring/limits for abnormal fee spikes.
 3. **Token support**: Replace XLM SAC with production USDC or other stablecoins.
 4. **Admin key management**: Use a multisig or DAO-controlled admin address.
 5. **Contract upgrades**: Consider implementing a proxy pattern or versioned storage for future upgrades.

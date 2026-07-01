@@ -5,6 +5,9 @@ import {
   USDC_TOKEN_ADDRESS,
   TOKENS,
   DEMO_ACCOUNTS,
+  IS_TESTNET,
+  SETTLEMENT_ASSET_POLICY,
+  SETTLEMENT_MIN_UNITS,
   SETTLEMENT_TOKEN_SYMBOL,
   isValidStellarAddress,
   getExplorerTxLink,
@@ -19,7 +22,7 @@ import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle
 
 // Source asset = what the client pays with.
 // USDC | XLM_DIRECT settle directly in that asset (deal token = asset SAC).
-// XLM_SWAP routes XLM → the configured demo testnet settlement
+// XLM_SWAP routes XLM → the configured settlement
 // asset before create_deal (D6 path).
 type SourceAsset = 'USDC' | 'XLM_DIRECT' | 'XLM_SWAP';
 
@@ -188,8 +191,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
       setError('Milestone percentages must sum to 100%');
       return;
     }
-    if (totalAmount <= 0) {
-      setError('Total amount must be greater than 0');
+    if (totalAmount < SETTLEMENT_MIN_UNITS) {
+      setError(`Total amount must be at least ${SETTLEMENT_MIN_UNITS} ${tokenSymbol}`);
       return;
     }
 
@@ -760,10 +763,13 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     type="number"
                     value={totalAmount}
                     onChange={(e) => setTotalAmount(Number(e.target.value))}
-                    min={1}
+                    min={SETTLEMENT_MIN_UNITS}
                     required
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-xl font-mono font-bold text-emerald-400 outline-none transition-colors"
                   />
+                  <p className="text-[10px] text-zinc-500 mt-1.5">
+                    Minimum: {SETTLEMENT_MIN_UNITS} {tokenSymbol}. Policy: {SETTLEMENT_ASSET_POLICY}.
+                  </p>
                 </div>
 
                 <div>
@@ -779,9 +785,9 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
                     <option value="XLM_DIRECT">XLM — direct (no swap, settles in XLM)</option>
-                    <option value="USDC">{SETTLEMENT_TOKEN_SYMBOL} — direct demo settlement asset</option>
+                    <option value="USDC">{SETTLEMENT_TOKEN_SYMBOL} — direct settlement asset</option>
                     <option value="XLM_SWAP" disabled={!canSwap}>
-                      XLM → {SETTLEMENT_TOKEN_SYMBOL} — Stellar Broker testnet route (D6 path)
+                      XLM → {SETTLEMENT_TOKEN_SYMBOL} — Stellar Broker {IS_TESTNET ? 'testnet route' : 'route'} (D6 path)
                     </option>
                   </select>
                   {sourceAsset === 'XLM_DIRECT' && (
@@ -791,12 +797,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                   )}
                   {sourceAsset === 'USDC' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = configured demo {SETTLEMENT_TOKEN_SYMBOL} SAC. This is not production Circle USDC.
+                      Deal token = configured {IS_TESTNET ? `demo ${SETTLEMENT_TOKEN_SYMBOL}` : SETTLEMENT_TOKEN_SYMBOL} SAC.{IS_TESTNET ? ' This is not production Circle USDC.' : ''}
                     </p>
                   )}
                   {needsSwap && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      A demo swap step will run before deal creation through the configured Stellar Broker testnet route.
+                      A swap step will run before deal creation through the configured Stellar Broker {IS_TESTNET ? 'testnet route' : 'route'}.
                     </p>
                   )}
                   {!canSwap && sourceAsset === 'XLM_SWAP' && (

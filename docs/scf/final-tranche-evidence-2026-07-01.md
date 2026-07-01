@@ -1,0 +1,104 @@
+# Final Tranche Evidence Package - 2026-07-01
+
+Scope: reviewer-facing evidence index for the final-tranche readiness pass.
+
+## Feature Log
+
+| Timestamp | Feature / Area | Change Logged | Validation |
+|---|---|---|---|
+| 2026-07-01 10:33 HKT | Gap 8 evidence package | Added final evidence index with current build/test results, shipped artifacts, demo boundaries, and remaining capture tasks. | `cargo test` passed in `contracts/deal_escrow`; `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/` with existing Vite chunk-size warning. |
+| 2026-07-01 12:14 HKT | NEAR Intents server spine | Added SDK-backed protected token/quote/status/deposit-tx/reconcile endpoints and binding metadata persistence. | `npm run build` passed in `indexer/`. Live quote/status evidence still requires JWT and approved Stellar asset envs. |
+| 2026-07-01 13:39 HKT | NEAR Intents frontend panel | Added Liquidity-tab UI for readiness, dry quote request, deposit instructions, provider status refresh, and Soroban-funded warning. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live execution evidence still pending. |
+| 2026-07-02 04:23 HKT | Submission readiness refresh | Added a dedicated submission-readiness gate with upload order, safe claims, do-not-claim boundaries, deploy smoke, and secret rotation checklist. | `cargo test` passed; `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
+| 2026-07-02 04:25 HKT | Live endpoint smoke | Checked deployed `/health`, `/market_dashboard`, and `/api/near-intents/readiness`. | `/health` passed; `/market_dashboard` returned 200; `/api/near-intents/readiness` returned frontend HTML, so the new NEAR readiness route still requires Coolify redeploy before live submission claim. |
+
+## Reviewer Links
+
+```text
+Frontend:             https://stellar.thesignal.directory
+Event dashboard:      https://stellar.thesignal.directory/market_dashboard
+Internal admin:       https://stellar.thesignal.directory/admin
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+```
+
+## Current Testnet Configuration
+
+```text
+DealEscrow:        CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
+XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
+Seeded pool:       CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
+```
+
+The settlement token is demo-only test USDC on Stellar Testnet, not production
+Circle USDC.
+
+## Fresh Validation
+
+| Area | Command | Result |
+|---|---|---|
+| Contract | `cargo test` in `contracts/deal_escrow/` | Passed: 10 tests, 0 failed. Existing 13 unused-variable warnings in tests. |
+| Indexer | `npm run build` in `indexer/` | Passed: TypeScript compile succeeded. |
+| Frontend | `npm run build` in `frontend/` | Passed: TypeScript/Vite build succeeded. Existing Vite warning for chunks larger than 500 kB. |
+| Docs check | `npm run docs:check` at repo root | Not available: root package has no `docs:check` script. Manual consistency scan performed. |
+
+Latest refresh on 2026-07-02 04:23 HKT repeated the contract, frontend, and
+indexer validations with the same results.
+
+## Implemented Evidence
+
+| Deliverable / Gap | Evidence |
+|---|---|
+| Soroban escrow lifecycle | Contract tests cover happy path, multi-milestone flow, dispute/resolve, refund, auth, double deposit, release-unfunded, reputation, and deal count. |
+| Event schema / indexer | `docs/EVENT_SCHEMA.md`, indexer build, `/market_dashboard`, and Gap 1 reconcile smoke notes. |
+| Marketplace binding | Shadow binding collection/API/CLI, idempotent seed, reconcile CLI, dashboard panel, and docs in `indexer/README.md`. |
+| Network config | Env-driven frontend Stellar network config, mainnet build smoke recorded in workplan/audit. |
+| Settlement asset policy | `docs/SETTLEMENT_ASSET_POLICY.md` and frontend create-flow min/policy display. |
+| Broker provider boundary | `frontend/src/lib/stellarBroker.ts`, broker envs, seeded Soroswap adapter, and `docs/scf/broker-route-qa-2026-07-01.md`. |
+| Near Intents | SDK dependency, `nearIntentsProvider`, public readiness endpoint, protected token/quote/status/deposit-tx/reconcile endpoints, `nearIntent` binding metadata, `NearIntentsPanel`, browser client, env gates, and source-of-truth rules. Live quote/status evidence is still pending. |
+| UI unhappy paths | `docs/scf/unhappy-path-qa-2026-07-01.md` documents current coverage and remaining screenshot/operator evidence. |
+| Operations/security | `docs/OPERATIONS_SECURITY.md` documents single-admin authority, dispute operator flow, emergency refunds, secrets, monitoring, and production hardening gaps. |
+| Coolify deployment | `docs/COOLIFY_DEMO_DEPLOYMENT.md` documents redacted env shape and deployment checks. |
+
+## Boundary Statements
+
+- This is a Stellar Testnet demo and reusable escrow rail, not a production
+  mainnet deployment.
+- The indexer database is an isolated read model; it does not mutate The Signal
+  production marketplace collections.
+- Shadow marketplace bindings prove adapter compatibility without polluting the
+  live marketplace.
+- Near Intents is required for the final tranche, and current evidence includes
+  an SDK-backed server/API spine plus frontend readiness, dry quote, deposit
+  instruction, and status UI. The app should not claim end-user executable live
+  NEAR payment support until JWT provisioning, Stellar asset id validation,
+  source-chain wallet execution, no-testnet QA path, and live tiny-amount
+  evidence are completed.
+- Admin dispute split resolution is contract/operator-level today; the browser
+  demo does not expose an admin refund-slider UI.
+- `VITE_*` values are public frontend configuration. Live server secrets must
+  stay in Coolify or a secrets manager and should be rotated if exposed.
+
+## Remaining Capture Tasks
+
+| Evidence | Status |
+|---|---|
+| Browser screenshots/video for client dispute, provider dispute, connector read-only, nonparticipant read-only, insufficient balance, and signing cancellation | Pending |
+| Admin/operator `resolve_dispute` transaction hash and indexed `resolved` event | Pending |
+| `/market_dashboard` screenshot showing shadow marketplace bindings after seed/reconcile | Pending |
+| Live deployment `/health` and `/market_dashboard` screenshots after final deploy | Pending |
+| Live deployment `/api/near-intents/readiness` JSON after redeploy | Pending; current deployed route returns frontend HTML fallback |
+| Optional optimized WASM hash / deployment transaction proof for the exact final contract artifact | Pending |
+
+## Suggested Submission Order
+
+1. Root `README.md`.
+2. `docs/scf/submission-readiness-2026-07-02.md`.
+3. `docs/scf/last-tranche-audit-2026-07-01.md`.
+4. `docs/scf/final-tranche-workplan-2026-07-01.md`.
+5. This evidence package.
+6. `docs/DEMO_GUIDE.md`.
+7. `docs/EVENT_SCHEMA.md`.
+8. `docs/SETTLEMENT_ASSET_POLICY.md`, `docs/NEAR_INTENTS_BOUNDARY.md`, and
+   `docs/OPERATIONS_SECURITY.md`.

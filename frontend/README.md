@@ -40,8 +40,23 @@ VITE_PRIVY_APP_ID=your-privy-app-id-here
 # Set after deploying the contract to Testnet
 VITE_DEAL_ESCROW_CONTRACT=
 
+# Network profile. Leave as testnet for the SCF demo.
+VITE_STELLAR_NETWORK=testnet
+VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
+VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+VITE_STELLAR_EXPLORER_URL=https://stellar.expert/explorer/testnet
+VITE_FRIENDBOT_URL=https://friendbot.stellar.org
+
 # Demo testnet USDC-compatible token address (SAC)
 VITE_USDC_TOKEN_ADDRESS=
+VITE_SETTLEMENT_TOKEN_SYMBOL=tUSDC
+VITE_SETTLEMENT_TOKEN_NAME=Demo Test USD
+VITE_SETTLEMENT_TOKEN_DECIMALS=7
+VITE_SETTLEMENT_MIN_UNITS=1
+VITE_SETTLEMENT_ASSET_POLICY=demo-testnet
+VITE_STELLAR_BROKER_PROVIDER=testnet-soroswap-seeded
+VITE_STELLAR_BROKER_SLIPPAGE_BPS=100
+VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS=3600
 
 # Soroswap router used by the Broker-style testnet route
 VITE_SOROSWAP_ROUTER_ADDRESS=
@@ -49,6 +64,15 @@ VITE_SOROSWAP_ROUTER_ADDRESS=
 
 The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
 For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
+NEAR Intents keys are also backend-only. Do not create `VITE_` variables for
+`NEAR_INTENTS_JWT`, provider asset ids, or live execution flags; the frontend
+uses local `/api/near-intents/*` routes so secrets stay on the server.
+
+For a non-testnet profile, set `VITE_STELLAR_NETWORK=mainnet`, provide mainnet
+RPC/Horizon/Explorer URLs, omit `VITE_FRIENDBOT_URL`, and replace the demo
+settlement token/router/pool with production-approved provider settings.
+See [`../docs/SETTLEMENT_ASSET_POLICY.md`](../docs/SETTLEMENT_ASSET_POLICY.md)
+for precision, minimum amount, trustline, and dust/rounding policy.
 
 > Without `VITE_PRIVY_APP_ID`, the **Email / Social** tab shows a warning but the
 > **Freighter / Albedo** path remains fully functional.
@@ -88,11 +112,15 @@ Disputes follow a two-phase model:
 | --- | --- |
 | Client or Provider | Flag dispute → milestone frozen |
 | Client (optional) | Accept & Release to Provider (override the dispute) |
-| **The Signal team** (arbiter) | Call `resolve_dispute` on-chain with refund split |
+| Contract admin / operator | Call `resolve_dispute` on-chain with refund split |
 
-The arbiter address is set at deal creation. Only that address can call `resolve_dispute`.
-The client UI surfaces an "Under review" banner and an optional release override — it does
-**not** expose the arbiter's split controls.
+The admin address is set when the contract is initialized. Only that address
+can call `resolve_dispute`. The client UI surfaces an "Under review" banner
+and an optional release override. It does **not** expose the admin split
+controls; those remain an operator/contract path for this demo.
+
+Final-tranche unhappy-path QA coverage and remaining evidence tasks are tracked
+in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-2026-07-01.md).
 
 ---
 
@@ -100,7 +128,7 @@ The client UI surfaces an "Under review" banner and an optional release override
 
 - **Deal Terminal** — browse all on-chain escrows, filter by status, search by ID / address
 - **New Contract** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Fund** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path
+- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and check NEAR Intents readiness/dry quotes for marketplace-bound cross-chain funding
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -108,7 +136,10 @@ For the SCF #42 Tranche 2 demo, the Fund/Create Deal flows demonstrate
 Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
 the seeded Soroswap testnet route converts it into the configured demo test
 USDC settlement asset, and the escrow contract settles against that configured
-asset. The demo test USDC token is not Circle-issued production USDC.
+asset. The Liquidity tab also includes a NEAR Intents readiness and dry quote
+panel for the marketplace-binding adapter. The demo test USDC token is not
+Circle-issued production USDC, and NEAR status never marks escrow funded until
+the Stellar DealEscrow `funded` event exists.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.
@@ -127,11 +158,13 @@ frontend/src/
 ├── lib/
 │   ├── stellar.ts             # RPC URLs, Stellar SDK helpers
 │   ├── stellarBroker.ts       # Broker-facing adapter for the testnet route
+│   ├── nearIntents.ts         # Browser client for local NEAR Intents adapter APIs
 │   ├── soroswapOnchain.ts     # Direct seeded Soroswap router path
 │   ├── privy-stellar.ts       # Signing bridge: XDR ↔ Privy raw hash
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
+│   ├── NearIntentsPanel.tsx   # Liquidity-tab NEAR readiness/quote/status panel
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

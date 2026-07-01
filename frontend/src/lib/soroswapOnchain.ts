@@ -22,13 +22,17 @@
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
 
-import { NETWORK_PASSPHRASE, SOROSWAP_ROUTER_ADDRESS, sorobanServer } from './stellar';
+import {
+  NETWORK_PASSPHRASE,
+  SOROSWAP_ROUTER_ADDRESS,
+  STELLAR_BROKER_QUOTE_TTL_SECONDS,
+  STELLAR_BROKER_SLIPPAGE_BPS,
+  sorobanServer,
+} from './stellar';
 
 const rpc = StellarSdk.rpc;
 
 const MAX_TX_POLL_RETRIES = 30; // 30 × 2s = 60s
-const SLIPPAGE_BPS = 100; // 1%
-
 export interface SwapQuote {
   amountIn: string;
   amountOut: string;
@@ -54,7 +58,7 @@ function pathScVal(path: string[]): StellarSdk.xdr.ScVal {
 
 /** Apply a slippage buffer: for EXACT_OUT we raise amount_in_max, for EXACT_IN we lower amount_out_min. */
 function withSlippage(amount: bigint, direction: 'up' | 'down'): bigint {
-  const bps = BigInt(SLIPPAGE_BPS);
+  const bps = BigInt(STELLAR_BROKER_SLIPPAGE_BPS);
   const denom = BigInt(10000);
   return direction === 'up'
     ? (amount * (denom + bps)) / denom
@@ -130,7 +134,7 @@ export class SoroswapOnchainClient {
     if (!this.routerId) throw new Error('Soroswap router address not configured');
     const { path, tradeType, amount } = quote.rawQuote;
     const contract = new StellarSdk.Contract(this.routerId);
-    const deadline = Math.floor(Date.now() / 1000) + 3600;
+    const deadline = Math.floor(Date.now() / 1000) + STELLAR_BROKER_QUOTE_TTL_SECONDS;
     const toScVal = new StellarSdk.Address(fromAddress).toScVal();
     const deadlineScVal = StellarSdk.nativeToScVal(deadline, { type: 'u64' });
 

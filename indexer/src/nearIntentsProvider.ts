@@ -1,0 +1,271 @@
+import {
+  ApiError,
+  OneClickService,
+  OpenAPI,
+  QuoteRequest,
+  type GetExecutionStatusResponse,
+  type QuoteResponse,
+  type SubmitDepositTxResponse,
+  type TokenResponse,
+} from '@defuse-protocol/one-click-sdk-typescript';
+import type { IndexerConfig } from './config.js';
+import type {
+  CrossChainPaymentStatus,
+  MarketplaceBinding,
+  NearIntentProviderStatus,
+  NearIntentQuoteMetadata,
+} from './types.js';
+
+export class NearIntentsProviderError extends Error {
+  statusCode: number;
+  detail?: unknown;
+
+  constructor(message: string, statusCode = 400, detail?: unknown) {
+    super(message);
+    this.name = 'NearIntentsProviderError';
+    this.statusCode = statusCode;
+    this.detail = detail;
+  }
+}
+
+export interface NearIntentQuoteInput {
+  originAsset: string;
+  amount: string;
+  refundTo?: string;
+  recipient?: string;
+  dry?: boolean;
+  slippageTolerance?: number;
+  deadline?: string;
+  depositMode?: 'SIMPLE' | 'MEMO';
+  referral?: string;
+  quoteWaitingTimeMs?: number;
+}
+
+export interface NearIntentDepositTxInput {
+  txHash: string;
+  nearSenderAccount?: string;
+}
+
+const STATUS_MAP: Record<NearIntentProviderStatus, CrossChainPaymentStatus> = {
+  PENDING_DEPOSIT: 'intent_created',
+  KNOWN_DEPOSIT_TX: 'funded',
+  INCOMPLETE_DEPOSIT: 'needs_review',
+  PROCESSING: 'routed',
+  SUCCESS: 'settled_on_stellar',
+  REFUNDED: 'refunded',
+  FAILED: 'failed',
+};
+
+function configureSdk(config: IndexerConfig): void {
+  OpenAPI.BASE = config.nearIntents.apiBaseUrl;
+  OpenAPI.TOKEN = config.nearIntents.jwt;
+}
+
+function ensureEnabled(config: IndexerConfig): void {
+  if (!config.nearIntents.enabled) {
+    throw new NearIntentsProviderError('NEAR Intents is disabled.', 503);
+  }
+  if (!config.nearIntents.jwt) {
+    throw new NearIntentsProviderError('NEAR_INTENTS_JWT is required.', 503);
+  }
+}
+
+function ensureDestinationAsset(config: IndexerConfig): string {
+  const asset = config.nearIntents.stellarDestinationAsset;
+  if (!asset) {
+    throw new NearIntentsProviderError(
+      'NEAR_INTENTS_STELLAR_DESTINATION_ASSET is required.',
+      503
+    );
+  }
+  return asset;
+}
+
+function parseSdkError(error: unknown): NearIntentsProviderError {
+  if (error instanceof NearIntentsProviderError) return error;
+  if (error instanceof ApiError) {
+    const body = error.body as Record<string, unknown> | undefined;
+    const message =
+      (typeof body?.message === 'string' && body.message) ||
+      (typeof body?.error === 'string' && body.error) ||
+      error.message ||
+      'NEAR Intents request failed.';
+    return new NearIntentsProviderError(message, error.status || 502, error.body);
+  }
+  return new NearIntentsProviderError(
+    error instanceof Error ? error.message : String(error),
+    502
+  );
+}
+
+function deadlineFromConfig(config: IndexerConfig): string {
+  return new Date(Date.now() + config.nearIntents.quoteTtlSeconds * 1000).toISOString();
+}
+
+function providerStatusToLocal(status: string): CrossChainPaymentStatus {
+  return STATUS_MAP[status as NearIntentProviderStatus] ?? 'needs_review';
+}
+
+function normalizeQuoteMetadata(
+  input: NearIntentQuoteInput,
+  response: QuoteResponse
+): NearIntentQuoteMetadata {
+  const quote = response.quote;
+  const deadline = quote.deadline ?? response.quoteRequest.deadline;
+  return {
+    quoteId: response.correlationId,
+    correlationId: response.correlationId,
+    signature: response.signature,
+    depositAddress: quote.depositAddress,
+    depositMemo: quote.depositMemo,
+    sourceAsset: response.quoteRequest.originAsset,
+    destinationAsset: response.quoteRequest.destinationAsset,
+    sourceAmount: response.quoteRequest.amount,
+    expectedDestinationAmount: quote.amountOut,
+    minDestinationAmount: quote.minAmountOut,
+    recipient: response.quoteRequest.recipient,
+    refundTo: response.quoteRequest.refundTo,
+    dry: input.dry ?? true,
+    deadline,
+    expiresAt: deadline ? new Date(deadline) : undefined,
+    providerStatusRaw: quote.depositAddress ? 'PENDING_DEPOSIT' : undefined,
+    providerStatusUpdatedAt: new Date(),
+  };
+}
+
+export function nearIntentStatusToLocal(status: string): CrossChainPaymentStatus {
+  return providerStatusToLocal(status);
+}
+
+export async function listNearIntentTokens(
+  config: IndexerConfig
+): Promise<Array<TokenResponse>> {
+  ensureEnabled(config);
+  configureSdk(config);
+  try {
+    return await OneClickService.getTokens();
+  } catch (error) {
+    throw parseSdkError(error);
+  }
+}
+
+export async function requestNearIntentQuote(
+  config: IndexerConfig,
+  binding: MarketplaceBinding,
+  input: NearIntentQuoteInput
+): Promise<{ quote: QuoteResponse; metadata: NearIntentQuoteMetadata }> {
+  ensureEnabled(config);
+  configureSdk(config);
+
+  const dry = input.dry ?? true;
+  if (!dry && !config.nearIntents.allowLiveExecution) {
+    throw new NearIntentsProviderError(
+      'Live NEAR Intents execution requires NEAR_INTENTS_ALLOW_LIVE=true.',
+      400
+    );
+  }
+
+  const destinationAsset = ensureDestinationAsset(config);
+  const refundTo = input.refundTo || config.nearIntents.defaultRefundAccount;
+  if (!refundTo) {
+    throw new NearIntentsProviderError(
+      'refundTo or NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required.'
+    );
+  }
+
+  const recipient = input.recipient || binding.participants.clientWallet;
+  if (!input.originAsset) throw new NearIntentsProviderError('originAsset is required.');
+  if (!input.amount) throw new NearIntentsProviderError('amount is required.');
+
+  const requestBody = {
+    dry,
+    depositMode:
+      input.depositMode === 'MEMO'
+        ? QuoteRequest.depositMode.MEMO
+        : QuoteRequest.depositMode.SIMPLE,
+    swapType: QuoteRequest.swapType.EXACT_INPUT,
+    slippageTolerance: Number.isFinite(Number(input.slippageTolerance))
+      ? Number(input.slippageTolerance)
+      : 100,
+    originAsset: input.originAsset,
+    depositType: QuoteRequest.depositType.ORIGIN_CHAIN,
+    destinationAsset,
+    amount: input.amount,
+    refundTo,
+    refundType: QuoteRequest.refundType.ORIGIN_CHAIN,
+    recipient,
+    recipientType: QuoteRequest.recipientType.DESTINATION_CHAIN,
+    deadline: input.deadline || deadlineFromConfig(config),
+    referral: input.referral || 'the-signal-escrow',
+    quoteWaitingTimeMs: Number.isFinite(Number(input.quoteWaitingTimeMs))
+      ? Number(input.quoteWaitingTimeMs)
+      : undefined,
+  };
+
+  try {
+    const quote = await OneClickService.getQuote(requestBody);
+    return { quote, metadata: normalizeQuoteMetadata(input, quote) };
+  } catch (error) {
+    throw parseSdkError(error);
+  }
+}
+
+export async function getNearIntentExecutionStatus(
+  config: IndexerConfig,
+  nearIntent: NearIntentQuoteMetadata
+): Promise<{
+  status: GetExecutionStatusResponse;
+  localStatus: CrossChainPaymentStatus;
+}> {
+  ensureEnabled(config);
+  configureSdk(config);
+
+  if (!nearIntent.depositAddress) {
+    throw new NearIntentsProviderError('nearIntent.depositAddress is required for status.');
+  }
+
+  try {
+    const status = await OneClickService.getExecutionStatus(
+      nearIntent.depositAddress,
+      nearIntent.depositMemo
+    );
+    return {
+      status,
+      localStatus: providerStatusToLocal(status.status),
+    };
+  } catch (error) {
+    throw parseSdkError(error);
+  }
+}
+
+export async function submitNearIntentDepositTx(
+  config: IndexerConfig,
+  nearIntent: NearIntentQuoteMetadata,
+  input: NearIntentDepositTxInput
+): Promise<{
+  result: SubmitDepositTxResponse;
+  localStatus: CrossChainPaymentStatus;
+}> {
+  ensureEnabled(config);
+  configureSdk(config);
+
+  if (!nearIntent.depositAddress) {
+    throw new NearIntentsProviderError('nearIntent.depositAddress is required.');
+  }
+  if (!input.txHash) throw new NearIntentsProviderError('txHash is required.');
+
+  try {
+    const result = await OneClickService.submitDepositTx({
+      txHash: input.txHash,
+      depositAddress: nearIntent.depositAddress,
+      memo: nearIntent.depositMemo,
+      nearSenderAccount: input.nearSenderAccount,
+    });
+    return {
+      result,
+      localStatus: providerStatusToLocal(result.status),
+    };
+  } catch (error) {
+    throw parseSdkError(error);
+  }
+}

@@ -138,6 +138,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
       .pill.funded { color: var(--blue); }
       .pill.dispute, .pill.refund { color: var(--red); }
       .pill.released, .pill.done, .pill.resolved { color: var(--green); }
+      .pill.shadow { color: var(--yellow); }
       .empty { color: var(--muted); padding: 22px 10px; border-top: 1px solid var(--line); }
       a { color: var(--green); }
       .footer { margin-top: 18px; color: var(--muted); font-size: 13px; }
@@ -185,6 +186,11 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
       </section>
 
       <section class="panel section">
+        <h2>Shadow Marketplace Bindings</h2>
+        <div id="bindings"></div>
+      </section>
+
+      <section class="panel section">
         <h2>Recent Soroban Events</h2>
         <div id="events"></div>
       </section>
@@ -205,6 +211,13 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
         if (!deals.length) return '<div class="empty">No indexed deals yet. Create/fund/release a testnet deal, then run or wait for the indexer.</div>';
         return '<table><thead><tr><th>Deal</th><th>Last Event</th><th>Milestones Seen</th><th>Events</th><th>Latest Ledger</th></tr></thead><tbody>' +
           deals.map((deal) => '<tr><td class="mono">#' + escapeHtml(deal.dealId) + '</td><td><span class="pill ' + escapeHtml(deal.lastEvent) + '">' + escapeHtml(deal.lastEvent) + '</span></td><td>' + fmt.format(deal.milestonesSeen || 0) + '</td><td>' + fmt.format(deal.eventCount || 0) + '</td><td class="mono">' + fmt.format(deal.latestLedger || 0) + '</td></tr>').join('') +
+          '</tbody></table>';
+      }
+
+      function renderBindings(bindings) {
+        if (!bindings.length) return '<div class="empty">No marketplace shadow bindings seeded yet.</div>';
+        return '<table><thead><tr><th>Marketplace</th><th>External Deal</th><th>Mode</th><th>Soroban Deal</th><th>Status</th><th>Milestones</th><th>Last Event</th></tr></thead><tbody>' +
+          bindings.map((binding) => '<tr><td>' + escapeHtml(binding.externalMarketplaceId) + '</td><td class="mono">' + escapeHtml(binding.externalDealId) + '</td><td><span class="pill shadow">' + escapeHtml(binding.bindingMode) + '</span></td><td class="mono">#' + escapeHtml(binding.sorobanDealId) + '</td><td><span class="pill ' + escapeHtml(binding.status) + '">' + escapeHtml(binding.status) + '</span></td><td>' + fmt.format(binding.milestoneCount || 0) + '</td><td class="mono">' + escapeHtml(binding.lastIndexedEventId || '-') + '</td></tr>').join('') +
           '</tbody></table>';
       }
 
@@ -229,6 +242,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
           stat('Events Indexed', fmt.format(state.totalEventsProcessed || 0)) +
           stat('Last Tick', state.lastTickAt ? new Date(state.lastTickAt).toLocaleString() : '-');
         document.getElementById('deals').innerHTML = renderDeals(data.deals || []);
+        document.getElementById('bindings').innerHTML = renderBindings(data.marketplaceBindings || []);
         document.getElementById('events').innerHTML = renderEvents(data.recentEvents || []);
         document.getElementById('lastUpdated').textContent = 'Last refreshed ' + new Date().toLocaleString();
       }
@@ -314,7 +328,7 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
 
   app.get('/api/market-dashboard/summary', async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) => {
-      const [state, recentEvents, countsByTopic, deals] = await Promise.all([
+      const [state, recentEvents, countsByTopic, deals, marketplaceBindings] = await Promise.all([
         indexerDb.state.findOne({ contractAddress: config.contractAddress, network: config.network }),
         indexerDb.transfers
           .find({ sorobanContractAddress: config.contractAddress })
@@ -350,6 +364,11 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
             { $limit: 25 },
           ])
           .toArray(),
+        indexerDb.marketplaceBindings
+          .find({ sorobanContractAddress: config.contractAddress, network: config.network })
+          .sort({ updatedAt: -1 })
+          .limit(25)
+          .toArray(),
       ]);
 
       return {
@@ -361,6 +380,17 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
           milestonesSeen: (deal.milestones || []).filter((value: unknown) => value !== null).length,
           lastEvent: deal.lastEvent,
           latestLedger: deal.latestLedger,
+        })),
+        marketplaceBindings: marketplaceBindings.map((binding) => ({
+          bindingId: binding.bindingId,
+          bindingMode: binding.bindingMode,
+          externalMarketplaceId: binding.externalMarketplaceId,
+          externalDealId: binding.externalDealId,
+          sorobanDealId: binding.sorobanDealId,
+          status: binding.status,
+          milestoneCount: binding.milestoneMap.length,
+          lastIndexedEventId: binding.lastIndexedEventId,
+          updatedAt: binding.updatedAt,
         })),
         recentEvents: recentEvents.map((event) => ({
           ...event,

@@ -5,11 +5,11 @@
  *
  * Shown only when the user picks a source asset OTHER than the settlement
  * token. Fetches a quote for `sourceAsset → configured settlement token`,
- * displays the seeded route,
+ * displays the configured route,
  * price impact, and amounts, and runs the swap when the user confirms.
  *
  * On success, the parent CreateDeal proceeds to the existing review screen
- * with the settlement token forcibly set to the configured testnet asset.
+ * with the settlement token forcibly set to the configured settlement asset.
  */
 import { useEffect, useState } from 'react';
 
@@ -19,7 +19,7 @@ import {
   formatPriceImpact,
   stroopsToUnits,
 } from '../lib/swapRoute';
-import { getExplorerTxLink, SETTLEMENT_TOKEN_SYMBOL, SOROSWAP_POOL_ADDRESS, SOROSWAP_ROUTER_ADDRESS } from '../lib/stellar';
+import { getExplorerTxLink, IS_TESTNET, SETTLEMENT_TOKEN_SYMBOL, SOROSWAP_POOL_ADDRESS, SOROSWAP_ROUTER_ADDRESS } from '../lib/stellar';
 import { Card, Button } from './ui/Components';
 import { ArrowRight, AlertTriangle, ExternalLink, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 
@@ -94,7 +94,7 @@ export function AssetSwapStep({
       <Card className="p-8">
         <div className="flex items-center gap-3 text-zinc-400">
           <Loader2 className="animate-spin" size={20} />
-          <span>Fetching quote from the Stellar Broker testnet route…</span>
+          <span>Fetching quote from the Stellar Broker {IS_TESTNET ? 'testnet route' : 'provider'}…</span>
         </div>
       </Card>
     )
@@ -145,20 +145,31 @@ export function AssetSwapStep({
           Swap {sourceAssetSymbol} → {SETTLEMENT_TOKEN_SYMBOL} before escrow
         </h2>
         <p className="text-zinc-500 text-sm mt-1">
-          The DealEscrow contract settles in the configured demo settlement asset.
-          We&apos;ll route your {sourceAssetSymbol} through the broker testnet adapter by calling the seeded Soroswap router path directly before creating the deal.
+          The DealEscrow contract settles in the configured settlement asset.
+          {IS_TESTNET
+            ? ` We'll route your ${sourceAssetSymbol} through the broker testnet adapter by calling the seeded Soroswap router path directly before creating the deal.`
+            : ` We'll route your ${sourceAssetSymbol} through the configured broker provider before creating the deal.`}
         </p>
-        <p className="text-zinc-600 text-xs mt-2">
-          Demo note: this {SETTLEMENT_TOKEN_SYMBOL} token may not appear in Soroswap&apos;s public token picker; the route is configured by contract address for this testnet walkthrough.
-        </p>
-        <a
-          href={`https://testnet.soroswap.finance/#/liquidity/add/${sourceAssetAddress}/${usdcAddress}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300"
-        >
-          View Soroswap testnet route <ExternalLink size={12} />
-        </a>
+        {quote && (
+          <p className="text-zinc-600 text-xs mt-2">
+            Provider: {quote.providerId}. Slippage tolerance: {(quote.slippageBps / 100).toFixed(2)}%. Quote expires: {new Date(quote.quoteExpiresAt).toLocaleTimeString()}.
+          </p>
+        )}
+        {IS_TESTNET && (
+          <>
+            <p className="text-zinc-600 text-xs mt-2">
+              Demo note: this {SETTLEMENT_TOKEN_SYMBOL} token may not appear in Soroswap&apos;s public token picker; the route is configured by contract address for this testnet walkthrough.
+            </p>
+            <a
+              href={`https://testnet.soroswap.finance/#/liquidity/add/${sourceAssetAddress}/${usdcAddress}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+            >
+              View Soroswap testnet route <ExternalLink size={12} />
+            </a>
+          </>
+        )}
       </div>
 
       {/* Quote summary */}
@@ -239,7 +250,9 @@ export function AssetSwapStep({
             <p className="text-zinc-300 font-mono break-all">{SOROSWAP_ROUTER_ADDRESS}</p>
           </div>
           <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2 md:col-span-2">
-            <p className="text-zinc-500 uppercase tracking-widest mb-1">Seeded pool contract</p>
+            <p className="text-zinc-500 uppercase tracking-widest mb-1">
+              {IS_TESTNET ? 'Seeded pool contract' : 'Pool / provider contract'}
+            </p>
             <p className="text-zinc-300 font-mono break-all">{SOROSWAP_POOL_ADDRESS}</p>
           </div>
           <div className="bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
@@ -258,7 +271,9 @@ export function AssetSwapStep({
           )}
         </div>
         <p className="text-[11px] text-zinc-500 mt-4 leading-relaxed">
-          Testnet proof: this transaction calls the Soroswap router directly against seeded demo liquidity. The escrow contract receives the standardized {SETTLEMENT_TOKEN_SYMBOL} settlement asset.
+          {IS_TESTNET
+            ? `Testnet proof: this transaction calls the Soroswap router directly against seeded demo liquidity. The escrow contract receives the standardized ${SETTLEMENT_TOKEN_SYMBOL} settlement asset.`
+            : `Provider proof: this transaction uses the configured broker route. The escrow contract receives the standardized ${SETTLEMENT_TOKEN_SYMBOL} settlement asset.`}
         </p>
       </div>
 
@@ -276,7 +291,7 @@ export function AssetSwapStep({
               High price impact ({impact.display})
             </p>
             <p className="text-zinc-400 text-xs mt-1">
-              This is seeded demo liquidity on testnet, so price impact can be visible. You may receive significantly less than
+              {IS_TESTNET ? 'This is seeded demo liquidity on testnet, so price impact can be visible.' : 'This route has high price impact.'} You may receive significantly less than
               the quoted {SETTLEMENT_TOKEN_SYMBOL} amount. Check the box to confirm you want to proceed.
             </p>
           </div>

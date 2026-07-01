@@ -8,6 +8,16 @@ export interface IndexerConfig {
   network: StellarNetwork;
   rpcUrl: string;
   soroswapApiKey?: string;
+  nearIntents: {
+    enabled: boolean;
+    allowLiveExecution: boolean;
+    apiBaseUrl: string;
+    jwt?: string;
+    stellarDestinationAsset?: string;
+    defaultRefundAccount?: string;
+    quoteTtlSeconds: number;
+    pollIntervalSeconds: number;
+  };
   enabled: boolean;
   overlapLedgers: number;
   startLedger?: number;
@@ -44,6 +54,16 @@ export function getConfig(): IndexerConfig {
     network,
     rpcUrl: process.env.STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org',
     soroswapApiKey: process.env.SOROSWAP_API_KEY,
+    nearIntents: {
+      enabled: process.env.NEAR_INTENTS_ENABLED === 'true',
+      allowLiveExecution: process.env.NEAR_INTENTS_ALLOW_LIVE === 'true',
+      apiBaseUrl: process.env.NEAR_INTENTS_API_BASE_URL || 'https://1click.chaindefuser.com',
+      jwt: process.env.NEAR_INTENTS_JWT,
+      stellarDestinationAsset: process.env.NEAR_INTENTS_STELLAR_DESTINATION_ASSET,
+      defaultRefundAccount: process.env.NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT,
+      quoteTtlSeconds: readOptionalInt('NEAR_INTENTS_QUOTE_TTL_SECONDS') ?? 300,
+      pollIntervalSeconds: readOptionalInt('NEAR_INTENTS_POLL_INTERVAL_SECONDS') ?? 15,
+    },
     enabled: process.env.INDEXER_ENABLED !== 'false',
     overlapLedgers: readOptionalInt('INDEXER_OVERLAP_LEDGERS') ?? 5,
     startLedger: readOptionalInt('INDEXER_START_LEDGER'),

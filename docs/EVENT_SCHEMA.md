@@ -174,8 +174,8 @@ Since `bigint` doesn't serialize cleanly through MongoDB JSON responses, the ind
 
 ---
 
-## Retention window (testnet)
+## Retention Window
 
-Soroban Testnet RPC retains events for **~7 days** (currently ledger range `currentLedger - 120000` to `currentLedger`). If the indexer is paused or redeployed for longer than that, events outside the window cannot be recovered from the RPC — they must be replayed by walking transactions from Horizon's `/operations` endpoint (out of scope for D5).
+Soroban RPC event retention is network/provider dependent. For the Tranche 2 testnet review, assume a short retention window and keep the indexer running regularly. If the indexer is paused or redeployed beyond the available RPC event window, older events cannot be recovered from `getEvents` alone; they must be replayed by walking transactions from another source such as Horizon operations, which is out of scope for D5.
 
-For continuous indexing, run the cron at least every minute (default in `sorobanEventListener.ts`) — the `overlapLedgers = 5` parameter gives a 25-second safety margin against transient RPC drift.
+For continuous indexing, run the Inngest `sorobanEventListener` at least every minute. The default schedule in `indexer/src/inngest.ts` is `*/1 * * * *`, and `INDEXER_OVERLAP_LEDGERS=5` gives a short safety margin against transient RPC drift.

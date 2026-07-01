@@ -3,6 +3,7 @@ import {
   fundTestnetAccount,
   getExplorerContractLink,
   getExplorerTxLink,
+  IS_TESTNET,
   NETWORK_PASSPHRASE,
   SETTLEMENT_TOKEN_SYMBOL,
   SOROSWAP_POOL_ADDRESS,
@@ -15,6 +16,7 @@ import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
+import { NearIntentsPanel } from './NearIntentsPanel';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
 
 type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
@@ -141,7 +143,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       if (msg.includes('no path') || msg.includes('no route') || msg.includes('no liquidity')) {
         setPoolEmpty(true);
       } else {
-        setError(err.message || 'Failed to fetch a Stellar Broker quote from the seeded testnet route.');
+      setError(err.message || `Failed to fetch a Stellar Broker quote from the configured ${IS_TESTNET ? 'testnet route' : 'route'}.`);
       }
       setQuote(null);
     } finally {
@@ -179,7 +181,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4 lg:mb-8">
         <div>
           <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Liquidity Terminal</h2>
-          <p className="text-zinc-500 font-medium text-sm lg:text-base">Provision testnet assets for smart contract execution.</p>
+          <p className="text-zinc-500 font-medium text-sm lg:text-base">
+            {IS_TESTNET ? 'Provision testnet assets for smart contract execution.' : 'Review settlement liquidity for smart contract execution.'}
+          </p>
         </div>
         {xlmBalance && (
           <div className="bg-[#09090b] border border-zinc-800 rounded-xl px-4 lg:px-5 py-2 lg:py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
@@ -192,29 +196,48 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
-        {/* Section 1: Friendbot Funding */}
+        {/* Section 1: Funding */}
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center gap-3 mb-4 lg:mb-6">
             <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
-            <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Initialize Vault</h3>
+            <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
+              {IS_TESTNET ? 'Initialize Vault' : 'Settlement Funding'}
+            </h3>
           </div>
 
-          <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
-            Request 10,000 XLM from the Soroban friendbot. Native XLM is required for gas fees and can be used directly as payment in escrow deals.
-          </p>
+          {IS_TESTNET ? (
+            <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
+              Request 10,000 XLM from the Soroban friendbot. Native XLM is required for gas fees and can be used directly as payment in escrow deals.
+            </p>
+          ) : (
+            <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
+              Friendbot is disabled outside testnet. Fund the connected wallet through your production treasury, exchange, or supported on-ramp before creating escrow deals.
+            </p>
+          )}
 
           <div className="space-y-4">
-            <Button
-              onClick={handleFundbot}
-              disabled={fundingLoading}
-              variant="primary"
-              className="w-full py-4"
-              icon={fundingLoading ? RefreshCw : Zap}
-            >
-              Request 10,000 XLM
-            </Button>
+            {IS_TESTNET ? (
+              <Button
+                onClick={handleFundbot}
+                disabled={fundingLoading}
+                variant="primary"
+                className="w-full py-4"
+                icon={fundingLoading ? RefreshCw : Zap}
+              >
+                Request 10,000 XLM
+              </Button>
+            ) : (
+              <Button
+                onClick={onBalanceRefresh}
+                variant="secondary"
+                className="w-full py-4"
+                icon={RefreshCw}
+              >
+                Refresh Balance
+              </Button>
+            )}
 
-            {fundingResult === 'success' && (
+            {IS_TESTNET && fundingResult === 'success' && (
               <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
                 <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
                   <CheckCircle2 size={16} />
@@ -228,7 +251,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               </div>
             )}
             
-            {fundingResult === 'error' && (
+            {IS_TESTNET && fundingResult === 'error' && (
               <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
                 <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm">
                   <CheckCircle2 size={16} className="text-emerald-500" />
@@ -244,27 +267,33 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
         </Card>
 
-        {/* Section 2: Stellar Broker testnet swap */}
+        {/* Section 2: Stellar Broker swap */}
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">2</div>
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Stellar Broker Funding</h3>
             </div>
-            <Tag color="zinc">Testnet Adapter</Tag>
+            <Tag color="zinc">{stellarBrokerClient.id}</Tag>
           </div>
 
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
-            Demo-only Stellar Broker route: swap XLM into the configured {SETTLEMENT_TOKEN_SYMBOL} settlement asset by calling the seeded{' '}
-            <a
-              href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-emerald-400 underline decoration-emerald-500/40 underline-offset-2 hover:text-emerald-300"
-            >
-              Soroswap testnet router path
-            </a>
-            . This is a demo settlement token for testnet liquidity, and it may not appear in Soroswap&apos;s public token picker.
+            {IS_TESTNET ? (
+              <>
+                Demo-only Stellar Broker route: swap XLM into the configured {SETTLEMENT_TOKEN_SYMBOL} settlement asset by calling the seeded{' '}
+                <a
+                  href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-400 underline decoration-emerald-500/40 underline-offset-2 hover:text-emerald-300"
+                >
+                  Soroswap testnet router path
+                </a>
+                . This is a demo settlement token for testnet liquidity, and it may not appear in Soroswap&apos;s public token picker.
+              </>
+            ) : (
+              <>Production mode uses the configured settlement asset and broker provider boundary. Seeded Soroswap testnet liquidity and Friendbot funding are disabled outside testnet.</>
+            )}
           </p>
           <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
             {[
@@ -509,21 +538,25 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     <div>
                       <p className="text-amber-400 font-bold text-sm mb-1">Broker Route Not Found</p>
                       <p className="text-zinc-400 text-xs leading-relaxed">
-                        The configured demo XLM → {SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.
+                        {IS_TESTNET
+                          ? `The configured demo XLM -> ${SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.`
+                          : `The configured XLM -> ${SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Check the configured provider route, then retry the quote.`}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <a
-                      href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1"
-                    >
-                      <Button variant="secondary" className="w-full py-2 text-xs" icon={ExternalLink}>
-                        View Pool Setup
-                      </Button>
-                    </a>
+                    {IS_TESTNET && (
+                      <a
+                        href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button variant="secondary" className="w-full py-2 text-xs" icon={ExternalLink}>
+                          View Pool Setup
+                        </Button>
+                      </a>
+                    )}
                     {onFundComplete && (
                       <Button onClick={onFundComplete} variant="primary" className="flex-1 py-2 text-xs" icon={ArrowRight}>
                         Use XLM Instead
@@ -564,6 +597,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           )}
         </Card>
       </div>
+
+      <NearIntentsPanel walletAddress={walletAddress} />
     </div>
   );
 }

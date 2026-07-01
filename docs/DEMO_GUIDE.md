@@ -29,7 +29,7 @@ Open `http://localhost:5173`. The landing page shows:
 
 - **"Trust Engine."** — Space Grotesk 900, always-on RGB glitch effect. Hover to pause it.
 - **Live Network Ticker** — full-width marquee showing real on-chain deal data from the contract (no wallet required). Emerald = completed, Blue = active, Amber = awaiting funding, Red = disputed.
-- **Connect Wallet** — opens the Stellar Wallets Kit modal
+- **Connect Wallet** — opens the unified wallet modal with Privy as the primary path and Stellar Wallets Kit extension wallets as fallback
 - **Read the Docs** — links to the GitHub repo
 
 To connect:
@@ -67,6 +67,28 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 6. On success, see the test USDC amount received with an Explorer link
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
+
+### Option C: NEAR Intents Funding Readiness
+
+The Liquidity tab also includes a NEAR Intents funding panel for the
+marketplace-binding adapter.
+
+1. Confirm the readiness badges. The panel shows whether NEAR Intents is
+   enabled, whether live execution is allowed, and whether server-side JWT,
+   destination asset, and refund config are present.
+2. Use the default shadow binding (`mb_sig-demo-001`) or enter another binding
+   ID.
+3. Keep **Dry quote** enabled unless the deployment has a real NEAR JWT,
+   approved Stellar destination asset id, and explicit live QA approval.
+4. Click **Request Quote** to call the protected server-side adapter.
+5. If a quote returns deposit details, review the deposit address, memo, expiry,
+   expected output, and refund destination before taking any source-chain action.
+6. Click **Refresh Status** to poll provider status for the stored deposit
+   address or memo.
+
+NEAR Intents status is payment-initiation evidence only. The deal is not
+considered escrow-funded until the Stellar DealEscrow contract emits a `funded`
+event and the indexer sees it.
 
 ---
 
@@ -177,17 +199,22 @@ Either the client or provider can dispute a funded milestone:
 
 **What happens on-chain**: The `dispute` function requires `caller.require_auth()` and checks that the caller is either the client or provider. The milestone is frozen — no releases or further deposits possible.
 
-### 4d. Resolve a Dispute (Admin)
+### 4d. Resolve a Dispute (Operator / Admin)
 
-If you are the contract admin:
+The browser demo does not expose an admin refund-slider UI. In the current
+frontend, disputed milestones show an **Under review** banner, and the client
+can optionally choose **Accept & Release to Provider** as a settlement override.
 
-1. Click **Resolve** on a **Disputed** milestone
-2. Use the **refund slider** to set the split:
+For operator/admin resolution, call the contract's `resolve_dispute` function
+from an admin-controlled tool or future operator console:
+
+1. Confirm the connected admin/operator key is the contract admin
+2. Choose the refund split:
    - 0%: All funds go to provider
    - 50%: Equal split between client and provider
    - 100%: Full refund to client
-3. The preview shows exact amounts for both parties
-4. Click **Resolve Dispute** to execute
+3. Submit `resolve_dispute(deal_id, milestone_idx, refund_bps)`
+4. Verify the resulting `resolved` Soroban event in the indexer/dashboard
 
 **What happens on-chain**: The `resolve_dispute` function (admin-only) transfers the refund portion to the client and the remainder to the provider. The milestone becomes `Refunded`.
 
@@ -224,7 +251,8 @@ After completing the full flow, verify:
 | Split amounts are exact | Provider + Connector + Protocol = Milestone Amount |
 | Reputation increments | Lookup shows 1 after first completed deal |
 | Dispute freezes funds | Disputed milestone cannot be released |
-| Resolution distributes correctly | Client + Provider portions sum to original milestone amount |
+| Resolution distributes correctly | Operator/admin `resolve_dispute` evidence shows client + provider portions sum to original milestone amount |
+| NEAR funding does not overclaim | NEAR panel can show quote/status, but escrow remains unfunded until a Soroban `funded` event exists |
 
 ---
 
@@ -238,7 +266,7 @@ After completing the full flow, verify:
 4. Release milestones 1, 2, 3
 5. Check Oracle tab → shows 1 completed deal
 
-### Scenario 2: Dispute Resolution (3 minutes)
+### Scenario 2: Dispute Handling (3 minutes)
 
 1. Quick Start → "Dev Sprint"
 2. Create deal
@@ -246,8 +274,21 @@ After completing the full flow, verify:
 4. Release milestone 1 (normal flow)
 5. Fund milestone 2
 6. Dispute milestone 2
-7. Resolve with 50/50 split
-8. Verify partial refund to client
+7. Show the Disputed state and **Under review** banner
+8. Optionally reconnect as client and use **Accept & Release to Provider**
+9. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
+
+### Scenario 2b: NEAR Intents Unhappy Path (2 minutes)
+
+1. Open Liquidity and inspect the NEAR Intents readiness panel.
+2. If the deployment has `NEAR_INTENTS_ENABLED=false`, capture the disabled
+   state and confirm quote requests fail with a clear server-side readiness
+   message.
+3. If the deployment is enabled but not authenticated, open `/admin`, sign in,
+   and retry the quote.
+4. Capture any failed/refunded/provider-pending status as payment status only;
+   do not mark the escrow funded unless a matching Soroban `funded` event is
+   visible.
 
 ### Scenario 3: Multiple Deals + Reputation (3 minutes)
 
@@ -278,10 +319,12 @@ Only active when wallet is connected.
 |-------|----------|
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
 | "Insufficient balance" | Go to the Liquidity tab and use Friendbot to get 10,000 XLM. |
-| "Transaction cancelled by user" | You declined the signing prompt in your wallet extension. Try the action again. |
+| "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
+| Connector cannot dispute | This is expected. Only the client or provider can dispute funded milestones. |
+| Admin resolution button missing | This is expected in the browser demo. Use the operator/admin contract path for `resolve_dispute` evidence. |
 | Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Deploy Contract. |
-| Soroswap quote fails | Testnet liquidity pools may be empty. Use XLM directly as the payment token instead. |
+| Soroswap quote fails | The seeded testnet route may lack liquidity for that size, or the optional public aggregator may not discover the route. Use XLM directly as the payment token or seed the testnet pool and retry. |
 | Balance shows 0 after Friendbot | Wait a few seconds for the balance refresh (every 15s), or switch tabs to trigger a refresh. |
 | Live Ticker not showing | The ticker requires at least one on-chain deal. Create a deal first, then reload the landing page. |

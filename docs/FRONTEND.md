@@ -4,7 +4,7 @@
 
 The frontend is a React 19 single-page application built with TypeScript 5.9, Vite 8, and Tailwind CSS v4. It provides a complete interface for interacting with the DealEscrow smart contract on Stellar Testnet — from the landing page through wallet connection, deal creation, milestone management, and reputation lookup.
 
-**No backend required.** All interactions happen directly between the browser and Stellar's Soroban RPC via the `@stellar/stellar-sdk`.
+Most signed escrow interactions happen directly between the browser and Stellar's Soroban RPC via `@stellar/stellar-sdk`. The deployed review stack can also run the small `indexer` backend for `/market_dashboard`, Inngest indexing, and the optional server-side Soroswap public aggregator quote check. The executable broker-style demo route in the frontend uses the on-chain Soroswap router adapter, not the public aggregator proxy.
 
 ## Component Architecture
 
@@ -19,10 +19,10 @@ App.tsx (Root)
 │   └── ConnectWallet / Nav    — Wallet info + tab navigation when connected
 ├── LandingView (when disconnected)
 │   ├── "Trust Engine." hero   — Glitch effect, always-on RGB aberration
-│   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
+│   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Liquidity              — SoroswapWidget (Friendbot + Stellar Broker testnet route)
+    ├── Liquidity              — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents panel)
     ├── Deploy Contract        — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle)
     └── Oracle                 — ReputationBadge (on-chain reputation)
@@ -95,11 +95,11 @@ A full-width marquee bar showing real on-chain deal data:
 
 ## Custom Hooks
 
-### `useStellarWallet`
+### `useUnifiedWallet`, `usePrivyWallet`, and `useStellarWallet`
 
-**File**: `src/hooks/useStellarWallet.ts`
+**Files**: `src/hooks/useUnifiedWallet.ts`, `src/hooks/usePrivyWallet.ts`, `src/hooks/useStellarWallet.ts`
 
-Manages wallet connection, balance tracking, and transaction signing via Stellar Wallets Kit.
+`useUnifiedWallet` is the app-facing wallet hook. It prefers Privy embedded Stellar wallets and falls back to Stellar Wallets Kit extension wallets while exposing a single wallet-state interface to the rest of the app.
 
 ```typescript
 interface WalletState {
@@ -147,7 +147,7 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 
 ```text
 1. Build Transaction
-   └── TransactionBuilder with 1 XLM max fee, 120s timeout
+   └── TransactionBuilder with Stellar base fee; simulation/assembly sets the final Soroban fee
 
 2. Simulate
    └── sorobanServer.simulateTransaction()
@@ -185,11 +185,13 @@ Wallet connection button displayed in the header when disconnected. Opens the un
 
 **File**: `src/components/SoroswapWidget.tsx`
 
-Two-part funding interface (Liquidity tab):
+Three-part funding interface (Liquidity tab):
 
 **Section 1 — Friendbot**: One-click 10,000 XLM testnet funding with duplicate-funding detection.
 
 **Section 2 — Stellar Broker Funding**: Quote → Sign → Swap for XLM -> test USDC through the Stellar Broker testnet route. The current testnet adapter executes against the seeded Soroswap router pool and uses 1% slippage tolerance.
+
+**Section 3 — NEAR Intents Funding**: Readiness → dry/live quote → deposit instructions → provider status refresh for marketplace-bound cross-chain payment initiation. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT and provider secrets stay server-side. Quote/status routes require the admin Basic Auth session, while `/api/near-intents/readiness` is public and returns only non-secret readiness booleans. The panel explicitly warns that NEAR settlement status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
 
 ### CreateDeal
 
@@ -239,13 +241,29 @@ On-chain reputation lookup with radar animation and animated count-up display. B
 
 ## Library Modules
 
+### `nearIntents.ts`
+
+**File**: `src/lib/nearIntents.ts`
+
+Small browser client for the local NEAR Intents adapter:
+
+- `readiness()` calls the public backend readiness endpoint.
+- `createQuote(bindingId, body)` calls the protected quote endpoint.
+- `getStatus(bindingId)` calls the protected status endpoint.
+- Errors are wrapped as `NearIntentsApiError` so the UI can distinguish admin
+  auth, disabled feature flags, validation errors, and provider failures.
+
 ### stellar.ts
 
 Core Stellar SDK configuration and utilities:
 
 | Export | Description |
 |--------|-------------|
-| `SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` |
+| `STELLAR_NETWORK` | From `VITE_STELLAR_NETWORK`; defaults to `testnet` |
+| `SOROBAN_RPC_URL` | From `VITE_STELLAR_RPC_URL`; defaults to Stellar public testnet RPC in testnet mode |
+| `HORIZON_URL` | From `VITE_STELLAR_HORIZON_URL`; defaults to Stellar public testnet Horizon in testnet mode |
+| `EXPLORER_URL` | From `VITE_STELLAR_EXPLORER_URL`; defaults to Stellar Expert testnet/public URL by network |
+| `FRIENDBOT_URL` | Testnet-only; empty outside testnet |
 | `XLM_SAC_ADDRESS` | Native XLM as Stellar Asset Contract |
 | `DEAL_ESCROW_CONTRACT` | From `VITE_DEAL_ESCROW_CONTRACT` |
 | `DEMO_ACCOUNTS` | Pre-generated provider/connector testnet addresses |
@@ -256,11 +274,30 @@ Core Stellar SDK configuration and utilities:
 | `isValidStellarAddress()` | G-address regex validation |
 | `truncateAddress()` | `GABCD...WXYZ` display format |
 
+### stellarBroker.ts and soroswapOnchain.ts
+
+`stellarBroker.ts` exposes the broker-facing `StellarBrokerProvider` interface
+used by `SoroswapWidget` and the create-deal swap step:
+
+```ts
+getQuote(assetIn, assetOut, amount, tradeType, sourceAddress)
+buildTransaction(quote, fromAddress)
+sendTransaction(signedXdr)
+```
+
+Quotes carry provider metadata:
+
+- `providerId`
+- `quoteExpiresAt`
+- `slippageBps`
+
+In the current testnet demo the provider delegates to `soroswapOnchain.ts`,
+which calls the seeded Soroswap router path directly because public indexed
+testnet liquidity may be unavailable after resets.
+
 ### soroswap.ts
 
-Soroswap public aggregator quote client. The frontend calls the local backend
-proxy at `/api/soroswap/quote`; the Soroswap API key stays server-side in
-`SOROSWAP_API_KEY`.
+Optional public aggregator quote client used by `SoroswapWidget` as an informational route-discovery check. It calls the local backend proxy at `/api/soroswap/quote`; the Soroswap API key stays server-side in `SOROSWAP_API_KEY`. It is not the executable swap path for the current demo.
 
 ### dealMetadata.ts
 
@@ -297,11 +334,32 @@ Only active when wallet is connected.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_DEAL_ESCROW_CONTRACT` | Yes | Deployed DealEscrow contract address |
+| `VITE_STELLAR_NETWORK` | No | `testnet` or `mainnet`; defaults to `testnet` |
+| `VITE_STELLAR_RPC_URL` | No | Soroban RPC URL for the selected network |
+| `VITE_STELLAR_HORIZON_URL` | No | Horizon URL for balance/account reads |
+| `VITE_STELLAR_EXPLORER_URL` | No | Explorer base URL for tx/contract/account links |
+| `VITE_FRIENDBOT_URL` | No | Testnet-only Friendbot URL; ignored outside testnet |
 | `VITE_USDC_TOKEN_ADDRESS` | No | Demo test USDC SAC address |
+| `VITE_SETTLEMENT_TOKEN_SYMBOL` | No | Display symbol for configured settlement asset |
+| `VITE_SETTLEMENT_TOKEN_NAME` | No | Display name for configured settlement asset |
+| `VITE_SETTLEMENT_TOKEN_DECIMALS` | No | Settlement precision; defaults to `7` |
+| `VITE_SETTLEMENT_MIN_UNITS` | No | Minimum whole-unit deal amount enforced by the create flow; defaults to `1` |
+| `VITE_SETTLEMENT_ASSET_POLICY` | No | Policy label shown in create flow, e.g. `demo-testnet` or `approved-mainnet` |
+| `VITE_STELLAR_BROKER_PROVIDER` | No | Broker provider id shown in the UI; defaults to `testnet-soroswap-seeded` on testnet |
+| `VITE_STELLAR_BROKER_SLIPPAGE_BPS` | No | Swap slippage tolerance in basis points; defaults to `100` |
+| `VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS` | No | Quote/deadline window; defaults to `3600` |
 | `VITE_SOROSWAP_ROUTER_ADDRESS` | No | Soroswap router used by the Stellar Broker testnet adapter |
 
 The public aggregator API key belongs on the backend as `SOROSWAP_API_KEY`,
 not as a `VITE_` variable.
+
+When `VITE_STELLAR_NETWORK=mainnet`, Friendbot UI is hidden and seeded
+testnet pool language is replaced with generic provider/broker copy. The
+current executable broker adapter is still the seeded Soroswap route until the
+Gap 4 provider interface is completed.
+
+Settlement asset policy is documented in
+[`SETTLEMENT_ASSET_POLICY.md`](SETTLEMENT_ASSET_POLICY.md).
 
 ## Build and Development
 

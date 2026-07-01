@@ -4,13 +4,31 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 // so the dual-class mismatch is already resolved and the any cast is unnecessary.
 const SorobanRpc = StellarSdk.rpc;
 
-// Testnet configuration
-export const NETWORK = 'TESTNET';
-export const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;
-export const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
-export const HORIZON_URL = 'https://horizon-testnet.stellar.org';
-export const FRIENDBOT_URL = 'https://friendbot.stellar.org';
-export const EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
+export type StellarNetwork = 'testnet' | 'mainnet';
+
+function readNetwork(): StellarNetwork {
+  const value = import.meta.env.VITE_STELLAR_NETWORK || 'testnet';
+  return value === 'mainnet' ? 'mainnet' : 'testnet';
+}
+
+export const STELLAR_NETWORK: StellarNetwork = readNetwork();
+export const IS_TESTNET = STELLAR_NETWORK === 'testnet';
+export const NETWORK = IS_TESTNET ? 'TESTNET' : 'PUBLIC';
+export const NETWORK_PASSPHRASE = IS_TESTNET
+  ? StellarSdk.Networks.TESTNET
+  : StellarSdk.Networks.PUBLIC;
+export const SOROBAN_RPC_URL =
+  import.meta.env.VITE_STELLAR_RPC_URL ||
+  (IS_TESTNET ? 'https://soroban-testnet.stellar.org' : 'https://mainnet.sorobanrpc.com');
+export const HORIZON_URL =
+  import.meta.env.VITE_STELLAR_HORIZON_URL ||
+  (IS_TESTNET ? 'https://horizon-testnet.stellar.org' : 'https://horizon.stellar.org');
+export const FRIENDBOT_URL = IS_TESTNET
+  ? import.meta.env.VITE_FRIENDBOT_URL || 'https://friendbot.stellar.org'
+  : '';
+export const EXPLORER_URL =
+  import.meta.env.VITE_STELLAR_EXPLORER_URL ||
+  (IS_TESTNET ? 'https://stellar.expert/explorer/testnet' : 'https://stellar.expert/explorer/public');
 
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
 export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
@@ -28,6 +46,25 @@ export const SETTLEMENT_TOKEN_SYMBOL =
 
 export const SETTLEMENT_TOKEN_NAME =
   import.meta.env.VITE_SETTLEMENT_TOKEN_NAME || 'Demo Test USD';
+
+export const SETTLEMENT_TOKEN_DECIMALS =
+  Number.parseInt(import.meta.env.VITE_SETTLEMENT_TOKEN_DECIMALS || '7', 10);
+
+export const SETTLEMENT_MIN_UNITS =
+  Number.parseFloat(import.meta.env.VITE_SETTLEMENT_MIN_UNITS || '1');
+
+export const SETTLEMENT_ASSET_POLICY =
+  import.meta.env.VITE_SETTLEMENT_ASSET_POLICY || (IS_TESTNET ? 'demo-testnet' : 'approved-mainnet');
+
+export const STELLAR_BROKER_PROVIDER =
+  import.meta.env.VITE_STELLAR_BROKER_PROVIDER ||
+  (IS_TESTNET ? 'testnet-soroswap-seeded' : 'external-provider-required');
+
+export const STELLAR_BROKER_SLIPPAGE_BPS =
+  Number.parseInt(import.meta.env.VITE_STELLAR_BROKER_SLIPPAGE_BPS || '100', 10);
+
+export const STELLAR_BROKER_QUOTE_TTL_SECONDS =
+  Number.parseInt(import.meta.env.VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS || '3600', 10);
 
 // Soroswap testnet router used by the Stellar Broker testnet adapter.
 export const SOROSWAP_ROUTER_ADDRESS =
@@ -52,7 +89,7 @@ export const DEMO_ACCOUNTS = {
 // Token metadata
 export const TOKENS: Record<string, { name: string; symbol: string; decimals: number; address: string }> = {
   XLM: { name: 'Stellar Lumens', symbol: 'XLM', decimals: 7, address: XLM_SAC_ADDRESS },
-  USDC: { name: SETTLEMENT_TOKEN_NAME, symbol: SETTLEMENT_TOKEN_SYMBOL, decimals: 7, address: USDC_TOKEN_ADDRESS },
+  USDC: { name: SETTLEMENT_TOKEN_NAME, symbol: SETTLEMENT_TOKEN_SYMBOL, decimals: SETTLEMENT_TOKEN_DECIMALS, address: USDC_TOKEN_ADDRESS },
 };
 
 // Resolve token symbol from contract address
@@ -71,6 +108,7 @@ export const horizonServer = new StellarSdk.Horizon.Server(HORIZON_URL);
 
 // Fund a testnet account via Friendbot
 export async function fundTestnetAccount(address: string): Promise<boolean> {
+  if (!IS_TESTNET || !FRIENDBOT_URL) return false;
   try {
     const response = await fetch(`${FRIENDBOT_URL}?addr=${address}`);
     return response.ok;

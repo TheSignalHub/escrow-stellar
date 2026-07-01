@@ -13,11 +13,52 @@ import {
   soroswapOnchainClient,
   type SwapQuote,
 } from './soroswapOnchain';
+import {
+  STELLAR_BROKER_PROVIDER,
+  STELLAR_BROKER_QUOTE_TTL_SECONDS,
+  STELLAR_BROKER_SLIPPAGE_BPS,
+} from './stellar';
 
-export type BrokerQuote = SwapQuote;
+export interface BrokerQuote extends SwapQuote {
+  providerId: string;
+  quoteExpiresAt: number;
+  slippageBps: number;
+}
 
-export const stellarBrokerClient = {
-  getQuote: soroswapOnchainClient.getQuote.bind(soroswapOnchainClient),
+export interface StellarBrokerProvider {
+  id: string;
+  getQuote(
+    assetIn: string,
+    assetOut: string,
+    amount: string,
+    tradeType?: 'EXACT_IN' | 'EXACT_OUT',
+    sourceAddress?: string,
+  ): Promise<BrokerQuote>;
+  buildTransaction(quote: BrokerQuote, fromAddress: string): Promise<string>;
+  sendTransaction(signedXdr: string): Promise<{ txHash: string }>;
+}
+
+function withProviderMetadata(quote: SwapQuote): BrokerQuote {
+  return {
+    ...quote,
+    providerId: STELLAR_BROKER_PROVIDER,
+    quoteExpiresAt: Date.now() + STELLAR_BROKER_QUOTE_TTL_SECONDS * 1000,
+    slippageBps: STELLAR_BROKER_SLIPPAGE_BPS,
+  };
+}
+
+export const stellarBrokerClient: StellarBrokerProvider = {
+  id: STELLAR_BROKER_PROVIDER,
+  async getQuote(assetIn, assetOut, amount, tradeType, sourceAddress) {
+    const quote = await soroswapOnchainClient.getQuote(
+      assetIn,
+      assetOut,
+      amount,
+      tradeType,
+      sourceAddress,
+    );
+    return withProviderMetadata(quote);
+  },
   buildTransaction: soroswapOnchainClient.buildTransaction.bind(soroswapOnchainClient),
   sendTransaction: soroswapOnchainClient.sendTransaction.bind(soroswapOnchainClient),
 };

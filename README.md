@@ -17,6 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab readiness/dry quote/status panel. Live execution remains disabled until JWT, approved Stellar asset id, refund path, and no-testnet tiny-amount evidence are complete.
 
 Reviewer links:
 
@@ -26,6 +27,10 @@ Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
 Contract explorer:    https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
 ```
+
+Coolify deployment env and operations are documented in
+[`docs/COOLIFY_DEMO_DEPLOYMENT.md`](docs/COOLIFY_DEMO_DEPLOYMENT.md). Keep live
+server secrets in Coolify or a secrets manager, not in git.
 
 `/market_dashboard` is intentionally public and read-only for review. `/admin`
 and manual indexer controls are protected by `ADMIN_USERNAME` /
@@ -50,6 +55,39 @@ Soroban contract remains the source of truth; the isolated MongoDB indexer
 database is a read model for marketplace-style status sync and reviewer
 visibility.
 
+Network endpoints are environment-driven. The app defaults to testnet for SCF
+review, but `VITE_STELLAR_NETWORK`, `VITE_STELLAR_RPC_URL`,
+`VITE_STELLAR_HORIZON_URL`, and `VITE_STELLAR_EXPLORER_URL` can be set for a
+mainnet/staging profile. Friendbot is testnet-only and hidden outside testnet.
+Settlement asset policy, precision, minimum amount, and trustline notes are in
+[`docs/SETTLEMENT_ASSET_POLICY.md`](docs/SETTLEMENT_ASSET_POLICY.md).
+
+## Marketplace Integration Positioning
+
+This repo deliberately keeps the Stellar settlement rail isolated from The
+Signal's production marketplace database. That is a product and safety choice:
+the live marketplace remains responsible for discovery, KYB, matching, client
+qualification, and commercial workflow, while this repo proves the reusable
+escrow rail.
+
+For final-tranche validation, the intended path is a marketplace-compatible
+binding layer rather than direct writes into production marketplace
+collections. A marketplace can map its own external deal IDs, milestone IDs,
+provider wallets, connector wallets, and client wallets to Soroban `deal_id`
+values through an adapter/API model. The Signal is the reference marketplace,
+but the rail is designed to be reusable by other service marketplaces.
+
+NEAR Intents is now treated as a required final-tranche integration workstream,
+not something to bypass. The current repo includes a feature-flagged adapter
+around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
+quote/status/deposit/reconcile APIs, binding metadata persistence, and a
+Liquidity-tab panel for readiness, dry quotes, deposit instructions, and
+provider status refresh. Soroban `funded` events remain the source of truth for
+escrow funding, even when NEAR Intents reports that a cross-chain payment is
+moving. Live NEAR execution still needs credentials, approved asset ids, refund
+semantics, and tiny-amount no-testnet evidence. See
+[`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
+
 ## Key Features
 
 - **Milestone-Based Escrow** — Deals split into milestones (e.g., 30/50/20). Each funded independently, released only on client approval.
@@ -57,6 +95,7 @@ visibility.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
 - **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
+- **NEAR Intents Funding Panel** — Check SDK-backed readiness, request dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -146,7 +185,7 @@ npm install
 cp .env.example .env
 # Edit .env: set VITE_PRIVY_APP_ID, VITE_DEAL_ESCROW_CONTRACT,
 # VITE_USDC_TOKEN_ADDRESS, VITE_SOROSWAP_ROUTER_ADDRESS,
-# and VITE_SOROSWAP_POOL_ADDRESS
+# VITE_SOROSWAP_POOL_ADDRESS, and any VITE_STELLAR_* network overrides
 
 npm run dev
 ```
@@ -156,11 +195,13 @@ npm run dev
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
-4. Use the **Fund** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
-5. Create a deal using a Quick Start scenario
-6. Fund milestones, release them, and watch the 3-way split visualization
-7. Check synced events in `/market_dashboard`
-8. Check the provider's on-chain reputation in the Oracle tab
+4. Use the **Liquidity** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
+5. Optional: inspect the NEAR Intents panel for readiness/dry quote/status behavior on the shadow marketplace binding
+6. Create a deal using a Quick Start scenario
+7. Fund milestones, release them, and watch the 3-way split visualization
+8. Check synced events in `/market_dashboard`
+9. For final-tranche marketplace proof, run `npm run seed:marketplace-bindings` from `indexer/` to create shadow Signal-style bindings, then reconcile through the protected binding API
+10. Check the provider's on-chain reputation in the Oracle tab
 
 ## Project Structure
 
@@ -183,6 +224,7 @@ escrow-stellar/
 │       ├── lib/
 │       │   ├── stellar.ts          # Stellar SDK config + helpers
 │       │   ├── stellarBroker.ts    # Deliverable 6 broker-facing adapter
+│       │   ├── nearIntents.ts      # Browser client for local NEAR adapter APIs
 │       │   ├── soroswapOnchain.ts  # Testnet route adapter via seeded Soroswap pool
 │       │   └── dealMetadata.ts     # Local milestone naming + event log
 │       └── components/
@@ -192,7 +234,8 @@ escrow-stellar/
 │           ├── ConnectWallet.tsx   # Multi-wallet connect UI
 │           ├── CreateDeal.tsx      # Deal creation with review + success screens
 │           ├── DealDashboard.tsx   # Full deal lifecycle (split-panel, search, filters)
-│           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker testnet funding
+│           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker + NEAR panel shell
+│           ├── NearIntentsPanel.tsx # NEAR readiness, dry quote, deposit/status UI
 │           └── ReputationBadge.tsx # On-chain reputation with radar animation
 └── docs/
     ├── ARCHITECTURE.md             # System design + integration patterns
@@ -303,6 +346,13 @@ liquidity is empty.
 - [Smart Contract Reference](docs/SMART_CONTRACT.md) — Complete API with types and events
 - [Frontend Architecture](docs/FRONTEND.md) — Component structure, hooks, design system
 - [Demo Guide](docs/DEMO_GUIDE.md) — Step-by-step walkthrough test
+- [Near Intents Integration Plan](docs/NEAR_INTENTS_BOUNDARY.md) — Required cross-chain payment adapter plan and source-of-truth rules
+- [Settlement Asset Policy](docs/SETTLEMENT_ASSET_POLICY.md) — Demo/mainnet asset policy, precision, minimums, and trustline notes
+- [Operations and Security](docs/OPERATIONS_SECURITY.md) — Admin authority, dispute operations, secrets, monitoring, and production hardening gaps
+- [UI Unhappy-Path QA](docs/scf/unhappy-path-qa-2026-07-01.md) — Dispute, role, wallet failure, and operator-resolution evidence plan
+- [Submission Readiness](docs/scf/submission-readiness-2026-07-02.md) — Upload order, safe claims, final smoke checks, and remaining evidence gate
+- [Final Tranche Evidence](docs/scf/final-tranche-evidence-2026-07-01.md) — Current test/build results, reviewer links, boundaries, and remaining capture tasks
+- [Final Tranche Work Plan](docs/scf/final-tranche-workplan-2026-07-01.md) — Gap-by-gap execution plan for marketplace adapter, production readiness, unhappy-path QA, and evidence packaging
 
 ## License
 
