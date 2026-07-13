@@ -38,6 +38,7 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
 | 2026-07-01 10:45 HKT | Gap 5 NEAR Intents SDK path | Updated the required Near Intents plan to use the official 1Click TypeScript SDK behind a local adapter. | `npm view @defuse-protocol/one-click-sdk-typescript` returned latest `0.1.25`; docs-only update. |
 | 2026-07-01 12:14 HKT | Gap 5 NEAR Intents server spine | Added the SDK-backed provider wrapper, protected token/quote/status/deposit-tx/reconcile endpoints, `nearIntent` binding metadata, and env gates. | `npm run build` passed in `indexer/`. Live quote evidence still requires JWT and approved asset envs. |
 | 2026-07-01 13:39 HKT | Gap 5 NEAR Intents frontend panel | Added Liquidity-tab UI for readiness, dry quote request, deposit instructions, status refresh, and explicit Soroban-funded source-of-truth messaging. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live tiny-amount QA still pending. |
+| 2026-07-11 23:07 HKT | Payment rail boundary and next build | Clarified that Stripe Connect remains The Signal production marketplace rail and should not be implemented in this repo; next clean build is NEAR readiness/dry-quote evidence plus final QC capture. | Static review against README, architecture, workplan, submission readiness, and NEAR docs. Runtime validation pending redeploy and NEAR envs. |
 
 ## What Is Shipped
 
@@ -74,8 +75,15 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
 
 ### P0 - Final Tranche Blockers
 
-1. Pluggable marketplace binding is not yet implemented.
-   This should not be solved by writing directly into the current production marketplace database. The safer and more valuable direction is a marketplace-agnostic binding layer that maps external marketplace records to Soroban escrow IDs. The indexer can keep production untouched while proving the integration contract through sanitized Signal-style fixtures or a shadow collection with fields such as `externalMarketplaceId`, `externalDealId`, `sorobanDealId`, `milestoneMap`, `clientWallet`, `providerWallet`, `connectorWallet`, `rail`, and `bindingMode = "shadow"`.
+1. Pluggable marketplace binding is implemented as a shadow adapter, but not as
+   direct production marketplace writes.
+   This was intentionally solved without writing into the current production
+   marketplace database. The safer and more valuable direction is the
+   marketplace-agnostic binding layer now present in the indexer/server: it maps
+   external marketplace records to Soroban escrow IDs, supports sanitized
+   Signal-style fixtures, reconciles DealEscrow events into binding events, and
+   exposes read-only dashboard evidence. Remaining work is browser screenshot
+   evidence and a stable external API contract if another marketplace plugs in.
 
 2. Mainnet/payment asset readiness is incomplete.
    `frontend/src/lib/stellar.ts` now supports env-driven network RPC, Horizon, explorer, and Friendbot configuration with testnet defaults. The remaining gap is production asset policy: the settlement token defaults to demo `tUSDC`, and docs correctly warn it is not Circle-issued USDC. Final tranche still needs production USDC/asset configuration, allowlists, and trustline/dust policy.
@@ -86,10 +94,18 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
 4. Near Intents is now a required integration gap, not an acceptable bypass.
    The attached brief includes Near Intents for cross-chain payment initiation. This repo now includes the 1Click SDK dependency, a feature-flagged provider wrapper, protected quote/status/deposit-tx/reconcile APIs, persisted `nearIntent` metadata on marketplace bindings, and a Liquidity-tab readiness/dry-quote/status panel. Remaining gaps are JWT provisioning, live Stellar asset validation, source-chain wallet execution, no-testnet tiny-amount QA evidence, webhook support if needed, and refund/support execution.
 
-5. Production authorization and admin governance need hardening.
+5. Stripe/payment rail boundary must remain explicit.
+   Stripe Connect is not integrated in this repository and should not be added
+   for the final-tranche build. It remains The Signal production marketplace's
+   fiat rail. This repo owns the Stellar/Soroban escrow rail, shadow binding
+   adapter, and staged NEAR Intents payment-initiation metadata. The reviewer
+   package must not claim Stripe payment support, Stripe refunds, or automatic
+   Stripe-to-Soroban deposits. See `docs/PAYMENT_RAIL_BOUNDARY.md`.
+
+6. Production authorization and admin governance need hardening.
    The contract has a single stored admin address and no admin rotation, pause, or role separation. `docs/OPERATIONS_SECURITY.md` now documents the current single-admin model, dispute operator flow, emergency refund criteria, secrets handling, monitoring, and production hardening backlog. Mainnet use still needs multisig/governance admin and likely contract-level rotation/pause/versioning controls.
 
-6. API readiness contract is missing.
+7. API readiness contract is missing.
    There is no stable API spec for external marketplaces to create escrow intents, map their own deal IDs to Soroban deal IDs, ingest event updates, reconcile payment state, or expose provider/connector payout status.
 
 ### Product Direction - Marketplace-Agnostic Escrow Rail
@@ -199,6 +215,12 @@ Still incomplete / should be clarified for final tranche:
 8. Produce QA and security evidence.
    Add final tranche QA checklist, screenshots/video script, contract test results, frontend build/lint evidence, indexer smoke evidence, and security review notes.
 
+9. Preserve the Stripe boundary.
+   Do not add Stripe Connect to this repo for grant submission. If Stripe-backed
+   marketplace payments need to trigger Stellar escrow in a later product, build
+   that as an external marketplace adapter with explicit idempotency,
+   reconciliation, and ownership boundaries.
+
 ## Recommended Validation Matrix
 
 | Area | Minimum Final Tranche Evidence |
@@ -214,8 +236,15 @@ Still incomplete / should be clarified for final tranche:
 
 ## Immediate Next Steps
 
-1. Capture browser screenshots/video for the unhappy-path QA matrix.
-2. Capture an operator/admin `resolve_dispute` transaction and indexed `resolved` event.
-3. Capture `/market_dashboard` after shadow binding seed/reconcile.
-4. Run final deployment smoke on Coolify: `/health`, `/market_dashboard`, and protected indexer tick.
-5. Rotate any live secrets that were pasted into chat or screenshots before treating the deployment as production-grade.
+1. Redeploy the latest server build and confirm `/api/near-intents/readiness`
+   returns JSON, not the frontend fallback HTML.
+2. Configure server-only NEAR envs, run token discovery, and capture a dry quote
+   against `mb_sig-demo-001` with persisted binding metadata.
+3. Capture browser screenshots/video for the unhappy-path QA matrix.
+4. Capture an operator/admin `resolve_dispute` transaction and indexed
+   `resolved` event.
+5. Capture `/market_dashboard` after shadow binding seed/reconcile.
+6. Run final deployment smoke on Coolify: `/health`, `/market_dashboard`,
+   `/api/near-intents/readiness`, and protected indexer tick.
+7. Rotate any live secrets that were pasted into chat or screenshots before
+   treating the deployment as production-grade.

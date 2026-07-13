@@ -28,6 +28,8 @@ Scope: turn the current Tranche 2 Stellar escrow demo into a final-tranche, revi
 | 2026-07-01 10:45 HKT | Gap 5 NEAR Intents SDK path | Updated Gap 5 to use the official `@defuse-protocol/one-click-sdk-typescript` package behind a local adapter instead of hand-rolled HTTP calls. | `npm view @defuse-protocol/one-click-sdk-typescript` returned latest `0.1.25`; docs-only update. |
 | 2026-07-01 12:14 HKT | Gap 5 NEAR Intents server spine | Added SDK dependency, feature-flagged provider wrapper, protected token/quote/status/deposit-tx/reconcile endpoints, envs, and binding metadata persistence. | `npm run build` passed in `indexer/`. Live quote/status evidence still requires JWT and approved asset envs. |
 | 2026-07-01 13:39 HKT | Gap 5 NEAR Intents frontend panel | Added Liquidity-tab readiness, dry quote, deposit instruction, and provider status UI using existing Card/Button/Tag primitives. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live source-chain execution evidence still pending. |
+| 2026-07-11 23:07 HKT | Next clean build scope | Added payment rail boundary decision and narrowed the next build to NEAR readiness/dry-quote evidence plus final QC capture, not Stripe implementation in this repo. | Static review against README, architecture, submission readiness, audit, and NEAR docs. Runtime validation still required after redeploy. |
+| 2026-07-13 14:54 HKT | Next clean build execution | Ran public live smoke and local validation. The NEAR readiness route now returns JSON; dry quote/token discovery remains blocked by missing NEAR server-only envs and absent live shadow bindings. | `cargo test`, frontend build, and indexer build passed. `/health`, `/market_dashboard`, `/api/near-intents/readiness`, and `/api/market-dashboard/summary` public smoke passed. |
 
 ## Product Direction
 
@@ -51,6 +53,7 @@ The final tranche should position this repository as a reusable Stellar escrow r
 | 6 | UI unhappy-path QA | Done for matrix; evidence pending | Produce evidence plan for dispute, role mismatch, insufficient balance, cancellation, admin resolution. | `docs/scf/unhappy-path-qa-2026-07-01.md`, demo guide corrections |
 | 7 | Admin/security operations | Done for runbook; code hardening pending | Define admin key, dispute resolver, pause/upgrade posture, incident runbook. | `docs/OPERATIONS_SECURITY.md` |
 | 8 | Final evidence package | Done for command evidence; screenshots pending | Compile reviewer proof: tests, build, smoke, screenshots, explorer links. | `docs/scf/final-tranche-evidence-2026-07-01.md` |
+| 9 | Payment rail boundary | Done for docs | Keep Stripe in The Signal production marketplace and keep this repo focused on the Stellar escrow rail plus NEAR staged adapter. | `docs/PAYMENT_RAIL_BOUNDARY.md`, README, architecture docs |
 
 ## Gap 1 - Marketplace Adapter / Shadow Binding
 
@@ -302,6 +305,69 @@ Validation:
   asset id, no-testnet QA approach, and refund semantics remain required before
   enabling live execution with `NEAR_INTENTS_ALLOW_LIVE=true`.
 
+## Gap 5A - Next NEAR Evidence Build
+
+Goal: make the existing NEAR staged adapter reviewable on the live demo without
+claiming production payment support.
+
+Steps:
+
+1. Redeploy the latest server build so `/api/near-intents/readiness` returns
+   JSON instead of the frontend fallback. Status: done on 2026-07-13; public
+   readiness returns JSON.
+2. Configure server-only NEAR envs in the demo/staging deployment:
+   `NEAR_INTENTS_ENABLED=true`, `NEAR_INTENTS_JWT`,
+   `NEAR_INTENTS_STELLAR_DESTINATION_ASSET`, and
+   `NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT`. Keep
+   `NEAR_INTENTS_ALLOW_LIVE=false` unless a tiny live QA window is approved.
+   Status: pending credentials and asset id; live readiness currently reports
+   all three required fields missing.
+3. Run protected `/api/near-intents/tokens` and record the validated Stellar
+   destination asset id. Status: blocked until NEAR envs and admin session are
+   ready.
+4. Run a dry quote for `mb_sig-demo-001` and capture quote metadata on the
+   marketplace binding. Status: blocked until NEAR envs and live shadow binding
+   seed/reconcile are ready; public summary currently returns
+   `marketplaceBindings:[]`.
+5. Capture Liquidity-tab readiness, dry-quote result, disabled/live gating,
+   status refresh behavior, and the warning that Soroban `funded` remains the
+   escrow source of truth. Status: readiness disabled-state is capturable now;
+   dry quote capture remains blocked.
+6. If live execution is approved, run a tiny no-testnet source-chain deposit,
+   submit deposit tx if applicable, poll provider status, then verify that
+   marketplace state still waits for the Stellar `funded` event. Status: future
+   live QA only.
+
+Acceptance criteria: the reviewer can see an SDK-backed NEAR readiness and dry
+quote path with persisted metadata, clear failure/refund states, and no
+overclaim that NEAR status alone funds escrow.
+
+## Gap 5B - Payment Rail Boundary / Stripe
+
+Goal: avoid polluting the Stellar grant repo with production fiat payments
+while still explaining the gap clearly.
+
+Decision: Stripe Connect is not a missing implementation inside
+`escrow-stellar`. It remains The Signal production marketplace's fiat payment
+rail. This repo owns the Stellar/Soroban escrow rail and the marketplace binding
+contract.
+
+Steps:
+
+1. Add a reviewer-facing payment rail boundary doc. Status: done in
+   `docs/PAYMENT_RAIL_BOUNDARY.md`.
+2. Link the boundary from README and architecture docs. Status: done.
+3. Do not add Stripe secrets, webhooks, Connect account flows, or refund logic
+   to this repository. Status: standing constraint.
+4. If a future product requires Stripe-to-Stellar coordination, build it as a
+   separate marketplace adapter/API contract outside the escrow rail, with
+   explicit idempotency and reconciliation semantics. Status: future product
+   work.
+
+Acceptance criteria: final submission is honest that Stripe is not integrated
+here, while proving the reusable Stellar escrow rail that a Stripe-backed
+marketplace can plug into.
+
 ## Gap 6 - UI Unhappy-Path QA
 
 Goal: make the dispute and failure behavior reviewable without overstating what
@@ -321,7 +387,7 @@ Steps:
 Acceptance criteria: reviewers can see which unhappy paths are implemented in
 the UI, which are contract/operator-only, and what evidence remains to capture.
 
-## Gap 6 - UI Unhappy-Path QA
+### Gap 6 Evidence Checklist
 
 Goal: prove the UI handles non-happy paths reviewers will naturally test.
 

@@ -88,6 +88,12 @@ moving. Live NEAR execution still needs credentials, approved asset ids, refund
 semantics, and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
+Stripe Connect remains The Signal production marketplace's fiat payment rail
+and is not implemented inside this repository. This repo owns the Stellar
+escrow rail and marketplace-compatible binding model; adding Stripe here would
+mix production marketplace payments with the grant demo service. See
+[`docs/PAYMENT_RAIL_BOUNDARY.md`](docs/PAYMENT_RAIL_BOUNDARY.md).
+
 ## Key Features
 
 - **Milestone-Based Escrow** — Deals split into milestones (e.g., 30/50/20). Each funded independently, released only on client approval.
@@ -347,6 +353,7 @@ liquidity is empty.
 - [Frontend Architecture](docs/FRONTEND.md) — Component structure, hooks, design system
 - [Demo Guide](docs/DEMO_GUIDE.md) — Step-by-step walkthrough test
 - [Near Intents Integration Plan](docs/NEAR_INTENTS_BOUNDARY.md) — Required cross-chain payment adapter plan and source-of-truth rules
+- [Payment Rail Boundary](docs/PAYMENT_RAIL_BOUNDARY.md) — Stripe, Stellar escrow, NEAR Intents, and marketplace ownership boundaries
 - [Settlement Asset Policy](docs/SETTLEMENT_ASSET_POLICY.md) — Demo/mainnet asset policy, precision, minimums, and trustline notes
 - [Operations and Security](docs/OPERATIONS_SECURITY.md) — Admin authority, dispute operations, secrets, monitoring, and production hardening gaps
 - [UI Unhappy-Path QA](docs/scf/unhappy-path-qa-2026-07-01.md) — Dispute, role, wallet failure, and operator-resolution evidence plan

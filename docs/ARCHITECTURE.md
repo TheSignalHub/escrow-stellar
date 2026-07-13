@@ -4,6 +4,13 @@
 
 The Signal's Stellar integration follows a dual-rail architecture: the production marketplace runs on traditional payment rails (Stripe Connect), while this Soroban implementation provides a trustless, on-chain alternative for the same escrow flow. Both systems implement identical business logic — the same 3-party split math, the same milestone lifecycle, and the same reputation tracking.
 
+Stripe Connect is a production marketplace rail, not a dependency of this
+repository. The final-tranche submission keeps Stripe out of `escrow-stellar`
+and proves the on-chain rail through shadow marketplace bindings, Soroban
+events, and the NEAR Intents staged adapter. See
+[`PAYMENT_RAIL_BOUNDARY.md`](PAYMENT_RAIL_BOUNDARY.md) for the reviewer-facing
+ownership split.
+
 ## Design Principles
 
 1. **Production Parity** — The contract replicates exact split calculations from production code. A deal created through either system produces identical financial outcomes.
@@ -216,6 +223,12 @@ Deal Agreement → Soroban deposit() → Milestone Tracking → Soroban release_
 ```
 
 The smart contract replaces the payment processor while the marketplace handles everything else (user profiles, deal discovery, communication, content).
+
+For grant review, this repository does not write to Stripe, Stripe webhooks, or
+The Signal production marketplace payment records. External marketplaces map
+their deal and milestone IDs into the isolated shadow binding layer, then
+reconcile status from Soroban events. This preserves production marketplace
+safety while proving a reusable escrow adapter contract.
 
 ### BD Connector Tier System
 
