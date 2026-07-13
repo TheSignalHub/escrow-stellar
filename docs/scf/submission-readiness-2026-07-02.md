@@ -11,6 +11,7 @@ without overstating demo, testnet, marketplace, or NEAR Intents readiness.
 | 2026-07-02 04:25 HKT | Live deploy smoke | Recorded current deployed endpoint smoke results and marked NEAR readiness as pending redeploy because the live domain still serves the previous frontend fallback for `/api/near-intents/readiness`. | `/health` passed; `/market_dashboard` returned 200; `/api/near-intents/readiness` returned frontend HTML and must be rechecked after Coolify redeploy. |
 | 2026-07-11 23:07 HKT | Payment boundary and next QC flow | Added Stripe/payment-rail boundary to the submission package and defined the next clean QC build as NEAR readiness/dry-quote evidence plus final unhappy-path and dashboard capture. | Static documentation update. Runtime validation still required after redeploy, NEAR env configuration, and secret rotation. |
 | 2026-07-13 14:54 HKT | Live QC execution | Re-ran local validation and public deployment smoke for the next clean QC flow. Confirmed the NEAR readiness route now returns JSON, but NEAR is disabled and missing JWT, Stellar destination asset, and refund envs, so dry quote/token discovery remains blocked until server-only envs are configured. | `cargo test` passed; `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`; `/health` returned ok; `/api/near-intents/readiness` returned JSON with `enabled:false`; `/market_dashboard` returned HTTP 200; `/api/market-dashboard/summary` showed indexer enabled, last tick ok, 16 total events, and no live marketplace bindings. |
+| 2026-07-13 15:04 HKT | Backend readiness smoke script | Added `indexer` smoke command for health, NEAR readiness, dashboard/indexer summary, dispute evidence, shadow bindings, optional protected token discovery, optional dry quote, and optional protected indexer tick before starting frontend QA. | `npm run build` passed in `indexer/`; `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed in non-strict mode and reported health/indexer/dispute evidence passing, with NEAR envs and shadow bindings blocked. |
 
 ## Submit Status
 
@@ -150,6 +151,15 @@ curl -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
 
 Run this as the next reviewer-focused build, before adding any new product
 surface:
+
+0. Run the backend readiness smoke from `indexer/`:
+
+   ```bash
+   BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend
+   ```
+
+   Use `--strict`, `--tokens`, `--quote`, and `--run-indexer` only when admin
+   credentials and NEAR server-only envs are configured.
 
 1. Redeploy the latest server image from the current main branch. Status:
    complete as of 2026-07-13; the NEAR readiness route is live.

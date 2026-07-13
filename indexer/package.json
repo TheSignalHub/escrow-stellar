@@ -8,6 +8,7 @@
     "indexer:once": "tsx src/run-once.ts",
     "reconcile:marketplace-bindings": "tsx src/reconcile-marketplace-bindings.ts",
     "seed:marketplace-bindings": "tsx src/seed-marketplace-bindings.ts",
+    "smoke:backend": "tsx src/backend-readiness-smoke.ts",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js"
   },

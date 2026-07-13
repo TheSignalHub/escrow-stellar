@@ -36,6 +36,16 @@ server secrets in Coolify or a secrets manager, not in git.
 and manual indexer controls are protected by `ADMIN_USERNAME` /
 `ADMIN_PASSWORD`.
 
+Backend readiness can be checked before frontend QA from `indexer/`:
+
+```bash
+BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend
+```
+
+The smoke command checks health, NEAR readiness, indexer/dashboard state,
+dispute-event evidence, shadow bindings, and optional protected NEAR dry-quote
+or indexer actions when admin credentials are supplied.
+
 Current testnet funding configuration:
 
 ```text

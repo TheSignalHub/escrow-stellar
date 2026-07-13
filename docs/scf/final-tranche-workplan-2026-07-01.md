@@ -30,6 +30,7 @@ Scope: turn the current Tranche 2 Stellar escrow demo into a final-tranche, revi
 | 2026-07-01 13:39 HKT | Gap 5 NEAR Intents frontend panel | Added Liquidity-tab readiness, dry quote, deposit instruction, and provider status UI using existing Card/Button/Tag primitives. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live source-chain execution evidence still pending. |
 | 2026-07-11 23:07 HKT | Next clean build scope | Added payment rail boundary decision and narrowed the next build to NEAR readiness/dry-quote evidence plus final QC capture, not Stripe implementation in this repo. | Static review against README, architecture, submission readiness, audit, and NEAR docs. Runtime validation still required after redeploy. |
 | 2026-07-13 14:54 HKT | Next clean build execution | Ran public live smoke and local validation. The NEAR readiness route now returns JSON; dry quote/token discovery remains blocked by missing NEAR server-only envs and absent live shadow bindings. | `cargo test`, frontend build, and indexer build passed. `/health`, `/market_dashboard`, `/api/near-intents/readiness`, and `/api/market-dashboard/summary` public smoke passed. |
+| 2026-07-13 15:04 HKT | Backend readiness gate | Added `indexer` smoke script so backend readiness can be checked before frontend QA. | `npm run build` passed in `indexer/`; live `npm run smoke:backend` passed in non-strict mode and reported NEAR env/shadow binding blockers. |
 
 ## Product Direction
 
@@ -333,7 +334,10 @@ Steps:
    status refresh behavior, and the warning that Soroban `funded` remains the
    escrow source of truth. Status: readiness disabled-state is capturable now;
    dry quote capture remains blocked.
-6. If live execution is approved, run a tiny no-testnet source-chain deposit,
+6. Run `npm run smoke:backend` from `indexer/` before frontend QA. Status: done
+   for live public checks in non-strict mode; use `--strict --tokens --quote`
+   after admin credentials, NEAR envs, and shadow bindings are ready.
+7. If live execution is approved, run a tiny no-testnet source-chain deposit,
    submit deposit tx if applicable, poll provider status, then verify that
    marketplace state still waits for the Stellar `funded` event. Status: future
    live QA only.

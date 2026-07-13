@@ -136,6 +136,66 @@ Run it again to verify dedupe:
 }
 ```
 
+## Backend Readiness Smoke
+
+Use this before moving to frontend QA or submission screenshots:
+
+```bash
+npm run smoke:backend
+```
+
+Defaults:
+
+- `BACKEND_BASE_URL=http://localhost:3000`
+- `BACKEND_SMOKE_BINDING_ID=mb_sig-demo-001`
+- public checks only unless admin credentials are present
+
+Example against the live review deployment:
+
+```bash
+BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend
+```
+
+What it checks:
+
+- `/health`
+- `/api/near-intents/readiness`
+- `/api/market-dashboard/summary`
+- indexed event count
+- indexed `dispute` evidence
+- shadow marketplace binding presence
+- protected binding lookup when `ADMIN_USERNAME` / `ADMIN_PASSWORD` are set
+- optional protected indexer tick with `--run-indexer`
+- optional NEAR token discovery with `--tokens`
+- optional NEAR dry quote with `--quote`
+
+Use strict mode for a grant/submission gate:
+
+```bash
+BACKEND_BASE_URL=https://stellar.thesignal.directory \
+ADMIN_USERNAME=<admin> \
+ADMIN_PASSWORD=<password> \
+npm run smoke:backend -- --strict --tokens --run-indexer
+```
+
+For dry quote smoke, keep live execution disabled and provide quote inputs:
+
+```bash
+BACKEND_BASE_URL=https://stellar.thesignal.directory \
+ADMIN_USERNAME=<admin> \
+ADMIN_PASSWORD=<password> \
+NEAR_SMOKE_ORIGIN_ASSET=<near-intents-origin-asset-id> \
+NEAR_SMOKE_AMOUNT=<base-units-amount> \
+npm run smoke:backend -- --quote
+```
+
+The dry quote path calls
+`POST /api/marketplace-bindings/:bindingId/near-intents/quote` with
+`dry: true`. It still requires server-side `NEAR_INTENTS_ENABLED=true`,
+`NEAR_INTENTS_JWT`, `NEAR_INTENTS_STELLAR_DESTINATION_ASSET`, and refund
+configuration. It does not mark escrow funded; the Soroban `funded` event
+remains the source of truth.
+
 ## Shadow Marketplace Binding Seed
 
 For final-tranche review, seed sanitized Signal-style marketplace bindings into the
