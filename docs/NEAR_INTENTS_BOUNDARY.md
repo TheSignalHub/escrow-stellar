@@ -1,6 +1,6 @@
 # Near Intents Integration Plan
 
-Last updated: 2026-07-01 16:00 HKT
+Last updated: 2026-07-14 11:11 HKT
 
 Scope: final-tranche integration plan for NEAR Intents as a required
 cross-chain payment initiation path for the reusable Stellar escrow rail.
@@ -22,6 +22,7 @@ funds are actually locked in DealEscrow.
 | 2026-07-01 12:14 HKT | NEAR Intents server spine | Added the official SDK dependency, feature-flagged `nearIntentsProvider`, protected token/quote/status/deposit-tx/reconcile endpoints, and binding persistence for quote/deposit/status metadata. | `npm run build` passed in `indexer/`. Live execution remains disabled unless `NEAR_INTENTS_ENABLED=true`, `NEAR_INTENTS_ALLOW_LIVE=true`, JWT, and Stellar asset envs are configured. |
 | 2026-07-01 13:39 HKT | NEAR Intents frontend panel | Added a Liquidity-tab funding panel with public readiness check, protected dry/live quote request, deposit address/memo display, provider status refresh, admin-auth recovery, and Soroban-funded source-of-truth warning. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live quote/status evidence still requires JWT, approved Stellar asset id, and no-testnet tiny-amount QA. |
 | 2026-07-01 16:00 HKT | NEAR Intents integration research refresh | Rechecked official NEAR/1Click docs and tightened the required build path: token discovery, quote, origin-chain deposit, optional deposit tx submission, status polling, signed-intent future path, JWT/fee handling, and no-testnet live QA. | Static documentation update using official NEAR and NEAR Intents docs. No runtime behavior changed. |
+| 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Reworked the adapter around the official 1Click shape: request-selected `originAsset` and `destinationAsset`, server-side destination allowlist/default, explicit refund target, quote signature verification via `verifyQuoteSignature`, frontend destination asset selection, and smoke/docs updates. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, approved asset IDs from token discovery, admin auth, and tiny-amount no-testnet QA before enabling live execution. |
 
 ## Researched Protocol Notes
 
@@ -114,7 +115,7 @@ const quote = await OneClickService.getQuote({
   slippageTolerance: 100,
   originAsset: 'nep141:wrap.near',
   depositType: QuoteRequest.depositType.ORIGIN_CHAIN,
-  destinationAsset: process.env.NEAR_INTENTS_STELLAR_DESTINATION_ASSET!,
+  destinationAsset: input.destinationAsset,
   amount: '1000000',
   refundTo: 'alice.near',
   refundType: QuoteRequest.refundType.ORIGIN_CHAIN,
@@ -136,7 +137,9 @@ Important constraints from the current docs:
 - `getQuote`, `submitDepositTx`, and `getExecutionStatus` use the configured
   SDK token / bearer token when authenticated.
 - Use `OneClickService.getTokens()` to confirm live `assetId` values before
-  setting the Stellar destination asset.
+  setting the Stellar destination asset allowlist/default.
+- Verify quote signatures with `verifyQuoteSignature()` before consuming fields
+  such as deposit address, memo, destination amount, or deadline.
 - For `dry: true`, the quote validates and prices the route but does not return
   executable deposit instructions.
 - Status polling uses the quote `depositAddress`; terminal statuses include
@@ -176,9 +179,11 @@ The adapter should be small and SDK-backed:
 - Use `@defuse-protocol/one-click-sdk-typescript` for token lookup, quote
   creation, deposit transaction submission, and status polling.
 - Keep JWT/API credentials only in the indexer/server process.
-- Create a quote for source asset, destination Stellar asset id, amount,
-  recipient, refund target, slippage tolerance, deadline, and marketplace
-  correlation id.
+- Create a quote for source asset, request-selected destination Stellar asset
+  id, amount, recipient, refund target, slippage tolerance, deadline, and
+  marketplace correlation id.
+- Validate the destination asset against a server-side allowlist derived from
+  1Click token discovery before requesting a quote.
 - Persist the quote id / intent id on `MarketplaceBinding.externalPaymentIntent`.
 - Persist `depositAddress` and `depositMemo` when the quote returns them; these
   are required for deposit instructions and status polling.
@@ -190,8 +195,8 @@ The adapter should be small and SDK-backed:
   asset is available for the client/escrow funding route.
 - Preserve idempotency so repeated status updates do not double-deposit or
   double-reconcile.
-- Verify quote/status signatures before trusting provider payloads in a
-  production path.
+- Verify quote signatures before trusting provider payloads in a production
+  path; status signature support should be added if the provider SDK exposes it.
 - Record enough redacted raw provider metadata for support to diagnose
   `FAILED`, `REFUNDED`, and `INCOMPLETE_DEPOSIT` cases without logging JWTs.
 

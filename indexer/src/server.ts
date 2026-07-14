@@ -79,8 +79,18 @@ app.get('/api/near-intents/readiness', (_req, res) => {
     apiBaseUrl: config.nearIntents.apiBaseUrl,
     configured: {
       jwt: Boolean(config.nearIntents.jwt),
-      stellarDestinationAsset: Boolean(config.nearIntents.stellarDestinationAsset),
+      stellarDestinationAsset: Boolean(
+        config.nearIntents.defaultStellarDestinationAsset ||
+          config.nearIntents.stellarDestinationAssetAllowlist.length > 0
+      ),
+      defaultStellarDestinationAsset: Boolean(config.nearIntents.defaultStellarDestinationAsset),
+      stellarDestinationAssetAllowlist:
+        config.nearIntents.stellarDestinationAssetAllowlist.length > 0,
       defaultRefundAccount: Boolean(config.nearIntents.defaultRefundAccount),
+    },
+    destinationAssets: {
+      default: config.nearIntents.defaultStellarDestinationAsset,
+      allowlist: config.nearIntents.stellarDestinationAssetAllowlist,
     },
     quoteTtlSeconds: config.nearIntents.quoteTtlSeconds,
     pollIntervalSeconds: config.nearIntents.pollIntervalSeconds,

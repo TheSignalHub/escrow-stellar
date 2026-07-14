@@ -12,6 +12,7 @@ without overstating demo, testnet, marketplace, or NEAR Intents readiness.
 | 2026-07-11 23:07 HKT | Payment boundary and next QC flow | Added Stripe/payment-rail boundary to the submission package and defined the next clean QC build as NEAR readiness/dry-quote evidence plus final unhappy-path and dashboard capture. | Static documentation update. Runtime validation still required after redeploy, NEAR env configuration, and secret rotation. |
 | 2026-07-13 14:54 HKT | Live QC execution | Re-ran local validation and public deployment smoke for the next clean QC flow. Confirmed the NEAR readiness route now returns JSON, but NEAR is disabled and missing JWT, Stellar destination asset, and refund envs, so dry quote/token discovery remains blocked until server-only envs are configured. | `cargo test` passed; `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`; `/health` returned ok; `/api/near-intents/readiness` returned JSON with `enabled:false`; `/market_dashboard` returned HTTP 200; `/api/market-dashboard/summary` showed indexer enabled, last tick ok, 16 total events, and no live marketplace bindings. |
 | 2026-07-13 15:04 HKT | Backend readiness smoke script | Added `indexer` smoke command for health, NEAR readiness, dashboard/indexer summary, dispute evidence, shadow bindings, optional protected token discovery, optional dry quote, and optional protected indexer tick before starting frontend QA. | `npm run build` passed in `indexer/`; `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed in non-strict mode and reported health/indexer/dispute evidence passing, with NEAR envs and shadow bindings blocked. |
+| 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Updated the staged NEAR adapter and UI for request-selected origin/destination assets, server-side destination allowlist/default, explicit refund target, and 1Click quote signature verification. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, token-discovered asset IDs, admin auth, and no-testnet tiny-amount QA. |
 
 ## Submit Status
 
@@ -28,7 +29,8 @@ This repo can be submitted as a reusable Stellar escrow rail with:
 - shadow marketplace binding layer that does not mutate The Signal production
   marketplace database
 - SDK-backed NEAR Intents server adapter and Liquidity-tab readiness/dry
-  quote/status UI
+  quote/status UI with approved destination asset selection and verified quote
+  signatures
 - explicit payment rail boundary documenting that Stripe remains The Signal's
   production marketplace fiat rail and is not implemented in this repo
 - operations, deployment, settlement asset, unhappy-path, and evidence docs
@@ -60,7 +62,8 @@ Use this NEAR wording:
 ```text
 NEAR Intents is implemented as a required staged adapter. The code includes the
 official 1Click SDK, server-side token/quote/status/deposit/reconcile endpoints,
-binding metadata persistence, and a frontend panel. Live NEAR execution remains
+binding metadata persistence, approved destination asset selection, server-side
+quote signature verification, and a frontend panel. Live NEAR execution remains
 disabled until JWT provisioning, exact Stellar assetId validation, refund path,
 and tiny live-amount no-testnet evidence are complete. Escrow funding is still
 recognized only after the Stellar DealEscrow `funded` event.
@@ -137,7 +140,7 @@ Current live smoke on 2026-07-13 14:54 HKT:
 |---|---|---|
 | `/health` | Passed with `ok: true`, `network: testnet`, and the expected contract id. | Live backend is reachable. |
 | `/market_dashboard` | HTTP 200. | Reviewer dashboard is reachable. |
-| `/api/near-intents/readiness` | Returned JSON: `enabled:false`, `liveExecutionEnabled:false`, JWT false, Stellar destination asset false, default refund account false. | NEAR route is deployed, but NEAR dry quote/token discovery evidence is blocked until server-only envs are configured. |
+| `/api/near-intents/readiness` | Returned JSON: `enabled:false`, `liveExecutionEnabled:false`, JWT false, Stellar destination asset false, default refund account false. New builds also expose approved destination asset allowlist/default readiness. | NEAR route is deployed, but NEAR dry quote/token discovery evidence is blocked until server-only envs are configured. |
 | `/api/market-dashboard/summary` | Returned indexer `enabled:true`, `lastTickStatus:"ok"`, `totalEventsProcessed:16`, counts including `created`, `funded`, `released`, and `dispute`; `marketplaceBindings:[]`. | Event dashboard has live indexed escrow evidence, but shadow binding seed/reconcile evidence is not present on the deployed dashboard yet. |
 
 Then sign in to `/admin` and run one protected indexer tick, or call:

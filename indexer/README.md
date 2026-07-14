@@ -59,11 +59,12 @@ an adapter/API layer, while this indexer remains the Stellar event read model.
 Marketplace bindings may include `externalPaymentIntent` metadata for NEAR
 Intents or another external payment initiator. This is now a required
 final-tranche integration workstream. The server-side implementation wraps
-`@defuse-protocol/one-click-sdk-typescript`, but the metadata still cannot mark
-escrow funds as locked unless a matching DealEscrow `funded` Soroban event has
-been indexed. Quote ids, intent ids, deposit address/memo, expiry, failure,
-refund references, and "settled on Stellar" state are stored for
-reconciliation and support. See
+`@defuse-protocol/one-click-sdk-typescript`, verifies 1Click quote signatures,
+and accepts a request-selected destination asset only when it is present in the
+deployment allowlist. The metadata still cannot mark escrow funds as locked
+unless a matching DealEscrow `funded` Soroban event has been indexed. Quote
+ids, intent ids, deposit address/memo, expiry, failure, refund references, and
+"settled on Stellar" state are stored for reconciliation and support. See
 [`../docs/NEAR_INTENTS_BOUNDARY.md`](../docs/NEAR_INTENTS_BOUNDARY.md).
 
 ## Setup
@@ -92,6 +93,14 @@ VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7
 SOROSWAP_API_KEY=<server-only-key>
 INDEXER_ENABLED=true
 INDEXER_OVERLAP_LEDGERS=5
+
+# Optional NEAR Intents staged adapter
+NEAR_INTENTS_ENABLED=false
+NEAR_INTENTS_ALLOW_LIVE=false
+NEAR_INTENTS_JWT=<server-only-jwt>
+NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=<stellar-asset-id-1>,<stellar-asset-id-2>
+NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=<stellar-asset-id-1>
+NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=<origin-chain-refund-address>
 ```
 
 The backend also accepts `DEAL_ESCROW_CONTRACT`. If both are present,
@@ -185,6 +194,7 @@ BACKEND_BASE_URL=https://stellar.thesignal.directory \
 ADMIN_USERNAME=<admin> \
 ADMIN_PASSWORD=<password> \
 NEAR_SMOKE_ORIGIN_ASSET=<near-intents-origin-asset-id> \
+NEAR_SMOKE_DESTINATION_ASSET=<approved-stellar-destination-asset-id> \
 NEAR_SMOKE_AMOUNT=<base-units-amount> \
 npm run smoke:backend -- --quote
 ```
@@ -192,9 +202,10 @@ npm run smoke:backend -- --quote
 The dry quote path calls
 `POST /api/marketplace-bindings/:bindingId/near-intents/quote` with
 `dry: true`. It still requires server-side `NEAR_INTENTS_ENABLED=true`,
-`NEAR_INTENTS_JWT`, `NEAR_INTENTS_STELLAR_DESTINATION_ASSET`, and refund
-configuration. It does not mark escrow funded; the Soroban `funded` event
-remains the source of truth.
+`NEAR_INTENTS_JWT`, an approved Stellar destination asset allowlist or default,
+and refund configuration. `NEAR_SMOKE_DESTINATION_ASSET` is optional when a
+server default is configured. It does not mark escrow funded; the Soroban
+`funded` event remains the source of truth.
 
 ## Shadow Marketplace Binding Seed
 

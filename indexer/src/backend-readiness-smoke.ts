@@ -18,7 +18,13 @@ interface Readiness {
   configured?: {
     jwt?: boolean;
     stellarDestinationAsset?: boolean;
+    defaultStellarDestinationAsset?: boolean;
+    stellarDestinationAssetAllowlist?: boolean;
     defaultRefundAccount?: boolean;
+  };
+  destinationAssets?: {
+    default?: string;
+    allowlist?: string[];
   };
 }
 
@@ -132,6 +138,13 @@ async function checkNearReadiness(): Promise<Readiness | undefined> {
     addCheck('pass', 'NEAR readiness route', 'Readiness endpoint returned JSON.');
 
     const configured = readiness.configured || {};
+    const hasDestinationAsset = Boolean(
+      configured.stellarDestinationAsset ||
+        configured.defaultStellarDestinationAsset ||
+        configured.stellarDestinationAssetAllowlist ||
+        readiness.destinationAssets?.default ||
+        (readiness.destinationAssets?.allowlist || []).length > 0
+    );
     if (!readiness.enabled) {
       addCheck('blocked', 'NEAR enabled', 'NEAR_INTENTS_ENABLED is false.');
     } else {
@@ -140,13 +153,13 @@ async function checkNearReadiness(): Promise<Readiness | undefined> {
 
     const missing = [
       configured.jwt ? undefined : 'JWT',
-      configured.stellarDestinationAsset ? undefined : 'Stellar destination asset',
+      hasDestinationAsset ? undefined : 'Stellar destination asset allowlist/default',
       configured.defaultRefundAccount ? undefined : 'default refund account',
     ].filter(Boolean);
     if (missing.length > 0) {
       addCheck('blocked', 'NEAR env config', `Missing ${missing.join(', ')}.`);
     } else {
-      addCheck('pass', 'NEAR env config', 'JWT, destination asset, and refund account are present.');
+      addCheck('pass', 'NEAR env config', 'JWT, destination asset config, and refund account are present.');
     }
 
     if (readiness.liveExecutionEnabled) {
@@ -311,6 +324,7 @@ async function checkNearDryQuote(readiness: Readiness | undefined): Promise<void
   const body = {
     dry: true,
     originAsset,
+    destinationAsset: process.env.NEAR_SMOKE_DESTINATION_ASSET,
     amount,
     refundTo: process.env.NEAR_SMOKE_REFUND_TO,
     recipient: process.env.NEAR_SMOKE_RECIPIENT,

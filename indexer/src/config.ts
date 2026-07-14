@@ -13,7 +13,8 @@ export interface IndexerConfig {
     allowLiveExecution: boolean;
     apiBaseUrl: string;
     jwt?: string;
-    stellarDestinationAsset?: string;
+    defaultStellarDestinationAsset?: string;
+    stellarDestinationAssetAllowlist: string[];
     defaultRefundAccount?: string;
     quoteTtlSeconds: number;
     pollIntervalSeconds: number;
@@ -42,11 +43,31 @@ function readOptionalInt(name: string): number | undefined {
   return parsed;
 }
 
+function readCsv(name: string): string[] {
+  return (process.env[name] || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 export function getConfig(): IndexerConfig {
   const network = (process.env.STELLAR_NETWORK || 'testnet') as StellarNetwork;
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error('STELLAR_NETWORK must be testnet or mainnet');
   }
+
+  const legacyDestinationAsset = process.env.NEAR_INTENTS_STELLAR_DESTINATION_ASSET;
+  const defaultStellarDestinationAsset =
+    process.env.NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET || legacyDestinationAsset;
+  const configuredDestinationAllowlist = readCsv(
+    'NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST'
+  );
+  const stellarDestinationAssetAllowlist =
+    configuredDestinationAllowlist.length > 0
+      ? configuredDestinationAllowlist
+      : defaultStellarDestinationAsset
+        ? [defaultStellarDestinationAsset]
+        : [];
 
   return {
     databaseUri: readRequired('DATABASE_URI'),
@@ -59,7 +80,8 @@ export function getConfig(): IndexerConfig {
       allowLiveExecution: process.env.NEAR_INTENTS_ALLOW_LIVE === 'true',
       apiBaseUrl: process.env.NEAR_INTENTS_API_BASE_URL || 'https://1click.chaindefuser.com',
       jwt: process.env.NEAR_INTENTS_JWT,
-      stellarDestinationAsset: process.env.NEAR_INTENTS_STELLAR_DESTINATION_ASSET,
+      defaultStellarDestinationAsset,
+      stellarDestinationAssetAllowlist,
       defaultRefundAccount: process.env.NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT,
       quoteTtlSeconds: readOptionalInt('NEAR_INTENTS_QUOTE_TTL_SECONDS') ?? 300,
       pollIntervalSeconds: readOptionalInt('NEAR_INTENTS_POLL_INTERVAL_SECONDS') ?? 15,

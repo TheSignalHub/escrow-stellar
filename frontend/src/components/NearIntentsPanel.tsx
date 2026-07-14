@@ -72,6 +72,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const [readiness, setReadiness] = useState<NearIntentsReadiness | null>(null);
   const [bindingId, setBindingId] = useState('mb_sig-demo-001');
   const [originAsset, setOriginAsset] = useState('nep141:wrap.near');
+  const [destinationAsset, setDestinationAsset] = useState('');
   const [amount, setAmount] = useState('1000000');
   const [refundTo, setRefundTo] = useState(walletAddress);
   const [dry, setDry] = useState(true);
@@ -85,6 +86,11 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   useEffect(() => {
     if (walletAddress && !refundTo) setRefundTo(walletAddress);
   }, [refundTo, walletAddress]);
+
+  useEffect(() => {
+    const configuredDefault = readiness?.destinationAssets?.default;
+    if (configuredDefault && !destinationAsset) setDestinationAsset(configuredDefault);
+  }, [destinationAsset, readiness?.destinationAssets?.default]);
 
   const loadReadiness = async () => {
     setLoadingReadiness(true);
@@ -103,8 +109,15 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   }, []);
 
   const canRequestQuote = useMemo(() => {
-    return Boolean(readiness?.enabled && bindingId.trim() && originAsset.trim() && amount.trim() && refundTo.trim());
-  }, [amount, bindingId, originAsset, readiness?.enabled, refundTo]);
+    return Boolean(
+      readiness?.enabled &&
+        bindingId.trim() &&
+        originAsset.trim() &&
+        destinationAsset.trim() &&
+        amount.trim() &&
+        refundTo.trim()
+    );
+  }, [amount, bindingId, destinationAsset, originAsset, readiness?.enabled, refundTo]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const providerStatus = status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
@@ -118,6 +131,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     try {
       const result = await nearIntentsClient.createQuote(bindingId.trim(), {
         originAsset: originAsset.trim(),
+        destinationAsset: destinationAsset.trim(),
         amount: amount.trim(),
         refundTo: refundTo.trim(),
         recipient: walletAddress || refundTo.trim(),
@@ -167,6 +181,8 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     await navigator.clipboard.writeText(value);
     toast(`${label} copied`, 'success');
   };
+
+  const destinationAllowlist = readiness?.destinationAssets?.allowlist || [];
 
   return (
     <Card className="p-4 sm:p-6 lg:p-8 bg-[#02040a]" glowOnHover>
@@ -225,6 +241,37 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                 spellCheck={false}
                 className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
               />
+            </label>
+            <label className="space-y-2 block">
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Destination Asset ID</span>
+              {destinationAllowlist.length > 0 ? (
+                <select
+                  value={destinationAsset}
+                  onChange={(event) => setDestinationAsset(event.target.value)}
+                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
+                >
+                  <option value="">Choose approved asset</option>
+                  {destinationAllowlist.map((asset) => (
+                    <option key={asset} value={asset}>
+                      {asset}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <textarea
+                  value={destinationAsset}
+                  onChange={(event) => setDestinationAsset(event.target.value)}
+                  rows={2}
+                  spellCheck={false}
+                  placeholder="Stellar assetId from 1Click token discovery"
+                  className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none placeholder:text-zinc-700"
+                />
+              )}
+              <p className="text-[10px] text-zinc-500">
+                {destinationAllowlist.length > 0
+                  ? `${destinationAllowlist.length} approved destination asset${destinationAllowlist.length === 1 ? '' : 's'} from server readiness.`
+                  : 'Run protected token discovery, then configure an approved Stellar destination asset allowlist.'}
+              </p>
             </label>
             <label className="space-y-2 block">
               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Refund Address</span>
@@ -287,7 +334,13 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
             <div className="grid grid-cols-3 gap-2">
               {[
                 { label: 'JWT', ok: readiness?.configured.jwt },
-                { label: 'Asset', ok: readiness?.configured.stellarDestinationAsset },
+                {
+                  label: 'Assets',
+                  ok:
+                    readiness?.configured.stellarDestinationAsset ||
+                    readiness?.configured.defaultStellarDestinationAsset ||
+                    readiness?.configured.stellarDestinationAssetAllowlist,
+                },
                 { label: 'Refund', ok: readiness?.configured.defaultRefundAccount },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg border border-zinc-800 bg-black/30 px-2 py-2">
@@ -313,8 +366,11 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
               <>
                 <div className="grid grid-cols-1 gap-2">
                   <StatusRow label="Quote" value={nearIntent.quoteId} />
+                  <StatusRow label="Source" value={nearIntent.sourceAsset} />
+                  <StatusRow label="Destination" value={nearIntent.destinationAsset} />
                   <StatusRow label="Output" value={`${formatBaseAmount(nearIntent.expectedDestinationAmount)} base units`} />
                   <StatusRow label="Min Output" value={`${formatBaseAmount(nearIntent.minDestinationAmount)} base units`} />
+                  <StatusRow label="Signature" value={nearIntent.signatureVerified ? 'verified by 1Click SDK' : 'not verified'} />
                   <StatusRow label="Deadline" value={nearIntent.deadline} />
                   <StatusRow label="Recipient" value={shortText(nearIntent.recipient)} />
                 </div>

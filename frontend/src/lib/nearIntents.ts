@@ -5,7 +5,13 @@ export interface NearIntentsReadiness {
   configured: {
     jwt: boolean;
     stellarDestinationAsset: boolean;
+    defaultStellarDestinationAsset?: boolean;
+    stellarDestinationAssetAllowlist?: boolean;
     defaultRefundAccount: boolean;
+  };
+  destinationAssets?: {
+    default?: string;
+    allowlist: string[];
   };
   quoteTtlSeconds: number;
   pollIntervalSeconds: number;
@@ -36,6 +42,7 @@ export interface NearIntentMetadata {
   intentId?: string;
   correlationId?: string;
   signature?: string;
+  signatureVerified?: boolean;
   depositAddress?: string;
   depositMemo?: string;
   sourceAsset: string;
@@ -63,6 +70,7 @@ export interface ExternalPaymentIntent {
 
 export interface NearIntentQuoteRequest {
   originAsset: string;
+  destinationAsset?: string;
   amount: string;
   refundTo: string;
   recipient?: string;

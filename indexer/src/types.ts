@@ -80,6 +80,7 @@ export interface NearIntentQuoteMetadata {
   intentId?: string;
   correlationId?: string;
   signature?: string;
+  signatureVerified?: boolean;
   depositAddress?: string;
   depositMemo?: string;
   sourceAsset: string;

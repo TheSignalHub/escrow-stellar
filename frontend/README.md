@@ -64,9 +64,11 @@ VITE_SOROSWAP_ROUTER_ADDRESS=
 
 The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
 For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
-NEAR Intents keys are also backend-only. Do not create `VITE_` variables for
-`NEAR_INTENTS_JWT`, provider asset ids, or live execution flags; the frontend
-uses local `/api/near-intents/*` routes so secrets stay on the server.
+NEAR Intents keys and approved destination asset lists are also backend-only.
+Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
+live execution flags; the frontend uses local `/api/near-intents/*` routes so
+secrets stay on the server. The Liquidity panel reads the public readiness
+payload to prefill/select approved destination asset IDs.
 
 For a non-testnet profile, set `VITE_STELLAR_NETWORK=mainnet`, provide mainnet
 RPC/Horizon/Explorer URLs, omit `VITE_FRIENDBOT_URL`, and replace the demo
@@ -128,7 +130,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deal Terminal** — browse all on-chain escrows, filter by status, search by ID / address
 - **New Contract** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and check NEAR Intents readiness/dry quotes for marketplace-bound cross-chain funding
+- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and check NEAR Intents readiness/dry quotes for marketplace-bound cross-chain funding with approved destination asset selection
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -137,9 +139,11 @@ Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
 the seeded Soroswap testnet route converts it into the configured demo test
 USDC settlement asset, and the escrow contract settles against that configured
 asset. The Liquidity tab also includes a NEAR Intents readiness and dry quote
-panel for the marketplace-binding adapter. The demo test USDC token is not
-Circle-issued production USDC, and NEAR status never marks escrow funded until
-the Stellar DealEscrow `funded` event exists.
+panel for the marketplace-binding adapter. The panel lets the user select an
+approved Stellar destination asset exposed by the backend readiness route and
+shows whether the returned 1Click quote signature was verified. The demo test
+USDC token is not Circle-issued production USDC, and NEAR status never marks
+escrow funded until the Stellar DealEscrow `funded` event exists.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

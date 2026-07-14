@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab readiness/dry quote/status panel. Live execution remains disabled until JWT, approved Stellar asset id, refund path, and no-testnet tiny-amount evidence are complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab readiness/dry quote/status panel. Quotes use user-selected origin and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep live execution disabled until JWT, refund path, and no-testnet tiny-amount evidence are complete.
 
 Reviewer links:
 
@@ -94,8 +94,8 @@ quote/status/deposit/reconcile APIs, binding metadata persistence, and a
 Liquidity-tab panel for readiness, dry quotes, deposit instructions, and
 provider status refresh. Soroban `funded` events remain the source of truth for
 escrow funding, even when NEAR Intents reports that a cross-chain payment is
-moving. Live NEAR execution still needs credentials, approved asset ids, refund
-semantics, and tiny-amount no-testnet evidence. See
+moving. Live NEAR execution still needs credentials, approved destination asset
+allowlists, refund semantics, and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
 Stripe Connect remains The Signal production marketplace's fiat payment rail
@@ -111,7 +111,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
 - **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
-- **NEAR Intents Funding Panel** — Check SDK-backed readiness, request dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
+- **NEAR Intents Funding Panel** — Check SDK-backed readiness, choose approved destination assets, request signature-verified dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).

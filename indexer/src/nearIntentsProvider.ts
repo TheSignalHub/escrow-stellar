@@ -3,6 +3,7 @@ import {
   OneClickService,
   OpenAPI,
   QuoteRequest,
+  verifyQuoteSignature,
   type GetExecutionStatusResponse,
   type QuoteResponse,
   type SubmitDepositTxResponse,
@@ -30,6 +31,7 @@ export class NearIntentsProviderError extends Error {
 
 export interface NearIntentQuoteInput {
   originAsset: string;
+  destinationAsset?: string;
   amount: string;
   refundTo?: string;
   recipient?: string;
@@ -70,13 +72,21 @@ function ensureEnabled(config: IndexerConfig): void {
   }
 }
 
-function ensureDestinationAsset(config: IndexerConfig): string {
-  const asset = config.nearIntents.stellarDestinationAsset;
+function resolveDestinationAsset(config: IndexerConfig, input: NearIntentQuoteInput): string {
+  const requestedAsset = input.destinationAsset?.trim();
+  const asset = requestedAsset || config.nearIntents.defaultStellarDestinationAsset;
   if (!asset) {
     throw new NearIntentsProviderError(
-      'NEAR_INTENTS_STELLAR_DESTINATION_ASSET is required.',
+      'destinationAsset or NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET is required.',
       503
     );
+  }
+  const allowlist = config.nearIntents.stellarDestinationAssetAllowlist;
+  if (allowlist.length > 0 && !allowlist.includes(asset)) {
+    throw new NearIntentsProviderError('destinationAsset is not approved for this deployment.', 400, {
+      destinationAsset: asset,
+      allowedDestinationAssets: allowlist,
+    });
   }
   return asset;
 }
@@ -108,7 +118,8 @@ function providerStatusToLocal(status: string): CrossChainPaymentStatus {
 
 function normalizeQuoteMetadata(
   input: NearIntentQuoteInput,
-  response: QuoteResponse
+  response: QuoteResponse,
+  signatureVerified: boolean
 ): NearIntentQuoteMetadata {
   const quote = response.quote;
   const deadline = quote.deadline ?? response.quoteRequest.deadline;
@@ -116,6 +127,7 @@ function normalizeQuoteMetadata(
     quoteId: response.correlationId,
     correlationId: response.correlationId,
     signature: response.signature,
+    signatureVerified,
     depositAddress: quote.depositAddress,
     depositMemo: quote.depositMemo,
     sourceAsset: response.quoteRequest.originAsset,
@@ -165,7 +177,7 @@ export async function requestNearIntentQuote(
     );
   }
 
-  const destinationAsset = ensureDestinationAsset(config);
+  const destinationAsset = resolveDestinationAsset(config, input);
   const refundTo = input.refundTo || config.nearIntents.defaultRefundAccount;
   if (!refundTo) {
     throw new NearIntentsProviderError(
@@ -204,7 +216,11 @@ export async function requestNearIntentQuote(
 
   try {
     const quote = await OneClickService.getQuote(requestBody);
-    return { quote, metadata: normalizeQuoteMetadata(input, quote) };
+    const signatureVerified = verifyQuoteSignature(quote);
+    if (!signatureVerified) {
+      throw new NearIntentsProviderError('Invalid NEAR Intents quote signature.', 502);
+    }
+    return { quote, metadata: normalizeQuoteMetadata(input, quote, signatureVerified) };
   } catch (error) {
     throw parseSdkError(error);
   }
