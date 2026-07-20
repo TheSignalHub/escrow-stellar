@@ -72,7 +72,7 @@ export interface NearIntentQuoteRequest {
   originAsset: string;
   destinationAsset?: string;
   amount: string;
-  refundTo: string;
+  refundTo?: string;
   recipient?: string;
   dry: boolean;
   slippageTolerance?: number;

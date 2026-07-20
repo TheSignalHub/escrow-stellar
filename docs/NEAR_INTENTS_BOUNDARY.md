@@ -23,6 +23,7 @@ funds are actually locked in DealEscrow.
 | 2026-07-01 13:39 HKT | NEAR Intents frontend panel | Added a Liquidity-tab funding panel with public readiness check, protected dry/live quote request, deposit address/memo display, provider status refresh, admin-auth recovery, and Soroban-funded source-of-truth warning. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live quote/status evidence still requires JWT, approved Stellar asset id, and no-testnet tiny-amount QA. |
 | 2026-07-01 16:00 HKT | NEAR Intents integration research refresh | Rechecked official NEAR/1Click docs and tightened the required build path: token discovery, quote, origin-chain deposit, optional deposit tx submission, status polling, signed-intent future path, JWT/fee handling, and no-testnet live QA. | Static documentation update using official NEAR and NEAR Intents docs. No runtime behavior changed. |
 | 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Reworked the adapter around the official 1Click shape: request-selected `originAsset` and `destinationAsset`, server-side destination allowlist/default, explicit refund target, quote signature verification via `verifyQuoteSignature`, frontend destination asset selection, and smoke/docs updates. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, approved asset IDs from token discovery, admin auth, and tiny-amount no-testnet QA before enabling live execution. |
+| 2026-07-20 23:06 BST | NEAR production UX cleanup | Removed the user-facing raw refund address field from the Liquidity panel, changed raw asset inputs into source/settlement selectors, and reframed the refund env as a dry-QA fallback rather than production refund behavior. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 
 ## Researched Protocol Notes
 
@@ -296,12 +297,17 @@ provider-pushed state changes.
 
 ## UI Requirements
 
-The frontend now includes a first-pass NEAR Intents funding panel in the
-Liquidity tab alongside Friendbot and the Stellar broker route:
+The frontend now includes a NEAR Intents funding panel in the Liquidity tab
+alongside Friendbot and the Stellar broker route:
 
-- Displays feature readiness, JWT/asset/refund configuration booleans, source
-  asset, amount, refund target, quote id, expected output, expiry, recipient,
-  deposit address, and deposit memo when available.
+- Displays feature readiness, server-side JWT/settlement/fallback booleans,
+  source asset selector, settlement asset selector, amount, managed refund
+  route, quote id, expected output, expiry, recipient, deposit address, and
+  deposit memo when available.
+- Does not expose a raw refund-address field in the user flow. Production
+  refunds should route to the connected origin-chain wallet. The server default
+  refund account exists only as an operator-controlled dry quote/smoke fallback
+  until source-chain wallet integration is complete.
 - Defaults to dry quotes and forces dry mode unless
   `NEAR_INTENTS_ALLOW_LIVE=true`.
 - Shows admin-auth recovery for protected quote/status routes.
@@ -329,8 +335,8 @@ and provider/Soroban state mismatch.
   output and QA docs.
 - The app never claims escrow funding until DealEscrow emits `funded`.
 - JWT provisioning, webhook signature rules if used, supported Stellar
-  destination asset id, no-testnet testing approach, and refund semantics are
-  validated before enabling `NEAR_INTENTS_ENABLED=true`.
+  destination asset id, no-testnet testing approach, and managed source-wallet
+  refund semantics are validated before enabling live execution.
 
 ## Must-Build Next Checklist
 
@@ -341,8 +347,10 @@ order:
    secrets manager.
 2. Run the protected token-list endpoint and record the exact Stellar
    destination `assetId` for the settlement asset.
-3. Set `NEAR_INTENTS_STELLAR_DESTINATION_ASSET` and
-   `NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT` in a staging/demo environment.
+3. Set `NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST`,
+   `NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET`, and an
+   operator-controlled `NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT` fallback in a
+   staging/demo environment.
 4. Request a dry quote through the frontend panel for a shadow marketplace
    binding and capture the persisted `nearIntent` metadata.
 5. Enable `NEAR_INTENTS_ALLOW_LIVE=true` only for a tiny live-amount QA window.

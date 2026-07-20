@@ -91,11 +91,13 @@ NEAR Intents is now treated as a required final-tranche integration workstream,
 not something to bypass. The current repo includes a feature-flagged adapter
 around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-Liquidity-tab panel for readiness, dry quotes, deposit instructions, and
-provider status refresh. Soroban `funded` events remain the source of truth for
-escrow funding, even when NEAR Intents reports that a cross-chain payment is
-moving. Live NEAR execution still needs credentials, approved destination asset
-allowlists, refund semantics, and tiny-amount no-testnet evidence. See
+Liquidity-tab panel for readiness, source/settlement asset selection, dry
+quotes, deposit instructions, and provider status refresh. Refund routing is
+managed through the source wallet in the production flow, with a server fallback
+reserved for dry quote QA. Soroban `funded` events remain the source of truth
+for escrow funding, even when NEAR Intents reports that a cross-chain payment
+is moving. Live NEAR execution still needs credentials, approved settlement
+asset allowlists, source-wallet execution, and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
 Stripe Connect remains The Signal production marketplace's fiat payment rail
@@ -111,7 +113,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
 - **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
-- **NEAR Intents Funding Panel** — Check SDK-backed readiness, choose approved destination assets, request signature-verified dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
+- **NEAR Intents Funding Panel** — Check SDK-backed readiness, choose source and approved settlement assets, request signature-verified dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).

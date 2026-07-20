@@ -75,17 +75,16 @@ marketplace-binding adapter.
 
 1. Confirm the readiness badges. The panel shows whether NEAR Intents is
    enabled, whether live execution is allowed, and whether server-side JWT,
-   approved destination asset config, and refund config are present.
+   approved settlement asset config, and QA fallback config are present.
 2. Use the default shadow binding (`mb_sig-demo-001`) or enter another binding
    ID.
 3. Keep **Dry quote** enabled unless the deployment has a real NEAR JWT,
    approved Stellar destination asset id, and explicit live QA approval.
-4. Choose the approved Stellar destination asset if the deployment exposes more
-   than one option.
+4. Choose the source asset and approved Stellar settlement asset.
 5. Click **Request Quote** to call the protected server-side adapter. The
    backend verifies the 1Click quote signature before storing quote metadata.
 6. If a quote returns deposit details, review the deposit address, memo, expiry,
-   expected output, and refund destination before taking any source-chain action.
+   expected output, and managed refund route before taking any source-chain action.
 7. Click **Refresh Status** to poll provider status for the stored deposit
    address or memo.
 

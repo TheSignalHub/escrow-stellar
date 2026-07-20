@@ -100,8 +100,13 @@ NEAR_INTENTS_ALLOW_LIVE=false
 NEAR_INTENTS_JWT=<server-only-jwt>
 NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=<stellar-asset-id-1>,<stellar-asset-id-2>
 NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=<stellar-asset-id-1>
-NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=<origin-chain-refund-address>
+NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=<operator-controlled-qa-refund-address>
 ```
+
+`NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT` is a dry quote/smoke fallback. Production
+refunds should be derived from the connected origin-chain wallet and sent in
+the quote request as `refundTo`; do not present this env as the user refund
+model.
 
 The backend also accepts `DEAL_ESCROW_CONTRACT`. If both are present,
 `DEAL_ESCROW_CONTRACT` wins. For the single Coolify app, using only

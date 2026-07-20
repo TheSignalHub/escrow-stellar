@@ -36,6 +36,29 @@ const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc
   ready: 'emerald',
 };
 
+const ORIGIN_ASSETS = [
+  {
+    label: 'NEAR',
+    description: 'Source wallet refunds return to the connected NEAR account in production.',
+    assetId: 'nep141:wrap.near',
+  },
+  {
+    label: 'Ethereum USDC',
+    description: 'Source wallet refunds return to the connected EVM wallet in production.',
+    assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
+  },
+  {
+    label: 'Base USDC',
+    description: 'Source wallet refunds return to the connected EVM wallet in production.',
+    assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
+  },
+  {
+    label: 'Stellar XLM',
+    description: 'Source wallet refunds return to the connected Stellar wallet.',
+    assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
+  },
+];
+
 function formatBaseAmount(value?: string): string {
   if (!value) return '0';
   if (!/^\d+$/.test(value)) return value;
@@ -54,7 +77,7 @@ function errorHelp(error: NearIntentsApiError | null): string {
   if (!error) return '';
   if (error.status === 401) return 'Open /admin once with admin credentials, then retry this protected request.';
   if (error.status === 503) return 'Server-side NEAR Intents envs are disabled or incomplete.';
-  if (error.status === 400) return 'Check the binding id, origin asset, refund address, and amount.';
+  if (error.status === 400) return 'Check the binding, source asset, destination asset, and amount.';
   return 'Check the server logs or retry after the indexer API is reachable.';
 }
 
@@ -74,7 +97,6 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const [originAsset, setOriginAsset] = useState('nep141:wrap.near');
   const [destinationAsset, setDestinationAsset] = useState('');
   const [amount, setAmount] = useState('1000000');
-  const [refundTo, setRefundTo] = useState(walletAddress);
   const [dry, setDry] = useState(true);
   const [quote, setQuote] = useState<NearIntentQuoteResponse | null>(null);
   const [status, setStatus] = useState<NearIntentStatusResponse | null>(null);
@@ -82,10 +104,6 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState<NearIntentsApiError | null>(null);
-
-  useEffect(() => {
-    if (walletAddress && !refundTo) setRefundTo(walletAddress);
-  }, [refundTo, walletAddress]);
 
   useEffect(() => {
     const configuredDefault = readiness?.destinationAssets?.default;
@@ -114,14 +132,19 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
         bindingId.trim() &&
         originAsset.trim() &&
         destinationAsset.trim() &&
-        amount.trim() &&
-        refundTo.trim()
+        amount.trim()
     );
-  }, [amount, bindingId, destinationAsset, originAsset, readiness?.enabled, refundTo]);
+  }, [amount, bindingId, destinationAsset, originAsset, readiness?.enabled]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const providerStatus = status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
   const statusColor = STATUS_COLORS[providerStatus || 'disabled'] || 'zinc';
+  const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset);
+  const refundRouteLabel = originAsset.includes('1100_')
+    ? shortText(walletAddress)
+    : readiness?.configured.defaultRefundAccount
+      ? 'managed by source wallet / QA fallback'
+      : 'source wallet required';
 
   const createQuote = async () => {
     if (!canRequestQuote) return;
@@ -133,8 +156,8 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
         amount: amount.trim(),
-        refundTo: refundTo.trim(),
-        recipient: walletAddress || refundTo.trim(),
+        refundTo: originAsset.includes('1100_') ? walletAddress : undefined,
+        recipient: walletAddress,
         dry: dry || !readiness?.liveExecutionEnabled,
         slippageTolerance: 100,
         depositMode: 'MEMO',
@@ -233,27 +256,34 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
               </label>
             </div>
             <label className="space-y-2 block">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Origin Asset ID</span>
-              <textarea
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Source Asset</span>
+              <select
                 value={originAsset}
                 onChange={(event) => setOriginAsset(event.target.value)}
-                rows={2}
-                spellCheck={false}
-                className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
-              />
+                className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none"
+              >
+                {ORIGIN_ASSETS.map((asset) => (
+                  <option key={asset.assetId} value={asset.assetId}>
+                    {asset.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-zinc-500">
+                {selectedOriginAsset?.description || 'Refunds are routed to the connected source wallet.'}
+              </p>
             </label>
             <label className="space-y-2 block">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Destination Asset ID</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Settlement Asset</span>
               {destinationAllowlist.length > 0 ? (
                 <select
                   value={destinationAsset}
                   onChange={(event) => setDestinationAsset(event.target.value)}
                   className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
                 >
-                  <option value="">Choose approved asset</option>
+                  <option value="">Choose approved settlement asset</option>
                   {destinationAllowlist.map((asset) => (
                     <option key={asset} value={asset}>
-                      {asset}
+                      {asset.includes('111bzQBB65') ? 'Stellar USDC' : asset.includes('111bzQBB5') ? 'Stellar XLM' : asset}
                     </option>
                   ))}
                 </select>
@@ -263,26 +293,25 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                   onChange={(event) => setDestinationAsset(event.target.value)}
                   rows={2}
                   spellCheck={false}
-                  placeholder="Stellar assetId from 1Click token discovery"
+                  placeholder="Approved settlement asset"
                   className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none placeholder:text-zinc-700"
                 />
               )}
               <p className="text-[10px] text-zinc-500">
                 {destinationAllowlist.length > 0
-                  ? `${destinationAllowlist.length} approved destination asset${destinationAllowlist.length === 1 ? '' : 's'} from server readiness.`
-                  : 'Run protected token discovery, then configure an approved Stellar destination asset allowlist.'}
+                  ? `${destinationAllowlist.length} approved Stellar settlement asset${destinationAllowlist.length === 1 ? '' : 's'} configured.`
+                  : 'Configure approved Stellar settlement assets before requesting quotes.'}
               </p>
             </label>
-            <label className="space-y-2 block">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Refund Address</span>
-              <textarea
-                value={refundTo}
-                onChange={(event) => setRefundTo(event.target.value)}
-                rows={2}
-                spellCheck={false}
-                className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
-              />
-            </label>
+            <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-zinc-300">Refund Route</span>
+                <span className="font-mono text-[10px] text-zinc-500">{refundRouteLabel}</span>
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+                Refunds are sent to the connected source wallet in the production flow. Server fallback is used only for dry quote QA when a source wallet is not connected.
+              </p>
+            </div>
             <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black/30 px-3 py-3">
               <span className="text-xs font-bold text-zinc-300">Dry quote</span>
               <input
@@ -341,7 +370,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                     readiness?.configured.defaultStellarDestinationAsset ||
                     readiness?.configured.stellarDestinationAssetAllowlist,
                 },
-                { label: 'Refund', ok: readiness?.configured.defaultRefundAccount },
+                { label: 'Fallback', ok: readiness?.configured.defaultRefundAccount },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg border border-zinc-800 bg-black/30 px-2 py-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{item.label}</p>
