@@ -38,6 +38,7 @@ export interface NearIntentQuoteInput {
   dry?: boolean;
   slippageTolerance?: number;
   deadline?: string;
+  /** @deprecated 1Click decides whether a deposit memo is required for the selected route. */
   depositMode?: 'SIMPLE' | 'MEMO';
   referral?: string;
   quoteWaitingTimeMs?: number;
@@ -191,10 +192,6 @@ export async function requestNearIntentQuote(
 
   const requestBody = {
     dry,
-    depositMode:
-      input.depositMode === 'MEMO'
-        ? QuoteRequest.depositMode.MEMO
-        : QuoteRequest.depositMode.SIMPLE,
     swapType: QuoteRequest.swapType.EXACT_INPUT,
     slippageTolerance: Number.isFinite(Number(input.slippageTolerance))
       ? Number(input.slippageTolerance)

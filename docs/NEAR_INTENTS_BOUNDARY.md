@@ -26,6 +26,7 @@ funds are actually locked in DealEscrow.
 | 2026-07-20 23:06 BST | NEAR production UX cleanup | Removed the user-facing raw refund address field from the Liquidity panel, changed raw asset inputs into source/settlement selectors, and reframed the refund env as a dry-QA fallback rather than production refund behavior. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-21 13:26 BST | NEAR Stellar recipient preflight | Added server-side validation before 1Click quotes to ensure Stellar issued-asset recipients are valid G-addresses, exist on Horizon, and hold the destination asset trustline. This turns opaque provider errors for assets such as Stellar USDC into actionable recipient-readiness errors. | `npm run build` passed in `indexer/`; quote smoke with the seeded fallback recipient now blocks locally before provider submission until a USDC-ready Stellar recipient is configured. |
 | 2026-07-21 16:34 BST | Cross-chain funding product UX | Reworked the Liquidity-tab NEAR panel into a production-facing **Pay from another chain** flow. The UI now shows source asset, approved Stellar settlement asset, amount, quote, payment instructions, and payment status while hiding binding id, raw asset ids, JWT/readiness internals, refund fallback envs, dry-quote terminology, and admin smoke language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-21 21:13 BST | NEAR quote request compatibility | Removed forced `depositMode` from the public quote request path. 1Click now decides whether the selected route needs a deposit memo, and the UI still displays `depositMemo` when returned. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 
 ## Researched Protocol Notes
 
@@ -147,8 +148,9 @@ Important constraints from the current docs:
   executable deposit instructions.
 - Status polling uses the quote `depositAddress`; terminal statuses include
   `SUCCESS`, `REFUNDED`, and `FAILED`.
-- If a quote response includes `depositMemo`, status checks and deposit
-  instructions must preserve it.
+- Do not force `depositMode` in quote requests unless the provider requires a
+  route-specific override. If a quote response includes `depositMemo`, status
+  checks and deposit instructions must preserve it.
 - NEAR Intents lists Stellar as supported, including SEP-53 signing support, but
   this repo still must validate the exact Stellar issued-asset id and recipient
   address requirements before enabling production execution.

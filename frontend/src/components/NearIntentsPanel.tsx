@@ -231,7 +231,6 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
         recipient: walletAddress,
         dry: paymentPreviewOnly,
         slippageTolerance: 100,
-        depositMode: 'MEMO',
       });
       setQuote(result);
       toast('Cross-chain quote ready', 'success');
