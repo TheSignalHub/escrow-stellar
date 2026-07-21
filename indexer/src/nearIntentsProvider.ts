@@ -93,6 +93,14 @@ function resolveDestinationAsset(config: IndexerConfig, input: NearIntentQuoteIn
   return asset;
 }
 
+function isEvmOriginAsset(originAsset: string): boolean {
+  return /^nep141:(eth|base|arb|op|avax|bsc|pol|gnosis)-0x/i.test(originAsset);
+}
+
+function isEvmAddress(value: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
+
 function normalizeHorizonUrl(value: string): string {
   return value.replace(/\/+$/, '');
 }
@@ -281,6 +289,13 @@ export async function requestNearIntentQuote(
   const recipient = input.recipient || binding.participants.clientWallet;
   if (!input.originAsset) throw new NearIntentsProviderError('originAsset is required.');
   if (!input.amount) throw new NearIntentsProviderError('amount is required.');
+  if (isEvmOriginAsset(input.originAsset) && !isEvmAddress(refundTo)) {
+    throw new NearIntentsProviderError(
+      'Connect the source-chain wallet before requesting this quote. Ethereum/Base refunds require an EVM refund address.',
+      400,
+      { originAsset: input.originAsset, refundAddressType: 'evm' }
+    );
+  }
 
   await ensureStellarRecipientReady(config, destinationAsset, recipient);
 

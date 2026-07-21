@@ -55,15 +55,17 @@ const ORIGIN_ASSETS = [
     chain: 'Ethereum',
     symbol: 'USDC',
     label: 'Ethereum USDC',
-    description: 'Pay with USDC from Ethereum through the cross-chain route.',
+    description: 'Requires source-wallet connection before payment instructions can be created.',
     assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
+    available: false,
   },
   {
     chain: 'Base',
     symbol: 'USDC',
     label: 'Base USDC',
-    description: 'Pay with USDC from Base through the cross-chain route.',
+    description: 'Requires source-wallet connection before payment instructions can be created.',
     assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
+    available: false,
   },
   {
     chain: 'Stellar',
@@ -71,6 +73,7 @@ const ORIGIN_ASSETS = [
     label: 'Stellar XLM',
     description: 'Convert Stellar XLM into the configured escrow settlement asset.',
     assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
+    available: true,
   },
 ];
 
@@ -184,15 +187,17 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const paymentPreviewOnly = !livePaymentAvailable;
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
 
+  const sourceAssetAvailable = selectedOriginAsset.available !== false;
   const canRequestQuote = useMemo(() => {
     return Boolean(
       readiness?.enabled &&
         hasValidStellarRecipient &&
+        sourceAssetAvailable &&
         originAsset.trim() &&
         destinationAsset.trim() &&
         amount.trim()
     );
-  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled]);
+  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -349,11 +354,16 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                     <button
                       key={asset.assetId}
                       type="button"
-                      onClick={() => setOriginAsset(asset.assetId)}
+                      onClick={() => {
+                        if (asset.available !== false) setOriginAsset(asset.assetId);
+                      }}
+                      disabled={asset.available === false}
                       className={`text-left rounded-lg border px-3 py-3 transition ${
                         selected
                           ? 'border-blue-500/50 bg-blue-500/10 text-white'
-                          : 'border-zinc-800 bg-black/20 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                          : asset.available === false
+                            ? 'border-zinc-900 bg-black/10 text-zinc-600 cursor-not-allowed'
+                            : 'border-zinc-800 bg-black/20 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -363,6 +373,11 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                         </span>
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-zinc-500">{asset.description}</p>
+                      {asset.available === false && (
+                        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-400/80">
+                          Source wallet required
+                        </p>
+                      )}
                     </button>
                   );
                 })}
@@ -404,6 +419,12 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
             {!hasValidStellarRecipient && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-3 text-xs leading-relaxed text-red-200">
                 Connect a Stellar wallet before requesting a cross-chain quote so settlement can target a real Stellar recipient.
+              </div>
+            )}
+
+            {!sourceAssetAvailable && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                This source asset needs its native wallet connected so refunds can return to that source chain.
               </div>
             )}
 
