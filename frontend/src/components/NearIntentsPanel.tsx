@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  ArrowRightLeft,
   CheckCircle2,
+  Clock3,
   Copy,
-  KeyRound,
   Loader2,
   RefreshCw,
   ShieldCheck,
   Timer,
+  Wallet,
 } from 'lucide-react';
 import { useToast } from '../App';
 import {
@@ -24,7 +26,12 @@ interface NearIntentsPanelProps {
   walletAddress: string;
 }
 
+type StepState = 'done' | 'active' | 'pending';
+
+const REVIEW_BINDING_ID = 'mb_sig-demo-001';
+
 const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc'> = {
+  QUOTE_CREATED: 'blue',
   PENDING_DEPOSIT: 'amber',
   KNOWN_DEPOSIT_TX: 'blue',
   INCOMPLETE_DEPOSIT: 'amber',
@@ -33,28 +40,35 @@ const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc
   REFUNDED: 'zinc',
   FAILED: 'red',
   disabled: 'zinc',
-  ready: 'emerald',
 };
 
 const ORIGIN_ASSETS = [
   {
+    chain: 'NEAR',
+    symbol: 'NEAR',
     label: 'NEAR',
-    description: 'Source wallet refunds return to the connected NEAR account in production.',
+    description: 'Pay from a NEAR wallet and settle into Stellar escrow.',
     assetId: 'nep141:wrap.near',
   },
   {
+    chain: 'Ethereum',
+    symbol: 'USDC',
     label: 'Ethereum USDC',
-    description: 'Source wallet refunds return to the connected EVM wallet in production.',
+    description: 'Pay with USDC from Ethereum through the cross-chain route.',
     assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
   },
   {
+    chain: 'Base',
+    symbol: 'USDC',
     label: 'Base USDC',
-    description: 'Source wallet refunds return to the connected EVM wallet in production.',
+    description: 'Pay with USDC from Base through the cross-chain route.',
     assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
   },
   {
+    chain: 'Stellar',
+    symbol: 'XLM',
     label: 'Stellar XLM',
-    description: 'Source wallet refunds return to the connected Stellar wallet.',
+    description: 'Convert Stellar XLM into the configured escrow settlement asset.',
     assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
   },
 ];
@@ -73,19 +87,57 @@ function shortText(value?: string): string {
   return `${value.slice(0, 10)}...${value.slice(-8)}`;
 }
 
-function errorHelp(error: NearIntentsApiError | null): string {
-  if (!error) return '';
-  if (error.status === 401) return 'Open /admin once with admin credentials, then retry this protected request.';
-  if (error.status === 503) return 'Server-side NEAR Intents envs are disabled or incomplete.';
-  if (error.status === 400) return 'Check the binding, source asset, destination asset, and amount.';
-  return 'Check the server logs or retry after the indexer API is reachable.';
+function friendlySettlementAsset(assetId?: string): string {
+  if (!assetId) return 'Stellar settlement asset';
+  if (assetId.includes('111bzQBB65')) return 'Stellar USDC';
+  if (assetId.includes('111bzQBB5')) return 'Stellar XLM';
+  return 'Approved Stellar asset';
 }
 
-function StatusRow({ label, value }: { label: string; value?: string }) {
+function formatDateTime(value?: string): string {
+  if (!value) return 'Not available';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function errorHelp(error: NearIntentsApiError | null): string {
+  if (!error) return '';
+  if (error.status === 401) return 'Payment quotes require a protected reviewer session in this environment.';
+  if (error.status === 503) return 'Cross-chain payments are not available in this environment yet.';
+  if (error.status === 400) return 'Check the source asset, settlement asset, and amount, then request a new quote.';
+  return 'Retry shortly. If this continues, check the payment service logs.';
+}
+
+function RouteMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-zinc-800 bg-black/30 px-3 py-2">
-      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 leading-5">{label}</span>
-      <span className="min-w-0 break-all font-mono text-xs leading-5 text-zinc-300">{value || 'not available'}</span>
+    <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+      <p className="mt-1 min-w-0 break-words text-sm font-bold text-zinc-100">{value}</p>
+    </div>
+  );
+}
+
+function PaymentStep({ label, state }: { label: string; state: StepState }) {
+  const classes = {
+    done: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+    active: 'border-blue-500/30 bg-blue-500/10 text-blue-200',
+    pending: 'border-zinc-800 bg-black/20 text-zinc-500',
+  };
+
+  return (
+    <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${classes[state]}`}>
+      <span
+        className={`h-2.5 w-2.5 rounded-full ${
+          state === 'done' ? 'bg-emerald-300' : state === 'active' ? 'bg-blue-300' : 'bg-zinc-700'
+        }`}
+      />
+      <span className="text-xs font-bold">{label}</span>
     </div>
   );
 }
@@ -93,11 +145,9 @@ function StatusRow({ label, value }: { label: string; value?: string }) {
 export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const toast = useToast();
   const [readiness, setReadiness] = useState<NearIntentsReadiness | null>(null);
-  const [bindingId, setBindingId] = useState('mb_sig-demo-001');
   const [originAsset, setOriginAsset] = useState('nep141:wrap.near');
   const [destinationAsset, setDestinationAsset] = useState('');
   const [amount, setAmount] = useState('1000000');
-  const [dry, setDry] = useState(true);
   const [quote, setQuote] = useState<NearIntentQuoteResponse | null>(null);
   const [status, setStatus] = useState<NearIntentStatusResponse | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
@@ -126,25 +176,46 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     void loadReadiness();
   }, []);
 
+  const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset) || ORIGIN_ASSETS[0];
+  const destinationAllowlist = readiness?.destinationAssets?.allowlist || [];
+  const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
+  const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
+  const paymentPreviewOnly = !livePaymentAvailable;
+
   const canRequestQuote = useMemo(() => {
-    return Boolean(
-      readiness?.enabled &&
-        bindingId.trim() &&
-        originAsset.trim() &&
-        destinationAsset.trim() &&
-        amount.trim()
-    );
-  }, [amount, bindingId, destinationAsset, originAsset, readiness?.enabled]);
+    return Boolean(readiness?.enabled && originAsset.trim() && destinationAsset.trim() && amount.trim());
+  }, [amount, destinationAsset, originAsset, readiness?.enabled]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
+  const quoteDetails = quote?.quote?.quote;
   const providerStatus = status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
   const statusColor = STATUS_COLORS[providerStatus || 'disabled'] || 'zinc';
-  const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset);
-  const refundRouteLabel = originAsset.includes('1100_')
-    ? shortText(walletAddress)
-    : readiness?.configured.defaultRefundAccount
-      ? 'managed by source wallet / QA fallback'
-      : 'source wallet required';
+  const expectedSettlement =
+    quoteDetails?.amountOutFormatted ||
+    nearIntent?.expectedDestinationAmount ||
+    quoteDetails?.amountOut ||
+    'Awaiting quote';
+  const minimumSettlement =
+    nearIntent?.minDestinationAmount ||
+    quoteDetails?.minAmountOut ||
+    'Awaiting quote';
+  const quoteExpiry =
+    quoteDetails?.deadline ||
+    quoteDetails?.timeWhenInactive ||
+    nearIntent?.deadline;
+  const quoteReference = nearIntent?.quoteId || quote?.externalPaymentIntent?.intentId;
+
+  const hasQuote = Boolean(nearIntent);
+  const sourcePaymentSeen = ['KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS'].includes(providerStatus || '');
+  const routingStarted = ['PROCESSING', 'SUCCESS'].includes(providerStatus || '');
+  const settlementReported = providerStatus === 'SUCCESS';
+  const paymentSteps: Array<{ label: string; state: StepState }> = [
+    { label: 'Payment requested', state: hasQuote ? 'done' : 'active' },
+    { label: 'Waiting for source payment', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
+    { label: 'Routing through NEAR Intents', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
+    { label: 'Settling on Stellar', state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending' },
+    { label: 'Escrow funded after Stellar event', state: settlementReported ? 'active' : 'pending' },
+  ];
 
   const createQuote = async () => {
     if (!canRequestQuote) return;
@@ -152,18 +223,18 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     setStatus(null);
     setError(null);
     try {
-      const result = await nearIntentsClient.createQuote(bindingId.trim(), {
+      const result = await nearIntentsClient.createQuote(REVIEW_BINDING_ID, {
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
         amount: amount.trim(),
         refundTo: originAsset.includes('1100_') ? walletAddress : undefined,
         recipient: walletAddress,
-        dry: dry || !readiness?.liveExecutionEnabled,
+        dry: paymentPreviewOnly,
         slippageTolerance: 100,
         depositMode: 'MEMO',
       });
       setQuote(result);
-      toast('NEAR Intents quote stored on binding', 'success');
+      toast('Cross-chain quote ready', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
@@ -174,11 +245,10 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   };
 
   const refreshStatus = async () => {
-    if (!bindingId.trim()) return;
     setLoadingStatus(true);
     setError(null);
     try {
-      const result = await nearIntentsClient.getStatus(bindingId.trim());
+      const result = await nearIntentsClient.getStatus(REVIEW_BINDING_ID);
       setStatus(result);
       setQuote((current) =>
         current
@@ -189,7 +259,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
             }
           : current
       );
-      toast('NEAR Intents status refreshed', 'success');
+      toast('Payment status refreshed', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
@@ -205,8 +275,6 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     toast(`${label} copied`, 'success');
   };
 
-  const destinationAllowlist = readiness?.destinationAssets?.allowlist || [];
-
   return (
     <Card className="p-4 sm:p-6 lg:p-8 bg-[#02040a]" glowOnHover>
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
@@ -216,112 +284,116 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">NEAR Intents Funding</h3>
-              <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>
-                {readiness?.enabled ? 'SDK Ready' : 'Disabled'}
-              </Tag>
-              <Tag color={readiness?.liveExecutionEnabled ? 'amber' : 'zinc'}>
-                {readiness?.liveExecutionEnabled ? 'Live Allowed' : 'Dry First'}
-              </Tag>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Pay from another chain</h3>
+              <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
+              <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
-              Create and track a 1Click quote against a marketplace binding. This initiates cross-chain funding only; escrow is funded after the Stellar settlement asset is deposited and the Soroban funded event is indexed.
+              Start a cross-chain payment and settle into Stellar escrow. The deal is marked funded only after the Stellar contract emits the funded event.
             </p>
           </div>
         </div>
         <Button onClick={loadReadiness} variant="secondary" className="py-3 text-xs" icon={loadingReadiness ? Loader2 : RefreshCw}>
-          Check Server
+          Refresh Availability
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
         <div className="space-y-4">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Binding ID</span>
-                <input
-                  value={bindingId}
-                  onChange={(event) => setBindingId(event.target.value)}
-                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Amount</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Amount due</span>
                 <input
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none"
                 />
               </label>
+              <label className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Settlement asset</span>
+                {destinationAllowlist.length > 0 ? (
+                  <select
+                    value={destinationAsset}
+                    onChange={(event) => setDestinationAsset(event.target.value)}
+                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none"
+                  >
+                    <option value="">Choose settlement asset</option>
+                    {destinationAllowlist.map((asset) => (
+                      <option key={asset} value={asset}>
+                        {friendlySettlementAsset(asset)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-2.5 text-sm font-bold text-zinc-500">
+                    Settlement route unavailable
+                  </div>
+                )}
+              </label>
             </div>
-            <label className="space-y-2 block">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Source Asset</span>
-              <select
-                value={originAsset}
-                onChange={(event) => setOriginAsset(event.target.value)}
-                className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none"
-              >
-                {ORIGIN_ASSETS.map((asset) => (
-                  <option key={asset.assetId} value={asset.assetId}>
-                    {asset.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[10px] text-zinc-500">
-                {selectedOriginAsset?.description || 'Refunds are routed to the connected source wallet.'}
-              </p>
-            </label>
-            <label className="space-y-2 block">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Settlement Asset</span>
-              {destinationAllowlist.length > 0 ? (
-                <select
-                  value={destinationAsset}
-                  onChange={(event) => setDestinationAsset(event.target.value)}
-                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none"
-                >
-                  <option value="">Choose approved settlement asset</option>
-                  {destinationAllowlist.map((asset) => (
-                    <option key={asset} value={asset}>
-                      {asset.includes('111bzQBB65') ? 'Stellar USDC' : asset.includes('111bzQBB5') ? 'Stellar XLM' : asset}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <textarea
-                  value={destinationAsset}
-                  onChange={(event) => setDestinationAsset(event.target.value)}
-                  rows={2}
-                  spellCheck={false}
-                  placeholder="Approved settlement asset"
-                  className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-xs text-zinc-100 font-mono outline-none placeholder:text-zinc-700"
-                />
-              )}
-              <p className="text-[10px] text-zinc-500">
-                {destinationAllowlist.length > 0
-                  ? `${destinationAllowlist.length} approved Stellar settlement asset${destinationAllowlist.length === 1 ? '' : 's'} configured.`
-                  : 'Configure approved Stellar settlement assets before requesting quotes.'}
-              </p>
-            </label>
-            <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-zinc-300">Refund Route</span>
-                <span className="font-mono text-[10px] text-zinc-500">{refundRouteLabel}</span>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Source asset</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {ORIGIN_ASSETS.map((asset) => {
+                  const selected = asset.assetId === originAsset;
+                  return (
+                    <button
+                      key={asset.assetId}
+                      type="button"
+                      onClick={() => setOriginAsset(asset.assetId)}
+                      className={`text-left rounded-lg border px-3 py-3 transition ${
+                        selected
+                          ? 'border-blue-500/50 bg-blue-500/10 text-white'
+                          : 'border-zinc-800 bg-black/20 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold">{asset.label}</span>
+                        <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                          {asset.chain}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-zinc-500">{asset.description}</p>
+                    </button>
+                  );
+                })}
               </div>
-              <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
-                Refunds are sent to the connected source wallet in the production flow. Server fallback is used only for dry quote QA when a source wallet is not connected.
-              </p>
             </div>
-            <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black/30 px-3 py-3">
-              <span className="text-xs font-bold text-zinc-300">Dry quote</span>
-              <input
-                type="checkbox"
-                checked={dry || !readiness?.liveExecutionEnabled}
-                disabled={!readiness?.liveExecutionEnabled}
-                onChange={(event) => setDry(event.target.checked)}
-                className="h-4 w-4 accent-blue-500"
-              />
-            </label>
+
+            <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg border border-blue-500/20 bg-blue-500/10 flex items-center justify-center text-blue-300">
+                    <Wallet size={17} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-100">
+                      {selectedOriginAsset.symbol} on {selectedOriginAsset.chain}
+                    </p>
+                    <p className="text-xs text-zinc-500">Source payment</p>
+                  </div>
+                </div>
+                <ArrowRightLeft size={18} className="hidden sm:block text-zinc-600" />
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center text-emerald-300">
+                    <ShieldCheck size={17} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-100">{settlementLabel}</p>
+                    <p className="text-xs text-zinc-500">Stellar escrow settlement</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {paymentPreviewOnly && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                This environment can show pricing and route readiness. Source-chain payment instructions appear after live execution is enabled.
+              </div>
+            )}
+
             <Button
               onClick={createQuote}
               disabled={loadingQuote || !canRequestQuote}
@@ -329,7 +401,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
               className="w-full py-4"
               icon={loadingQuote ? Loader2 : ShieldCheck}
             >
-              {loadingQuote ? 'Requesting Quote...' : 'Request Quote'}
+              {loadingQuote ? 'Getting Quote...' : 'Get Quote'}
             </Button>
           </div>
 
@@ -340,11 +412,6 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                 <span>{error.message}</span>
               </div>
               <p className="text-xs text-red-200/80">{errorHelp(error)}</p>
-              {error.status === 401 && (
-                <a href="/admin" target="_blank" rel="noopener noreferrer" className="inline-flex text-xs font-bold underline underline-offset-4">
-                  Open admin auth
-                </a>
-              )}
             </div>
           )}
         </div>
@@ -353,86 +420,70 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Server Readiness</h4>
-                <p className="mt-1 text-[10px] text-zinc-500">JWT and asset id stay server-side.</p>
+                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Quote</h4>
+                <p className="mt-1 text-[10px] text-zinc-500">Review the route before sending payment.</p>
               </div>
-              <Tag color={readiness?.enabled ? 'emerald' : 'zinc'}>
-                {readiness?.enabled ? 'Configured' : 'Off'}
-              </Tag>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'JWT', ok: readiness?.configured.jwt },
-                {
-                  label: 'Assets',
-                  ok:
-                    readiness?.configured.stellarDestinationAsset ||
-                    readiness?.configured.defaultStellarDestinationAsset ||
-                    readiness?.configured.stellarDestinationAssetAllowlist,
-                },
-                { label: 'Fallback', ok: readiness?.configured.defaultRefundAccount },
-              ].map((item) => (
-                <div key={item.label} className="rounded-lg border border-zinc-800 bg-black/30 px-2 py-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{item.label}</p>
-                  <p className={`mt-1 text-xs font-bold ${item.ok ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                    {item.ok ? 'set' : 'missing'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Quote / Status</h4>
-                <p className="mt-1 text-[10px] text-zinc-500">Quote metadata is stored on the binding.</p>
-              </div>
-              <Tag color={statusColor}>{providerStatus || 'No Quote'}</Tag>
+              <Tag color={statusColor}>{providerStatus ? providerStatus.replaceAll('_', ' ') : 'No quote'}</Tag>
             </div>
 
             {nearIntent ? (
               <>
-                <div className="grid grid-cols-1 gap-2">
-                  <StatusRow label="Quote" value={nearIntent.quoteId} />
-                  <StatusRow label="Source" value={nearIntent.sourceAsset} />
-                  <StatusRow label="Destination" value={nearIntent.destinationAsset} />
-                  <StatusRow label="Output" value={`${formatBaseAmount(nearIntent.expectedDestinationAmount)} base units`} />
-                  <StatusRow label="Min Output" value={`${formatBaseAmount(nearIntent.minDestinationAmount)} base units`} />
-                  <StatusRow label="Signature" value={nearIntent.signatureVerified ? 'verified by 1Click SDK' : 'not verified'} />
-                  <StatusRow label="Deadline" value={nearIntent.deadline} />
-                  <StatusRow label="Recipient" value={shortText(nearIntent.recipient)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <RouteMetric label="Send from" value={`${selectedOriginAsset.chain} ${selectedOriginAsset.symbol}`} />
+                  <RouteMetric label="Settle as" value={settlementLabel} />
+                  <RouteMetric label="Estimated received" value={`${formatBaseAmount(expectedSettlement)} base units`} />
+                  <RouteMetric label="Minimum received" value={`${formatBaseAmount(minimumSettlement)} base units`} />
+                  <RouteMetric label="Quote expires" value={formatDateTime(quoteExpiry)} />
+                  <RouteMetric label="Quote verified" value={nearIntent.signatureVerified ? 'Yes' : 'Pending'} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
-                  <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Deposit Address</p>
-                    <p className="break-all font-mono text-xs text-zinc-300">{nearIntent.depositAddress || (nearIntent.dry ? 'dry quote: no deposit address' : 'not available')}</p>
+                <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Clock3 size={15} className="text-blue-300" />
+                    <h5 className="text-sm font-bold text-zinc-100">Payment instructions</h5>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyValue('Deposit address', nearIntent.depositAddress)}
-                    disabled={!nearIntent.depositAddress}
-                    className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-zinc-500 hover:text-blue-300 disabled:opacity-40"
-                    title="Copy deposit address"
-                  >
-                    <Copy size={16} />
-                  </button>
+                  {nearIntent.depositAddress && !nearIntent.dry ? (
+                    <>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Send to</p>
+                          <p className="break-all font-mono text-xs text-zinc-300">{nearIntent.depositAddress}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyValue('Payment address', nearIntent.depositAddress)}
+                          className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-zinc-500 hover:text-blue-300"
+                          title="Copy payment address"
+                        >
+                          <Copy size={16} />
+                        </button>
+                      </div>
+                      {nearIntent.depositMemo && (
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Memo</p>
+                            <p className="break-all font-mono text-xs text-zinc-300">{nearIntent.depositMemo}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyValue('Payment memo', nearIntent.depositMemo)}
+                            className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-zinc-500 hover:text-blue-300"
+                            title="Copy payment memo"
+                          >
+                            <Copy size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs leading-relaxed text-zinc-500">
+                      Payment instructions are hidden until the selected route is available for live execution.
+                    </p>
+                  )}
+                  {quoteReference && (
+                    <p className="text-[10px] text-zinc-600">Reference {shortText(quoteReference)}</p>
+                  )}
                 </div>
-
-                {nearIntent.depositMemo && (
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                    <StatusRow label="Memo" value={nearIntent.depositMemo} />
-                    <button
-                      type="button"
-                      onClick={() => copyValue('Deposit memo', nearIntent.depositMemo)}
-                      className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-zinc-500 hover:text-blue-300"
-                      title="Copy deposit memo"
-                    >
-                      <Copy size={16} />
-                    </button>
-                  </div>
-                )}
 
                 <Button
                   onClick={refreshStatus}
@@ -441,28 +492,46 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                   className="w-full py-3 text-xs"
                   icon={loadingStatus ? Loader2 : RefreshCw}
                 >
-                  {loadingStatus ? 'Refreshing Status...' : 'Refresh Status'}
+                  {loadingStatus ? 'Refreshing Status...' : 'Refresh Payment Status'}
                 </Button>
               </>
             ) : (
               <div className="rounded-xl border border-dashed border-zinc-800 bg-black/20 p-6 text-center">
-                <KeyRound size={24} className="mx-auto mb-3 text-zinc-600" />
-                <p className="text-sm font-bold text-zinc-400">No NEAR intent quote yet</p>
+                <ShieldCheck size={24} className="mx-auto mb-3 text-zinc-600" />
+                <p className="text-sm font-bold text-zinc-400">No payment quote yet</p>
+                <p className="mt-1 text-xs text-zinc-600">Choose a source asset and request a quote.</p>
               </div>
             )}
+          </div>
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Payment status</h4>
+                <p className="mt-1 text-[10px] text-zinc-500">Escrow updates after Stellar settlement is indexed.</p>
+              </div>
+              {settlementReported && (
+                <Tag color="amber">Awaiting escrow event</Tag>
+              )}
+            </div>
+            <div className="space-y-2">
+              {paymentSteps.map((step) => (
+                <PaymentStep key={step.label} label={step.label} state={step.state} />
+              ))}
+            </div>
           </div>
 
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed flex items-start gap-3">
             <Timer size={16} className="mt-0.5 shrink-0 text-amber-300" />
             <span>
-              NEAR status can show payment progress, but the escrow rail only treats funds as locked after the Stellar DealEscrow contract emits the funded event.
+              Cross-chain payment status is not escrow state. Funds count as locked only after the Stellar DealEscrow funded event is indexed.
             </span>
           </div>
 
           {status?.status.status === 'SUCCESS' && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-xs text-emerald-200 leading-relaxed flex items-start gap-3">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
-              <span>NEAR reports settlement success. Reconcile Soroban events before marking escrow funded.</span>
+              <span>Settlement is reported complete. Reconcile Stellar events before showing the milestone as funded.</span>
             </div>
           )}
         </div>

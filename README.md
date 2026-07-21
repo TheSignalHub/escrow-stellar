@@ -6,7 +6,7 @@ Milestone-based escrow with atomic 3-way payment splits on Soroban. Built for th
 
 A fully functional implementation of The Signal's deal escrow system on Stellar's Soroban smart contract platform. It demonstrates how a real-world B2B marketplace handles milestone-based payments with three-party atomic splits — the exact logic running in production at [thesignal.directory](https://thesignal.directory).
 
-**Contract on Testnet**: [`CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC`](https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC)
+**Contract on Testnet**: [`CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`](https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ)
 
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab readiness/dry quote/status panel. Quotes use user-selected origin and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep live execution disabled until JWT, refund path, and no-testnet tiny-amount evidence are complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab cross-chain funding entry. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
 
 Reviewer links:
 
@@ -25,7 +25,7 @@ Reviewer links:
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
 ```
 
 Coolify deployment env and operations are documented in
@@ -49,7 +49,7 @@ or indexer actions when admin credentials are supplied.
 Current testnet funding configuration:
 
 ```text
-DealEscrow:        CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+DealEscrow:        CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
 test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
@@ -88,16 +88,19 @@ values through an adapter/API model. The Signal is the reference marketplace,
 but the rail is designed to be reusable by other service marketplaces.
 
 NEAR Intents is now treated as a required final-tranche integration workstream,
-not something to bypass. The current repo includes a feature-flagged adapter
+not an optional deferral. The current repo includes a feature-flagged adapter
 around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-Liquidity-tab panel for readiness, source/settlement asset selection, dry
-quotes, deposit instructions, and provider status refresh. Refund routing is
-managed through the source wallet in the production flow, with a server fallback
-reserved for dry quote QA. Soroban `funded` events remain the source of truth
-for escrow funding, even when NEAR Intents reports that a cross-chain payment
-is moving. Live NEAR execution still needs credentials, approved settlement
-asset allowlists, source-wallet execution, and tiny-amount no-testnet evidence. See
+Liquidity-tab cross-chain payment entry for choosing source chain/asset,
+settlement asset, amount, quote, payment instructions, and payment status.
+Refund routing is managed through the source wallet in the production flow,
+with a server fallback reserved for internal quote QA. Soroban `funded` events
+remain the source of truth for escrow funding, even when NEAR Intents reports
+that a cross-chain payment is moving. Stellar issued assets such as USDC require
+the destination recipient to exist on Stellar and hold the asset trustline
+before a quote can be treated as production-ready; the backend preflights this
+before calling 1Click. Live NEAR execution still needs source-wallet execution
+and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
 Stripe Connect remains The Signal production marketplace's fiat payment rail
@@ -113,7 +116,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
 - **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
-- **NEAR Intents Funding Panel** — Check SDK-backed readiness, choose source and approved settlement assets, request signature-verified dry quotes, view deposit instructions/status, and keep escrow funding gated on Soroban events.
+- **Cross-Chain Funding Entry** — Choose a source chain/asset, quote a NEAR Intents route into approved Stellar settlement assets, view payment instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -214,7 +217,7 @@ npm run dev
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use the **Liquidity** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
-5. Optional: inspect the NEAR Intents panel for readiness/dry quote/status behavior on the shadow marketplace binding
+5. Optional: inspect **Pay from another chain** for cross-chain quote/status behavior on the internal shadow marketplace binding
 6. Create a deal using a Quick Start scenario
 7. Fund milestones, release them, and watch the 3-way split visualization
 8. Check synced events in `/market_dashboard`
@@ -253,7 +256,7 @@ escrow-stellar/
 │           ├── CreateDeal.tsx      # Deal creation with review + success screens
 │           ├── DealDashboard.tsx   # Full deal lifecycle (split-panel, search, filters)
 │           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker + NEAR panel shell
-│           ├── NearIntentsPanel.tsx # NEAR readiness, dry quote, deposit/status UI
+│           ├── NearIntentsPanel.tsx # Cross-chain funding quote, instructions, and status UI
 │           └── ReputationBadge.tsx # On-chain reputation with radar animation
 └── docs/
     ├── ARCHITECTURE.md             # System design + integration patterns
@@ -294,7 +297,7 @@ provider_cut    = $10,000 − $1,000 = $9,000
 
 ## Test Suite
 
-10 comprehensive tests:
+13 comprehensive tests:
 
 | # | Test | Verifies |
 |---|------|----------|
@@ -303,15 +306,18 @@ provider_cut    = $10,000 − $1,000 = $9,000
 | 3 | Reputation counter | Increments on deal completion |
 | 4 | Dispute + resolve | Freeze → admin resolves 50/50 |
 | 5 | Full refund | Admin refunds all funded milestones |
-| 6 | Auth checks | Non-client cannot deposit |
-| 7 | Double deposit prevention | Cannot fund same milestone twice |
-| 8 | Release unfunded fails | Cannot release a Pending milestone |
-| 9 | Deal count tracking | Counter increments correctly |
-| 10 | Variable commission (65%) | Architect tier connector share |
+| 6 | Dispute provider win | Admin can release disputed funds fully to provider |
+| 7 | Dispute client win | Admin can refund disputed funds fully to client |
+| 8 | Auth checks | Non-client cannot deposit |
+| 9 | Double deposit prevention | Cannot fund same milestone twice |
+| 10 | Release unfunded fails | Cannot release a Pending milestone |
+| 11 | Deal count tracking | Counter increments correctly |
+| 12 | Variable commission (65%) | Architect tier connector share |
+| 13 | Milestone count limit | Rejects deals with more than 20 milestones |
 
 ```bash
 cargo test
-# running 10 tests ... test result: ok. 10 passed; 0 failed
+# running 13 tests ... test result: ok. 13 passed; 0 failed
 ```
 
 ## Technology Stack
@@ -335,7 +341,7 @@ cargo test
 | Feature | Production (The Signal) | This Demo (Soroban) |
 |---------|------------------------|---------------------|
 | 3-party split | `approveMilestone()` in Node.js | `release_milestone()` in Rust |
-| Milestone lifecycle | Pending → Funded → Released | Same states, on-chain |
+| Milestone lifecycle | Pending → Funded → Released / Resolved / Refunded | Same states, on-chain |
 | BD connector tiers | 40–65% of platform fee | Parameterized per deal |
 | Dispute escalation | Admin dashboard + Stripe | Smart contract + admin auth |
 | Reputation | Database counter | Persistent storage on-chain |

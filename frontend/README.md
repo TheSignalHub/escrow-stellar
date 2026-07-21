@@ -132,7 +132,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deal Terminal** — browse all on-chain escrows, filter by status, search by ID / address
 - **New Contract** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and check NEAR Intents readiness/dry quotes for marketplace-bound cross-chain funding with source and approved settlement asset selection
+- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and use the NEAR Intents-backed **Pay from another chain** entry for marketplace-bound cross-chain quote/status review
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -140,13 +140,14 @@ For the SCF #42 Tranche 2 demo, the Fund/Create Deal flows demonstrate
 Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
 the seeded Soroswap testnet route converts it into the configured demo test
 USDC settlement asset, and the escrow contract settles against that configured
-asset. The Liquidity tab also includes a NEAR Intents readiness and dry quote
-panel for the marketplace-binding adapter. The panel lets the user choose a
-source asset and an approved Stellar settlement asset exposed by the backend
-readiness route, hides raw refund-address entry, and shows whether the returned
-1Click quote signature was verified. The demo test USDC token is not
-Circle-issued production USDC, and NEAR status never marks escrow funded until
-the Stellar DealEscrow `funded` event exists.
+asset. The Liquidity tab also includes a NEAR Intents-backed cross-chain
+funding entry for the marketplace-binding adapter. The panel lets the user
+choose a source asset and approved Stellar settlement asset, get a quote, view
+payment instructions/status, and see whether the returned 1Click quote was
+verified. It intentionally hides binding ids, raw asset ids, JWT/readiness
+internals, refund fallback envs, and internal smoke terminology. The demo test
+USDC token is not Circle-issued production USDC, and NEAR/payment status never
+marks escrow funded until the Stellar DealEscrow `funded` event exists.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.
@@ -171,7 +172,7 @@ frontend/src/
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
-│   ├── NearIntentsPanel.tsx   # Liquidity-tab NEAR readiness/quote/status panel
+│   ├── NearIntentsPanel.tsx   # Liquidity-tab cross-chain quote/status panel
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

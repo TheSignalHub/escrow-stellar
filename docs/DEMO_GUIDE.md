@@ -68,29 +68,30 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 
-### Option C: NEAR Intents Funding Readiness
+### Option C: Pay from Another Chain
 
-The Liquidity tab also includes a NEAR Intents funding panel for the
-marketplace-binding adapter.
+The Liquidity tab also includes a cross-chain funding entry backed by the
+NEAR Intents adapter.
 
-1. Confirm the readiness badges. The panel shows whether NEAR Intents is
-   enabled, whether live execution is allowed, and whether server-side JWT,
-   approved settlement asset config, and QA fallback config are present.
-2. Use the default shadow binding (`mb_sig-demo-001`) or enter another binding
-   ID.
-3. Keep **Dry quote** enabled unless the deployment has a real NEAR JWT,
-   approved Stellar destination asset id, and explicit live QA approval.
-4. Choose the source asset and approved Stellar settlement asset.
-5. Click **Request Quote** to call the protected server-side adapter. The
-   backend verifies the 1Click quote signature before storing quote metadata.
-6. If a quote returns deposit details, review the deposit address, memo, expiry,
-   expected output, and managed refund route before taking any source-chain action.
-7. Click **Refresh Status** to poll provider status for the stored deposit
-   address or memo.
+1. Choose **Pay from another chain**.
+2. Select the source asset, such as NEAR, Ethereum USDC, Base USDC, or Stellar
+   XLM.
+3. Confirm the settlement asset is the approved Stellar settlement asset shown
+   by the app.
+4. Enter the amount due and click **Get Quote**.
+5. Review the estimated received amount, minimum received amount, quote expiry,
+   quote verification state, and payment status timeline.
+6. If live execution is enabled and payment instructions are returned, send the
+   source-chain payment to the displayed address and memo.
+7. Click **Refresh Payment Status** to follow the route through source payment,
+   NEAR Intents routing, Stellar settlement, and escrow funding.
 
-NEAR Intents status is payment-initiation evidence only. The deal is not
-considered escrow-funded until the Stellar DealEscrow contract emits a `funded`
-event and the indexer sees it.
+The public UI intentionally hides binding ids, raw asset ids, refund fallback
+envs, JWT/readiness internals, and internal smoke terminology. The internal
+binding for reviewer QA remains `mb_sig-demo-001`. NEAR Intents status is
+payment-initiation evidence only. The deal is not considered escrow-funded
+until the Stellar DealEscrow contract emits a `funded` event and the indexer
+sees it.
 
 ---
 
@@ -218,7 +219,7 @@ from an admin-controlled tool or future operator console:
 3. Submit `resolve_dispute(deal_id, milestone_idx, refund_bps)`
 4. Verify the resulting `resolved` Soroban event in the indexer/dashboard
 
-**What happens on-chain**: The `resolve_dispute` function (admin-only) transfers the refund portion to the client and the remainder to the provider. The milestone becomes `Refunded`.
+**What happens on-chain**: The `resolve_dispute` function (admin-only) transfers the refund portion to the client and the remainder to the provider. A provider win becomes `Released`, a full client refund becomes `Refunded`, and a partial settlement becomes `Resolved`.
 
 ---
 
@@ -280,14 +281,14 @@ After completing the full flow, verify:
 8. Optionally reconnect as client and use **Accept & Release to Provider**
 9. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
 
-### Scenario 2b: NEAR Intents Unhappy Path (2 minutes)
+### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 
-1. Open Liquidity and inspect the NEAR Intents readiness panel.
-2. If the deployment has `NEAR_INTENTS_ENABLED=false`, capture the disabled
-   state and confirm quote requests fail with a clear server-side readiness
-   message.
-3. If the deployment is enabled but not authenticated, open `/admin`, sign in,
-   and retry the quote.
+1. Open Liquidity and use **Pay from another chain**.
+2. If cross-chain payments are unavailable, capture the product-facing
+   availability message and confirm the quote button is unavailable or returns
+   a clear payment-route error.
+3. If the protected reviewer session is missing, sign in through `/admin`, then
+   retry the quote without exposing the admin session details in screenshots.
 4. Capture any failed/refunded/provider-pending status as payment status only;
    do not mark the escrow funded unless a matching Soroban `funded` event is
    visible.

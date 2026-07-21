@@ -191,7 +191,7 @@ Three-part funding interface (Liquidity tab):
 
 **Section 2 — Stellar Broker Funding**: Quote → Sign → Swap for XLM -> test USDC through the Stellar Broker testnet route. The current testnet adapter executes against the seeded Soroswap router pool and uses 1% slippage tolerance.
 
-**Section 3 — NEAR Intents Funding**: Readiness → source/settlement asset selection → dry/live quote → deposit instructions → provider status refresh for marketplace-bound cross-chain payment initiation. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT and provider secrets stay server-side. Quote/status routes require the admin Basic Auth session, while `/api/near-intents/readiness` is public and returns only non-secret readiness booleans plus the approved settlement asset list/default. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for dry quote QA. The panel shows whether the backend verified the 1Click quote signature and explicitly warns that NEAR settlement status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
+**Section 3 — Pay from another chain**: Source chain/asset selection → approved Stellar settlement asset → amount due → quote → payment instructions/status for marketplace-bound cross-chain payment initiation. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, raw 1Click asset ids, refund fallback, and binding id stay server-side or internal. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. The panel shows signature-verified quote state in product terms and explicitly warns that payment status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
 
 ### CreateDeal
 
@@ -215,7 +215,7 @@ Split-panel deal lifecycle management:
 
 **Left panel — Deal List**:
 - Search bar with clear button (×), dynamic icon color, and result counter showing `N results for "query"`
-- Segmented filter tabs (`All` / `In Progress` / `Awaiting Funding` / `Completed` / `Disputed` / `Cancelled`) — pill-track container with color-coded active states and status dots
+- Segmented filter tabs (`All` / `In Progress` / `Awaiting Funding` / `Completed` / `Disputed` / `Resolved` / `Cancelled`) — pill-track container with color-coded active states and status dots
 - Per-deal cards: title, status tag, total amount, milestone progress, role badge (Client/Provider/Connector)
 - Auto-refresh every 30 seconds via ref-based interval
 

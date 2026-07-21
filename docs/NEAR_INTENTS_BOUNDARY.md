@@ -24,6 +24,8 @@ funds are actually locked in DealEscrow.
 | 2026-07-01 16:00 HKT | NEAR Intents integration research refresh | Rechecked official NEAR/1Click docs and tightened the required build path: token discovery, quote, origin-chain deposit, optional deposit tx submission, status polling, signed-intent future path, JWT/fee handling, and no-testnet live QA. | Static documentation update using official NEAR and NEAR Intents docs. No runtime behavior changed. |
 | 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Reworked the adapter around the official 1Click shape: request-selected `originAsset` and `destinationAsset`, server-side destination allowlist/default, explicit refund target, quote signature verification via `verifyQuoteSignature`, frontend destination asset selection, and smoke/docs updates. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, approved asset IDs from token discovery, admin auth, and tiny-amount no-testnet QA before enabling live execution. |
 | 2026-07-20 23:06 BST | NEAR production UX cleanup | Removed the user-facing raw refund address field from the Liquidity panel, changed raw asset inputs into source/settlement selectors, and reframed the refund env as a dry-QA fallback rather than production refund behavior. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
+| 2026-07-21 13:26 BST | NEAR Stellar recipient preflight | Added server-side validation before 1Click quotes to ensure Stellar issued-asset recipients are valid G-addresses, exist on Horizon, and hold the destination asset trustline. This turns opaque provider errors for assets such as Stellar USDC into actionable recipient-readiness errors. | `npm run build` passed in `indexer/`; quote smoke with the seeded fallback recipient now blocks locally before provider submission until a USDC-ready Stellar recipient is configured. |
+| 2026-07-21 16:34 BST | Cross-chain funding product UX | Reworked the Liquidity-tab NEAR panel into a production-facing **Pay from another chain** flow. The UI now shows source asset, approved Stellar settlement asset, amount, quote, payment instructions, and payment status while hiding binding id, raw asset ids, JWT/readiness internals, refund fallback envs, dry-quote terminology, and admin smoke language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 
 ## Researched Protocol Notes
 
@@ -150,6 +152,11 @@ Important constraints from the current docs:
 - NEAR Intents lists Stellar as supported, including SEP-53 signing support, but
   this repo still must validate the exact Stellar issued-asset id and recipient
   address requirements before enabling production execution.
+- Stellar issued assets such as USDC require the destination account to exist
+  and hold the asset trustline. XLM does not require a trustline. The adapter
+  validates Stellar destination readiness through Horizon before requesting a
+  1Click quote so the product can show a clear setup error instead of surfacing
+  an opaque provider response.
 
 ## Product Decision
 
@@ -172,6 +179,27 @@ The escrow rail must not mark funds as locked from NEAR status alone. A Near
 intent can prove that payment initiation is moving, but DealEscrow is funded
 only after the Stellar settlement asset is deposited and the indexer observes
 the Soroban `funded` event.
+
+## Product-Facing Checkout Shape
+
+The public flow should read like checkout, not an integration console:
+
+1. User opens a deal and chooses a funding route.
+2. The app offers **Stellar USDC**, **Swap into Stellar USDC**, and **Pay from
+   another chain**.
+3. **Pay from another chain** lets the user choose a source chain/asset, review
+   the Stellar settlement asset, enter the amount due, and request a quote.
+4. The quote view shows estimated received amount, minimum received amount,
+   expiry, verification state, payment instructions when live execution is
+   enabled, and the payment status timeline.
+5. Status progresses through source payment, NEAR Intents routing, Stellar
+   settlement, and then escrow funding only after a matching Soroban `funded`
+   event is indexed.
+
+Do not expose these implementation details in the public checkout surface:
+binding ids, raw asset ids, JWT/readiness internals, refund fallback envs,
+dry-quote labels, smoke/admin language, or marketplace shadow-binding jargon.
+Those remain internal QA and operator concerns.
 
 ## Adapter Responsibilities
 
@@ -268,7 +296,9 @@ NEAR_INTENTS_ENABLED=false
 NEAR_INTENTS_ALLOW_LIVE=false
 NEAR_INTENTS_API_BASE_URL=
 NEAR_INTENTS_JWT=
-NEAR_INTENTS_STELLAR_DESTINATION_ASSET=
+NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=
+NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=
+NEAR_INTENTS_STELLAR_HORIZON_URL=https://horizon.stellar.org
 NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=
 NEAR_INTENTS_QUOTE_TTL_SECONDS=300
 NEAR_INTENTS_POLL_INTERVAL_SECONDS=15
@@ -297,38 +327,38 @@ provider-pushed state changes.
 
 ## UI Requirements
 
-The frontend now includes a NEAR Intents funding panel in the Liquidity tab
+The frontend now includes **Pay from another chain** in the Liquidity tab
 alongside Friendbot and the Stellar broker route:
 
-- Displays feature readiness, server-side JWT/settlement/fallback booleans,
-  source asset selector, settlement asset selector, amount, managed refund
-  route, quote id, expected output, expiry, recipient, deposit address, and
-  deposit memo when available.
-- Does not expose a raw refund-address field in the user flow. Production
-  refunds should route to the connected origin-chain wallet. The server default
-  refund account exists only as an operator-controlled dry quote/smoke fallback
-  until source-chain wallet integration is complete.
-- Defaults to dry quotes and forces dry mode unless
-  `NEAR_INTENTS_ALLOW_LIVE=true`.
-- Shows admin-auth recovery for protected quote/status routes.
-- Shows provider status and keeps `SUCCESS`, `FAILED`, `REFUNDED`, and pending
-  states separate from Soroban escrow funding.
+- Shows source asset, approved Stellar settlement asset, amount due, route
+  summary, quote result, payment instructions when live execution returns them,
+  and a payment status timeline.
+- Hides binding id, raw 1Click asset ids, JWT/readiness internals, refund
+  fallback envs, dry-quote labels, and smoke/admin terminology from the public
+  product surface.
+- Keeps refund handling product-facing: production refunds route to the
+  connected source wallet; the server default refund account remains an
+  operator-controlled internal QA fallback.
+- Uses product language for protected/disabled route errors instead of exposing
+  server configuration details.
+- Shows provider/payment status and keeps `SUCCESS`, `FAILED`, `REFUNDED`, and
+  pending states separate from Soroban escrow funding.
 - Continues to warn that "escrow funded" only means a DealEscrow `funded` event
   was indexed on Stellar.
 
-Remaining UI hardening before production: block expired quotes from live
-acceptance, add wallet-specific source-chain deposit execution, improve
-provider status labels after live QA, and capture unhappy-path evidence for
-expired quote, user cancellation, provider failure, delayed settlement, refund,
-and provider/Soroban state mismatch.
+Remaining UI hardening before production: add wallet-specific source-chain
+deposit execution, hide preview-only copy once live execution is permanently
+enabled, improve provider status labels after live QA, and capture unhappy-path
+evidence for expired quote, user cancellation, provider failure, delayed
+settlement, refund, and provider/Soroban state mismatch.
 
 ## Acceptance Criteria
 
 - A reviewer can create a marketplace binding, request a NEAR Intents quote
   through the official SDK, and see quote/intent/deposit metadata persisted
   against that binding. Status: server API implemented; live quote evidence
-  still needs JWT and approved asset envs. Frontend panel is implemented for
-  readiness, dry quote request, deposit instructions, and status display.
+  still needs final route evidence. Frontend panel is implemented as a
+  product-facing cross-chain quote, payment instruction, and status display.
 - Status updates are idempotent and mapped into the local state model. Status:
   server API implemented for SDK polling by stored deposit address/memo.
 - Failed, expired, refunded, and delayed settlement states are visible in API
