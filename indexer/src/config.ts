@@ -15,6 +15,7 @@ export interface IndexerConfig {
     jwt?: string;
     defaultStellarDestinationAsset?: string;
     stellarDestinationAssetAllowlist: string[];
+    stellarHorizonUrl: string;
     defaultRefundAccount?: string;
     quoteTtlSeconds: number;
     pollIntervalSeconds: number;
@@ -82,6 +83,8 @@ export function getConfig(): IndexerConfig {
       jwt: process.env.NEAR_INTENTS_JWT,
       defaultStellarDestinationAsset,
       stellarDestinationAssetAllowlist,
+      stellarHorizonUrl:
+        process.env.NEAR_INTENTS_STELLAR_HORIZON_URL || 'https://horizon.stellar.org',
       defaultRefundAccount: process.env.NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT,
       quoteTtlSeconds: readOptionalInt('NEAR_INTENTS_QUOTE_TTL_SECONDS') ?? 300,
       pollIntervalSeconds: readOptionalInt('NEAR_INTENTS_POLL_INTERVAL_SECONDS') ?? 15,

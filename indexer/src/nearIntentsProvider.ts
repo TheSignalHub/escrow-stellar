@@ -9,6 +9,7 @@ import {
   type SubmitDepositTxResponse,
   type TokenResponse,
 } from '@defuse-protocol/one-click-sdk-typescript';
+import { StrKey } from '@stellar/stellar-sdk';
 import type { IndexerConfig } from './config.js';
 import type {
   CrossChainPaymentStatus,
@@ -90,6 +91,97 @@ function resolveDestinationAsset(config: IndexerConfig, input: NearIntentQuoteIn
     });
   }
   return asset;
+}
+
+function normalizeHorizonUrl(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function isNativeStellarAsset(token: TokenResponse): boolean {
+  return token.blockchain === 'stellar' && token.symbol.toUpperCase() === 'XLM';
+}
+
+async function findDestinationToken(
+  destinationAsset: string
+): Promise<TokenResponse | undefined> {
+  const tokens = await OneClickService.getTokens();
+  return tokens.find((token) => token.assetId === destinationAsset);
+}
+
+async function ensureStellarRecipientReady(
+  config: IndexerConfig,
+  destinationAsset: string,
+  recipient: string
+): Promise<void> {
+  const destinationToken = await findDestinationToken(destinationAsset);
+  if (!destinationToken || destinationToken.blockchain !== 'stellar') return;
+
+  if (!StrKey.isValidEd25519PublicKey(recipient)) {
+    throw new NearIntentsProviderError(
+      'Stellar destination recipient must be a valid G-address for this destination asset.',
+      400,
+      { recipientType: 'DESTINATION_CHAIN', destinationAsset }
+    );
+  }
+
+  if (isNativeStellarAsset(destinationToken)) return;
+
+  const issuer = destinationToken.contractAddress;
+  if (!issuer) {
+    throw new NearIntentsProviderError(
+      '1Click Stellar issued asset metadata is missing the issuer required for recipient trustline validation.',
+      502,
+      { destinationAsset, symbol: destinationToken.symbol }
+    );
+  }
+
+  const accountUrl = `${normalizeHorizonUrl(config.nearIntents.stellarHorizonUrl)}/accounts/${recipient}`;
+  const response = await fetch(accountUrl, { headers: { Accept: 'application/json' } });
+  if (response.status === 404) {
+    throw new NearIntentsProviderError(
+      `Stellar destination recipient must exist and have a ${destinationToken.symbol} trustline before requesting a NEAR Intents quote.`,
+      400,
+      {
+        destinationAsset,
+        symbol: destinationToken.symbol,
+        issuer,
+        horizonStatus: 404,
+      }
+    );
+  }
+  if (!response.ok) {
+    throw new NearIntentsProviderError(
+      'Unable to validate Stellar destination recipient trustline before requesting a NEAR Intents quote.',
+      502,
+      {
+        destinationAsset,
+        symbol: destinationToken.symbol,
+        issuer,
+        horizonStatus: response.status,
+      }
+    );
+  }
+
+  const account = (await response.json()) as {
+    balances?: Array<{ asset_type?: string; asset_code?: string; asset_issuer?: string }>;
+  };
+  const hasTrustline = (account.balances || []).some(
+    (balance) =>
+      balance.asset_code === destinationToken.symbol &&
+      balance.asset_issuer === issuer
+  );
+  if (!hasTrustline) {
+    throw new NearIntentsProviderError(
+      `Stellar destination recipient must add a ${destinationToken.symbol} trustline before requesting a NEAR Intents quote.`,
+      400,
+      {
+        destinationAsset,
+        symbol: destinationToken.symbol,
+        issuer,
+        horizonStatus: response.status,
+      }
+    );
+  }
 }
 
 function parseSdkError(error: unknown): NearIntentsProviderError {
@@ -189,6 +281,8 @@ export async function requestNearIntentQuote(
   const recipient = input.recipient || binding.participants.clientWallet;
   if (!input.originAsset) throw new NearIntentsProviderError('originAsset is required.');
   if (!input.amount) throw new NearIntentsProviderError('amount is required.');
+
+  await ensureStellarRecipientReady(config, destinationAsset, recipient);
 
   const requestBody = {
     dry,

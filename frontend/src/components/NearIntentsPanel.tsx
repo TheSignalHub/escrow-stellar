@@ -11,6 +11,7 @@ import {
   Timer,
   Wallet,
 } from 'lucide-react';
+import { StrKey } from '@stellar/stellar-sdk';
 import { useToast } from '../App';
 import {
   nearIntentsClient,
@@ -181,10 +182,17 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const paymentPreviewOnly = !livePaymentAvailable;
+  const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
 
   const canRequestQuote = useMemo(() => {
-    return Boolean(readiness?.enabled && originAsset.trim() && destinationAsset.trim() && amount.trim());
-  }, [amount, destinationAsset, originAsset, readiness?.enabled]);
+    return Boolean(
+      readiness?.enabled &&
+        hasValidStellarRecipient &&
+        originAsset.trim() &&
+        destinationAsset.trim() &&
+        amount.trim()
+    );
+  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -390,6 +398,12 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
             {paymentPreviewOnly && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 This environment can show pricing and route readiness. Source-chain payment instructions appear after live execution is enabled.
+              </div>
+            )}
+
+            {!hasValidStellarRecipient && (
+              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-3 text-xs leading-relaxed text-red-200">
+                Connect a Stellar wallet before requesting a cross-chain quote so settlement can target a real Stellar recipient.
               </div>
             )}
 
