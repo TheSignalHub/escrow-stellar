@@ -30,6 +30,8 @@ interface NearIntentsPanelProps {
 type StepState = 'done' | 'active' | 'pending';
 
 const REVIEW_BINDING_ID = 'mb_sig-demo-001';
+const NEAR_QUOTE_DEMO_ASSET_ID = 'nep141:usdt.tether-token.near';
+const ONE_NEAR_BASE_UNITS = '1000000000000000000000000';
 
 const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc'> = {
   QUOTE_CREATED: 'blue',
@@ -93,9 +95,14 @@ function shortText(value?: string): string {
 
 function friendlySettlementAsset(assetId?: string): string {
   if (!assetId) return 'Stellar settlement asset';
+  if (assetId === NEAR_QUOTE_DEMO_ASSET_ID) return 'NEAR USDT quote demo';
   if (assetId.includes('111bzQBB65')) return 'Stellar USDC';
   if (assetId.includes('111bzQBB5')) return 'Stellar XLM';
   return 'Approved Stellar asset';
+}
+
+function uniqueAssets(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
 function formatDateTime(value?: string): string {
@@ -181,7 +188,10 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   }, []);
 
   const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset) || ORIGIN_ASSETS[0];
-  const destinationAllowlist = readiness?.destinationAssets?.allowlist || [];
+  const stellarDestinationAllowlist = readiness?.destinationAssets?.allowlist || [];
+  const demoDestinationAllowlist = readiness?.destinationAssets?.demoAllowlist || [];
+  const destinationAllowlist = uniqueAssets([...stellarDestinationAllowlist, ...demoDestinationAllowlist]);
+  const quoteDemoDestination = demoDestinationAllowlist.includes(destinationAsset);
   const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const paymentPreviewOnly = !livePaymentAvailable;
@@ -226,8 +236,14 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     { label: 'Payment requested', state: hasQuote ? 'done' : 'active' },
     { label: 'Waiting for source payment', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
     { label: 'Routing through NEAR Intents', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
-    { label: 'Settling on Stellar', state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending' },
-    { label: 'Escrow funded after Stellar event', state: settlementReported ? 'active' : 'pending' },
+    {
+      label: quoteDemoDestination ? 'Quote route priced by 1Click' : 'Settling on Stellar',
+      state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending',
+    },
+    {
+      label: quoteDemoDestination ? 'Escrow funding not included in quote demo' : 'Escrow funded after Stellar event',
+      state: quoteDemoDestination ? 'pending' : settlementReported ? 'active' : 'pending',
+    },
   ];
 
   const createQuote = async () => {
@@ -241,7 +257,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
         destinationAsset: destinationAsset.trim(),
         amount: amount.trim(),
         refundTo: originAsset.includes('1100_') ? walletAddress : undefined,
-        recipient: walletAddress,
+        recipient: quoteDemoDestination ? undefined : walletAddress,
         dry: paymentPreviewOnly,
         slippageTolerance: 100,
       });
@@ -327,13 +343,20 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                 {destinationAllowlist.length > 0 ? (
                   <select
                     value={destinationAsset}
-                    onChange={(event) => setDestinationAsset(event.target.value)}
+                    onChange={(event) => {
+                      const nextDestinationAsset = event.target.value;
+                      setDestinationAsset(nextDestinationAsset);
+                      if (nextDestinationAsset === NEAR_QUOTE_DEMO_ASSET_ID && amount === '1000000') {
+                        setAmount(ONE_NEAR_BASE_UNITS);
+                      }
+                    }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none"
                   >
                     <option value="">Choose settlement asset</option>
                     {destinationAllowlist.map((asset) => (
                       <option key={asset} value={asset}>
                         {friendlySettlementAsset(asset)}
+                        {demoDestinationAllowlist.includes(asset) ? ' (quote evidence)' : ''}
                       </option>
                     ))}
                   </select>
@@ -404,11 +427,19 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-zinc-100">{settlementLabel}</p>
-                    <p className="text-xs text-zinc-500">Stellar escrow settlement</p>
+                    <p className="text-xs text-zinc-500">
+                      {quoteDemoDestination ? 'Quote evidence route' : 'Stellar escrow settlement'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
+
+            {quoteDemoDestination && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-200">
+                This destination is for signed 1Click quote evidence only. It proves the NEAR Intents route can price successfully; it does not settle into Stellar escrow or mark a deal funded.
+              </div>
+            )}
 
             {paymentPreviewOnly && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">

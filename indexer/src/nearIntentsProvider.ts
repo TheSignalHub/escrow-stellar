@@ -84,13 +84,19 @@ function resolveDestinationAsset(config: IndexerConfig, input: NearIntentQuoteIn
     );
   }
   const allowlist = config.nearIntents.stellarDestinationAssetAllowlist;
-  if (allowlist.length > 0 && !allowlist.includes(asset)) {
+  const demoAllowlist = config.nearIntents.demoDestinationAssetAllowlist;
+  const approvedAssets = [...allowlist, ...demoAllowlist];
+  if (approvedAssets.length > 0 && !approvedAssets.includes(asset)) {
     throw new NearIntentsProviderError('destinationAsset is not approved for this deployment.', 400, {
       destinationAsset: asset,
-      allowedDestinationAssets: allowlist,
+      allowedDestinationAssets: approvedAssets,
     });
   }
   return asset;
+}
+
+function isDemoDestinationAsset(config: IndexerConfig, destinationAsset: string): boolean {
+  return config.nearIntents.demoDestinationAssetAllowlist.includes(destinationAsset);
 }
 
 function isEvmOriginAsset(originAsset: string): boolean {
@@ -286,7 +292,17 @@ export async function requestNearIntentQuote(
     );
   }
 
-  const recipient = input.recipient || binding.participants.clientWallet;
+  const isDemoDestination = isDemoDestinationAsset(config, destinationAsset);
+  if (isDemoDestination && !config.nearIntents.defaultRefundAccount) {
+    throw new NearIntentsProviderError(
+      'NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required for quote-only demo destinations.',
+      503
+    );
+  }
+  const recipient =
+    isDemoDestination && config.nearIntents.defaultRefundAccount
+      ? config.nearIntents.defaultRefundAccount
+      : input.recipient || binding.participants.clientWallet;
   if (!input.originAsset) throw new NearIntentsProviderError('originAsset is required.');
   if (!input.amount) throw new NearIntentsProviderError('amount is required.');
   if (isEvmOriginAsset(input.originAsset) && !isEvmAddress(refundTo)) {

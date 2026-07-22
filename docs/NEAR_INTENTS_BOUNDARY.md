@@ -29,6 +29,7 @@ funds are actually locked in DealEscrow.
 | 2026-07-21 21:13 BST | NEAR quote request compatibility | Removed forced `depositMode` from the public quote request path. 1Click now decides whether the selected route needs a deposit memo, and the UI still displays `depositMemo` when returned. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-21 23:50 BST | Stellar recipient quote guard | Added frontend validation so **Pay from another chain** requires a real connected Stellar G-address before requesting a quote, matching the server-side Stellar recipient preflight. This prevents the shadow binding placeholder wallet from being sent to 1Click. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-21 23:53 BST | Source-chain refund guard | Disabled Ethereum/Base source assets in the public panel until native source-wallet connection exists, and added backend validation so EVM source assets require an EVM refund address instead of falling back to the NEAR QA refund account. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
+| 2026-07-22 11:51 BST | NEAR quote evidence destination | Added an explicitly flagged demo destination allowlist so reviewers can request a signed 1Click quote for a liquid non-Stellar route when Stellar settlement liquidity is unavailable. The UI labels this as quote evidence only and never treats it as escrow funding. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live direct 1Click probe previously confirmed NEAR -> NEAR USDT dry quote succeeds while NEAR -> Stellar USDC returns no liquidity. |
 
 ## Researched Protocol Notes
 
@@ -304,6 +305,8 @@ NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=
 NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=
 NEAR_INTENTS_STELLAR_HORIZON_URL=https://horizon.stellar.org
 NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=
+NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED=false
+NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST=
 NEAR_INTENTS_QUOTE_TTL_SECONDS=300
 NEAR_INTENTS_POLL_INTERVAL_SECONDS=15
 ```
@@ -324,6 +327,14 @@ booleans plus feature flag state. Current write/status endpoints require admin
 auth and keep JWTs server-side. Production hardening still needs idempotency
 keys, replay protection, provider signature verification if webhooks are
 enabled, and raw provider payload logging with JWTs/secrets redacted.
+
+`NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED` and
+`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are reviewer-evidence flags for
+quote-only destinations. Use them only when the configured Stellar settlement
+asset has no current 1Click liquidity and the team needs to demonstrate
+successful SDK quote creation plus signature verification through another
+liquid 1Click asset such as `nep141:usdt.tether-token.near`. These routes are
+not Stellar escrow settlement routes and must not mark a deal funded.
 
 Webhook support is not implemented yet. If we add it later, add
 `NEAR_INTENTS_WEBHOOK_SECRET` and signature verification before accepting

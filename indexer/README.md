@@ -100,13 +100,29 @@ NEAR_INTENTS_ALLOW_LIVE=false
 NEAR_INTENTS_JWT=<server-only-jwt>
 NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=<stellar-asset-id-1>,<stellar-asset-id-2>
 NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=<stellar-asset-id-1>
+NEAR_INTENTS_STELLAR_HORIZON_URL=https://horizon.stellar.org
 NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=<operator-controlled-qa-refund-address>
+NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED=false
+NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST=<quote-only-asset-id>
 ```
 
 `NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT` is a dry quote/smoke fallback. Production
 refunds should be derived from the connected origin-chain wallet and sent in
 the quote request as `refundTo`; do not present this env as the user refund
 model.
+
+`NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED` and
+`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are optional reviewer-evidence
+flags. They allow a signed 1Click quote against a liquid non-Stellar demo
+destination when the configured Stellar settlement route has no live provider
+liquidity. These destinations are quote-only and must not be treated as escrow
+settlement.
+
+For Stellar issued destination assets such as USDC, the quote recipient must be
+a real Stellar account with the destination asset trustline. The adapter checks
+this through `NEAR_INTENTS_STELLAR_HORIZON_URL` before calling 1Click so
+operators get an actionable setup error instead of an opaque provider quote
+failure. XLM destinations do not require a trustline.
 
 The backend also accepts `DEAL_ESCROW_CONTRACT`. If both are present,
 `DEAL_ESCROW_CONTRACT` wins. For the single Coolify app, using only

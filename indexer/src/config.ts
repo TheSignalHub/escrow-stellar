@@ -15,6 +15,7 @@ export interface IndexerConfig {
     jwt?: string;
     defaultStellarDestinationAsset?: string;
     stellarDestinationAssetAllowlist: string[];
+    demoDestinationAssetAllowlist: string[];
     stellarHorizonUrl: string;
     defaultRefundAccount?: string;
     quoteTtlSeconds: number;
@@ -69,6 +70,10 @@ export function getConfig(): IndexerConfig {
       : defaultStellarDestinationAsset
         ? [defaultStellarDestinationAsset]
         : [];
+  const demoDestinationAssetAllowlist =
+    process.env.NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED === 'true'
+      ? readCsv('NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST')
+      : [];
 
   return {
     databaseUri: readRequired('DATABASE_URI'),
@@ -83,6 +88,7 @@ export function getConfig(): IndexerConfig {
       jwt: process.env.NEAR_INTENTS_JWT,
       defaultStellarDestinationAsset,
       stellarDestinationAssetAllowlist,
+      demoDestinationAssetAllowlist,
       stellarHorizonUrl:
         process.env.NEAR_INTENTS_STELLAR_HORIZON_URL || 'https://horizon.stellar.org',
       defaultRefundAccount: process.env.NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT,

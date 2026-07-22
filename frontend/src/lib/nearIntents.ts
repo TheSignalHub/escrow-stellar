@@ -7,11 +7,13 @@ export interface NearIntentsReadiness {
     stellarDestinationAsset: boolean;
     defaultStellarDestinationAsset?: boolean;
     stellarDestinationAssetAllowlist?: boolean;
+    demoDestinationAssetAllowlist?: boolean;
     defaultRefundAccount: boolean;
   };
   destinationAssets?: {
     default?: string;
     allowlist: string[];
+    demoAllowlist?: string[];
   };
   quoteTtlSeconds: number;
   pollIntervalSeconds: number;

@@ -99,7 +99,10 @@ remain the source of truth for escrow funding, even when NEAR Intents reports
 that a cross-chain payment is moving. Stellar issued assets such as USDC require
 the destination recipient to exist on Stellar and hold the asset trustline
 before a quote can be treated as production-ready; the backend preflights this
-before calling 1Click. Live NEAR execution still needs source-wallet execution
+before calling 1Click. When 1Click has no current liquidity for the Stellar
+settlement asset, an explicitly flagged quote-evidence destination can be
+enabled to prove SDK quote creation and signature verification without claiming
+Stellar escrow funding. Live NEAR execution still needs source-wallet execution
 and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 

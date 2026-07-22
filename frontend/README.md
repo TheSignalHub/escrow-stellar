@@ -147,7 +147,10 @@ payment instructions/status, and see whether the returned 1Click quote was
 verified. It intentionally hides binding ids, raw asset ids, JWT/readiness
 internals, refund fallback envs, and internal smoke terminology. The demo test
 USDC token is not Circle-issued production USDC, and NEAR/payment status never
-marks escrow funded until the Stellar DealEscrow `funded` event exists.
+marks escrow funded until the Stellar DealEscrow `funded` event exists. If the
+backend exposes a quote-only demo destination because Stellar-route liquidity
+is unavailable, the panel labels it as quote evidence rather than escrow
+settlement.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

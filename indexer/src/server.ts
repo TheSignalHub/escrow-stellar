@@ -86,11 +86,13 @@ app.get('/api/near-intents/readiness', (_req, res) => {
       defaultStellarDestinationAsset: Boolean(config.nearIntents.defaultStellarDestinationAsset),
       stellarDestinationAssetAllowlist:
         config.nearIntents.stellarDestinationAssetAllowlist.length > 0,
+      demoDestinationAssetAllowlist: config.nearIntents.demoDestinationAssetAllowlist.length > 0,
       defaultRefundAccount: Boolean(config.nearIntents.defaultRefundAccount),
     },
     destinationAssets: {
       default: config.nearIntents.defaultStellarDestinationAsset,
       allowlist: config.nearIntents.stellarDestinationAssetAllowlist,
+      demoAllowlist: config.nearIntents.demoDestinationAssetAllowlist,
     },
     quoteTtlSeconds: config.nearIntents.quoteTtlSeconds,
     pollIntervalSeconds: config.nearIntents.pollIntervalSeconds,
