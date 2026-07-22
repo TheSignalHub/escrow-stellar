@@ -67,7 +67,7 @@ For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
 NEAR Intents keys and approved settlement asset lists are also backend-only.
 Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
 live execution flags; the frontend uses local `/api/near-intents/*` routes so
-secrets stay on the server. The Liquidity panel reads the public readiness
+secrets stay on the server. The Payment Routes panel reads the public readiness
 payload to prefill/select approved settlement assets. Refund routing is
 managed through the connected source wallet in production; the backend default
 refund account is only a dry-quote QA fallback.
@@ -130,9 +130,9 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 ## Features
 
-- **Deal Terminal** — browse all on-chain escrows, filter by status, search by ID / address
-- **New Contract** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Liquidity** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and use the NEAR Intents-backed **Pay from another chain** entry for marketplace-bound cross-chain quote/status review
+- **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones
+- **Create Deal** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
+- **Payment Routes** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and use the NEAR Intents-backed **Pay from another chain** entry for marketplace-bound cross-chain quote/status review
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -140,7 +140,7 @@ For the SCF #42 Tranche 2 demo, the Fund/Create Deal flows demonstrate
 Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
 the seeded Soroswap testnet route converts it into the configured demo test
 USDC settlement asset, and the escrow contract settles against that configured
-asset. The Liquidity tab also includes a NEAR Intents-backed cross-chain
+asset. The Payment Routes tab also includes a NEAR Intents-backed cross-chain
 funding entry for the marketplace-binding adapter. The panel lets the user
 choose a source asset and approved Stellar settlement asset, get a quote, view
 payment instructions/status, and see whether the returned 1Click quote was
@@ -175,7 +175,7 @@ frontend/src/
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
-│   ├── NearIntentsPanel.tsx   # Liquidity-tab cross-chain quote/status panel
+│   ├── NearIntentsPanel.tsx   # Payment Routes cross-chain quote/status panel
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

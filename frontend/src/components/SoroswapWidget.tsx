@@ -180,9 +180,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     <div className="w-full max-w-4xl mx-auto space-y-4 lg:space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4 lg:mb-8">
         <div>
-          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Liquidity Terminal</h2>
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Payment Routes</h2>
           <p className="text-zinc-500 font-medium text-sm lg:text-base">
-            {IS_TESTNET ? 'Provision testnet assets for smart contract execution.' : 'Review settlement liquidity for smart contract execution.'}
+            {IS_TESTNET ? 'Prepare testnet funds and preview payment routes before funding a deal milestone.' : 'Choose the route used to fund escrow milestones.'}
           </p>
         </div>
         {xlmBalance && (
@@ -245,7 +245,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
                 {onFundComplete && (
                   <Button onClick={onFundComplete} variant="secondary" className="w-full py-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20">
-                    Deploy Contract →
+                    Create Deal →
                   </Button>
                 )}
               </div>
@@ -259,7 +259,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
                 {onFundComplete && (
                   <Button onClick={onFundComplete} variant="secondary" className="w-full py-2">
-                    Deploy Contract →
+                    Create Deal →
                   </Button>
                 )}
               </div>

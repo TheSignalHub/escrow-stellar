@@ -254,7 +254,7 @@ export function DealDashboard({
       setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}, have ${available.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}.`);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use the Fund tab to swap XLM into ${SETTLEMENT_TOKEN_SYMBOL}, then retry the deposit.`,
+        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use Payment Routes to prepare the settlement asset, then retry the deposit.`,
       });
       return;
     }
@@ -379,7 +379,7 @@ export function DealDashboard({
             <Activity className="text-emerald-400" size={28} />
             Deal Terminal
           </h1>
-          <p className="text-zinc-400 mt-1">Manage network executions and escrow ledgers</p>
+          <p className="text-zinc-400 mt-1">Review deals, fund milestones, release payments, and file disputes.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -400,7 +400,7 @@ export function DealDashboard({
           </Button>
           {onNavigateToCreate && (
             <Button variant="primary" onClick={onNavigateToCreate} icon={Plus}>
-              New Contract
+              New Deal
             </Button>
           )}
         </div>
@@ -586,8 +586,8 @@ export function DealDashboard({
             <Card className="h-[calc(100vh-200px)] min-h-[600px] bg-zinc-900/20 border-dashed border-zinc-800">
               <div className="h-full flex flex-col items-center justify-center text-zinc-500 text-center p-8">
                 <Activity size={48} className="mb-6 opacity-20" />
-                <h3 className="text-xl font-semibold text-zinc-300 mb-2">Select a Contract</h3>
-                <p className="max-w-md">Choose an escrow execution from the ledger to view metadata, transparent routing, and milestone signals.</p>
+                <h3 className="text-xl font-semibold text-zinc-300 mb-2">Select a Deal</h3>
+                <p className="max-w-md">Choose an escrow deal to view parties, milestones, funding status, release actions, and dispute state.</p>
               </div>
             </Card>
           ) : (
@@ -671,7 +671,7 @@ export function DealDashboard({
                     
                     <div>
                       <h2 className="text-2xl font-bold text-zinc-100 flex items-center gap-3">
-                        {selectedMeta?.title || `Dynamic Contract #${selectedDealId}`}
+                        {selectedMeta?.title || `Escrow Deal #${selectedDealId}`}
                         <CopyableText text={String(selectedDealId)} display={`ID: ${selectedDealId}`} label="dealid" />
                       </h2>
                       {selectedMeta?.description && <p className="text-zinc-400 mt-2 text-sm">{selectedMeta.description}</p>}
@@ -799,7 +799,7 @@ export function DealDashboard({
                             <div className="flex flex-wrap justify-between items-start gap-2">
                               <div>
                                 <h4 className="font-semibold text-zinc-200">{selectedMeta?.milestoneNames?.[i] || `Milestone ${i + 1}`}</h4>
-                                <div className="text-xs text-zinc-500 mt-0.5">Disbursement Parameter</div>
+                                <div className="text-xs text-zinc-500 mt-0.5">Milestone payment</div>
                               </div>
                               <div className="text-right">
                                 <div className="font-mono font-bold text-zinc-200">{formatAmount(m.amount.toString())} {tokenSymbol}</div>
@@ -809,9 +809,16 @@ export function DealDashboard({
                             
                             <div className="pt-3 flex flex-wrap gap-2 justify-end w-full">
                               {status === 'Pending' && isClient && (
-                                <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}`} className="text-xs py-1.5 px-4">
-                                  {actionLoading === `deposit-${i}` ? 'Signing...' : 'Fund Escrow Node'}
-                                </Button>
+                                <>
+                                  {onNavigateToFund && (
+                                    <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">
+                                      Choose Payment Route
+                                    </Button>
+                                  )}
+                                  <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}`} className="text-xs py-1.5 px-4">
+                                    {actionLoading === `deposit-${i}` ? 'Signing...' : 'Fund with Stellar Wallet'}
+                                  </Button>
+                                </>
                               )}
                               {status === 'Funded' && isClient && (
                                 <>

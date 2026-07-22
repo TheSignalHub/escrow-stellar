@@ -44,9 +44,9 @@ To connect:
 
 ---
 
-## Step 2: Fund Your Wallet
+## Step 2: Prepare Payment Routes
 
-Navigate to the **Liquidity** tab (`Alt+1`).
+Navigate to the **Payment Routes** tab (`Alt+1`).
 
 ### Option A: Friendbot (Free 10,000 XLM)
 
@@ -70,7 +70,7 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 ### Option C: Pay from Another Chain
 
-The Liquidity tab also includes a cross-chain funding entry backed by the
+The Payment Routes tab also includes a cross-chain funding entry backed by the
 NEAR Intents adapter.
 
 1. Choose **Pay from another chain**.
@@ -89,15 +89,16 @@ NEAR Intents adapter.
 The public UI intentionally hides binding ids, raw asset ids, refund fallback
 envs, JWT/readiness internals, and internal smoke terminology. The internal
 binding for reviewer QA remains `mb_sig-demo-001`. NEAR Intents status is
-payment-initiation evidence only. The deal is not considered escrow-funded
-until the Stellar DealEscrow contract emits a `funded` event and the indexer
-sees it.
+payment-initiation evidence only. Quote-only demo destinations are forced dry
+previews and do not show executable deposit instructions. The deal is not
+considered escrow-funded until the Stellar DealEscrow contract emits a
+`funded` event and the indexer sees it.
 
 ---
 
 ## Step 3: Create a Deal
 
-Navigate to the **Deploy Contract** tab (`Alt+2`).
+Navigate to the **Create Deal** tab (`Alt+2`).
 
 ### Quick Start
 
@@ -283,7 +284,7 @@ After completing the full flow, verify:
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 
-1. Open Liquidity and use **Pay from another chain**.
+1. Open Payment Routes and use **Pay from another chain**.
 2. If cross-chain payments are unavailable, capture the product-facing
    availability message and confirm the quote button is unavailable or returns
    a clear payment-route error.
@@ -306,8 +307,8 @@ After completing the full flow, verify:
 
 | Shortcut | Action |
 |----------|--------|
-| `Alt+1` | Switch to Liquidity tab |
-| `Alt+2` | Switch to Deploy Contract tab |
+| `Alt+1` | Switch to Payment Routes tab |
+| `Alt+2` | Switch to Create Deal tab |
 | `Alt+3` | Switch to Deals tab |
 | `Alt+4` | Switch to Oracle tab |
 | `Escape` | Close confirmation modals |
@@ -321,13 +322,13 @@ Only active when wallet is connected.
 | Issue | Solution |
 |-------|----------|
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
-| "Insufficient balance" | Go to the Liquidity tab and use Friendbot to get 10,000 XLM. |
+| "Insufficient balance" | Go to the Payment Routes tab and use Friendbot to get 10,000 XLM. |
 | "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
 | Connector cannot dispute | This is expected. Only the client or provider can dispute funded milestones. |
 | Admin resolution button missing | This is expected in the browser demo. Use the operator/admin contract path for `resolve_dispute` evidence. |
-| Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Deploy Contract. |
+| Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Create Deal. |
 | Soroswap quote fails | The seeded testnet route may lack liquidity for that size, or the optional public aggregator may not discover the route. Use XLM directly as the payment token or seed the testnet pool and retry. |
 | Balance shows 0 after Friendbot | Wait a few seconds for the balance refresh (every 15s), or switch tabs to trigger a refresh. |
 | Live Ticker not showing | The ticker requires at least one on-chain deal. Create a deal first, then reload the landing page. |

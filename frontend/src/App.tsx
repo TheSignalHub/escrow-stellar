@@ -136,8 +136,8 @@ function LiveTicker({ items }: { items: TickerItem[] }) {
 type Tab = 'create' | 'dashboard' | 'fund' | 'reputation';
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
-  { id: 'fund', label: 'Liquidity', icon: Coins },
-  { id: 'create', label: 'Deploy Contract', icon: Plus },
+  { id: 'fund', label: 'Payment Routes', icon: Coins },
+  { id: 'create', label: 'Create Deal', icon: Plus },
   { id: 'dashboard', label: 'Deals', icon: TerminalSquare },
   { id: 'reputation', label: 'Oracle', icon: Award },
 ];

@@ -194,7 +194,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const quoteDemoDestination = demoDestinationAllowlist.includes(destinationAsset);
   const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
-  const paymentPreviewOnly = !livePaymentAvailable;
+  const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination;
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
 
   const sourceAssetAvailable = selectedOriginAsset.available !== false;
@@ -211,7 +211,10 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
-  const providerStatus = status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
+  const providerStatus =
+    quoteDemoDestination && quote
+      ? 'QUOTE_CREATED'
+      : status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
   const statusColor = STATUS_COLORS[providerStatus || 'disabled'] || 'zinc';
   const expectedSettlement =
     quoteDetails?.amountOutFormatted ||

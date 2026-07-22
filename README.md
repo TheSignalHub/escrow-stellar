@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Liquidity-tab cross-chain funding entry. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and Payment Routes cross-chain funding entry. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
 
 Reviewer links:
 
@@ -91,7 +91,7 @@ NEAR Intents is now treated as a required final-tranche integration workstream,
 not an optional deferral. The current repo includes a feature-flagged adapter
 around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-Liquidity-tab cross-chain payment entry for choosing source chain/asset,
+Payment Routes cross-chain payment entry for choosing source chain/asset,
 settlement asset, amount, quote, payment instructions, and payment status.
 Refund routing is managed through the source wallet in the production flow,
 with a server fallback reserved for internal quote QA. Soroban `funded` events
@@ -118,7 +118,7 @@ mix production marketplace payments with the grant demo service. See
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
-- **Broker-Style Funding Step** — Pay with XLM and settle escrow in the configured USDC-compatible testnet asset.
+- **Payment Routes** — Prepare testnet funds, swap XLM into the configured USDC-compatible testnet asset, and preview cross-chain routes before funding a milestone.
 - **Cross-Chain Funding Entry** — Choose a source chain/asset, quote a NEAR Intents route into approved Stellar settlement assets, view payment instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
@@ -219,7 +219,7 @@ npm run dev
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
-4. Use the **Liquidity** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
+4. Use the **Payment Routes** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
 5. Optional: inspect **Pay from another chain** for cross-chain quote/status behavior on the internal shadow marketplace binding
 6. Create a deal using a Quick Start scenario
 7. Fund milestones, release them, and watch the 3-way split visualization

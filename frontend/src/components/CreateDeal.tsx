@@ -552,7 +552,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     className="w-full py-4 text-base"
                     icon={ShieldCheck}
                   >
-                    {loading ? 'Deploying...' : 'Deploy Contract'}
+                    {loading ? 'Creating Deal...' : 'Create Deal on Stellar'}
                   </Button>
                   <Button
                     onClick={() => setShowReview(false)}
@@ -575,8 +575,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     <div className="w-full max-w-5xl mx-auto space-y-4 lg:space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 lg:gap-4 mb-2 lg:mb-4">
         <div>
-          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Contract Parameters</h2>
-          <p className="text-zinc-500 font-medium text-sm lg:text-base">Configure new trustless agreement attributes.</p>
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Create Deal</h2>
+          <p className="text-zinc-500 font-medium text-sm lg:text-base">Configure the parties, milestones, settlement asset, and split rules.</p>
         </div>
         
         {/* Demo Scenarios */}
