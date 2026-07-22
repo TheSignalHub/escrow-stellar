@@ -4,9 +4,16 @@
 
 The `DealEscrowContract` is a Soroban smart contract that implements milestone-based escrow with atomic 3-way payment splits. It is written in Rust using `soroban-sdk` v22.0.0.
 
-**Contract ID (Testnet)**: `CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC`
+**Contract ID (Testnet release candidate)**: `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`
 
 **Source**: [`contracts/deal_escrow/src/lib.rs`](../contracts/deal_escrow/src/lib.rs)
+
+## Feature Log
+
+| Timestamp | Feature / Area | Change Logged | Validation |
+|---|---|---|---|
+| 2026-07-21 14:29 BST | Mainnet-candidate contract hardening | Added explicit `Resolved` deal/milestone states for partial dispute settlements, reduced `funded_amount` whenever escrowed funds leave the contract, capped deals at 20 milestones, and expanded dispute outcome tests. | `cargo test` passed with 13 tests; frontend and indexer builds passed. |
+| 2026-07-21 15:09 BST | Testnet release-candidate deployment | Deployed and initialized hardened DealEscrow on Stellar Testnet as `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`. | CLI smoke passed: create, deposit, release, provider dispute win, client refund, partial settlement, reputation, and deal count. |
 
 ## Types
 
@@ -18,6 +25,7 @@ enum MilestoneStatus {
     Funded,     // Client deposited tokens
     Released,   // Split executed, funds distributed
     Disputed,   // Frozen by client or provider
+    Resolved,   // Admin split dispute funds between client and provider
     Refunded,   // Returned to client after dispute resolution
 }
 ```
@@ -31,6 +39,7 @@ enum DealStatus {
     Completed,  // All milestones released
     Cancelled,  // All milestones refunded
     Disputed,   // At least one milestone disputed
+    Resolved,   // Terminal deal with at least one partial dispute settlement
 }
 ```
 
@@ -76,6 +85,7 @@ struct Deal {
 | 9 | `InvalidAmount` | Zero or negative amount |
 | 10 | `InvalidSplit` | Fee or share exceeds 100% |
 | 11 | `AlreadyFunded` | Milestone already deposited |
+| 12 | `TooManyMilestones` | More than 20 milestones |
 
 ## Functions
 
@@ -128,6 +138,7 @@ Creates a new deal with defined participants and milestones.
 **Validation**:
 - `platform_fee_bps` and `connector_share_bps` must be ≤ 10000
 - `milestone_amounts` cannot be empty
+- `milestone_amounts` cannot exceed 20 entries
 - Each amount must be > 0
 
 **Events**: `("created", deal_id) → total_amount`
@@ -148,7 +159,8 @@ Funds a specific milestone by transferring tokens from client to contract.
 1. Validates milestone is in `Pending` status
 2. Executes SAC `transfer(client → contract, amount)`
 3. Updates milestone to `Funded`
-4. If first deposit, updates deal to `Active`
+4. Increases `funded_amount`
+5. If first deposit, updates deal to `Active`
 
 **Events**: `("funded", deal_id, milestone_idx) → amount`
 
@@ -177,7 +189,8 @@ provider_cut  = amount - platform_fee
 2. Computes three payment amounts
 3. Executes three atomic transfers: provider, connector, protocol
 4. Updates milestone to `Released`
-5. If all milestones released: sets deal to `Completed` and increments provider reputation
+5. Decreases `funded_amount`
+6. If all milestones released: sets deal to `Completed` and increments provider reputation
 
 **Events**:
 - `("released", deal_id, milestone_idx) → (provider_cut, connector_cut, protocol_cut)`
@@ -226,8 +239,16 @@ Admin resolves a dispute by splitting funds between client and provider.
 1. Computes `client_refund = amount × refund_bps / 10000`
 2. Computes `provider_amount = amount - client_refund`
 3. Transfers both amounts
-4. Updates milestone to `Refunded`
-5. If no more active milestones, cancels the deal
+4. Decreases `funded_amount`
+5. Updates milestone outcome:
+   - `refund_bps = 0`: `Released` (provider win)
+   - `refund_bps = 10000`: `Refunded` (client refund)
+   - otherwise: `Resolved` (partial settlement)
+6. Recomputes deal status:
+   - all released: `Completed`
+   - all refunded: `Cancelled`
+   - any partial settlement with no remaining pending/funded/disputed milestone: `Resolved`
+   - otherwise active/disputed/created based on remaining milestones
 
 **Events**: `("resolved", deal_id, milestone_idx) → (client_refund, provider_amount)`
 
@@ -246,7 +267,8 @@ Full refund of all funded or disputed milestones. Admin only.
 **Flow**:
 1. Iterates all milestones
 2. Refunds every `Funded` or `Disputed` milestone to client
-3. Sets deal to `Cancelled`
+3. Decreases `funded_amount` by the refunded amount
+4. Sets deal to `Cancelled`
 
 **Events**: `("refund", deal_id) → total_refunded`
 
@@ -282,7 +304,7 @@ Read-only. Returns the number of completed deals for a provider address. Returns
 
 ## Test Coverage
 
-The contract includes 10 unit tests covering:
+The contract includes 13 unit tests covering:
 
 1. **Happy path** — Single milestone: create, fund, release, verify exact split amounts ($9,000 / $400 / $600 on a $10,000 deal)
 2. **Multi-milestone** — Three milestones (30/50/20) totaling $100,000
@@ -294,6 +316,9 @@ The contract includes 10 unit tests covering:
 8. **Release unfunded** — Cannot release a Pending milestone
 9. **Deal counter** — Increments correctly across multiple deals
 10. **Variable rates** — Architect tier (65%) connector share
+11. **Provider dispute win** — `refund_bps = 0` marks the milestone `Released`, completes the deal, and increments reputation
+12. **Client dispute win** — `refund_bps = 10000` marks the milestone `Refunded` and cancels the deal
+13. **Milestone cap** — More than 20 milestones fails with `TooManyMilestones`
 
 Run tests:
 ```bash

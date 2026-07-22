@@ -117,7 +117,7 @@ mix production marketplace payments with the grant demo service. See
 - **Milestone-Based Escrow** — Deals split into milestones (e.g., 30/50/20). Each funded independently, released only on client approval.
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
-- **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolves with configurable refund percentage.
+- **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states.
 - **Payment Routes** — Prepare testnet funds, swap XLM into the configured USDC-compatible testnet asset, and preview cross-chain routes before funding a milestone.
 - **Cross-Chain Funding Entry** — Choose a source chain/asset, quote a NEAR Intents route into approved Stellar settlement assets, view payment instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.

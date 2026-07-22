@@ -14,11 +14,16 @@ without overstating demo, testnet, marketplace, or NEAR Intents readiness.
 | 2026-07-13 15:04 HKT | Backend readiness smoke script | Added `indexer` smoke command for health, NEAR readiness, dashboard/indexer summary, dispute evidence, shadow bindings, optional protected token discovery, optional dry quote, and optional protected indexer tick before starting frontend QA. | `npm run build` passed in `indexer/`; `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed in non-strict mode and reported health/indexer/dispute evidence passing, with NEAR envs and shadow bindings blocked. |
 | 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Updated the staged NEAR adapter and UI for request-selected origin/destination assets, server-side destination allowlist/default, explicit refund target, and 1Click quote signature verification. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, token-discovered asset IDs, admin auth, and no-testnet tiny-amount QA. |
 | 2026-07-20 23:06 BST | NEAR production UX cleanup | Removed raw refund-address entry from the Liquidity panel, replaced raw source/destination asset fields with source/settlement selectors, and documented the default refund account as dry-QA fallback only. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
+| 2026-07-21 15:09 BST | Hardened contract release candidate | Deployed and initialized the hardened DealEscrow contract on Stellar Testnet and updated current submission contract references. | Contract `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`; CLI smoke passed for create/deposit/release/provider-win/client-refund/partial-settlement; live Coolify redeploy and dashboard/indexer capture remain. |
+| 2026-07-21 15:57 BST | Live RC backend smoke | Confirmed the deployed backend now points at the hardened RC contract and has indexed the RC smoke events. | `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed public checks; `/health` reports the RC contract; dashboard summary has 17 events including 3 disputes and 3 resolved events. Shadow bindings were seeded/reconciled in the 16:01 BST follow-up. |
+| 2026-07-21 16:01 BST | Live shadow binding smoke | Seeded/reconciled deployed shadow marketplace bindings and reran protected backend smoke. | Live smoke now passes shadow bindings; protected admin smoke found `mb_sig-demo-001`, 5 mapped binding events, and 175 NEAR tokens. Dry quote remains pending. |
 
 ## Submit Status
 
-Status: conditionally ready to submit as a **testnet final-tranche package**
-after final deploy smoke and secret rotation.
+Status: conditionally ready as a **testnet final-tranche package** after
+screenshot capture, dry-quote evidence if required, and secret rotation. Not
+final for a mainnet-required submission until a mainnet contract is deployed,
+initialized, and smoke-tested.
 
 This repo can be submitted as a reusable Stellar escrow rail with:
 
@@ -107,7 +112,7 @@ These are documented boundaries, not hidden gaps.
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
 ```
 
 ## Current Validation
@@ -214,7 +219,7 @@ These are acceptable to list as remaining evidence if submission timing is tight
 | Browser screenshots/video for dispute, role mismatch, insufficient balance, and signing cancellation | Pending capture |
 | Operator/admin `resolve_dispute` transaction hash and indexed `resolved` event | Pending capture |
 | `/market_dashboard` screenshot with shadow marketplace bindings | Pending; live summary currently has indexed events but `marketplaceBindings:[]` |
-| NEAR readiness JSON | Complete for route deployment; current readiness shows disabled/missing JWT, asset, and refund envs |
+| NEAR readiness JSON | Complete for route deployment; current readiness shows NEAR enabled/configured with live execution disabled |
 | NEAR dry quote/token discovery proof | Pending NEAR server-only envs and protected admin session |
 | Live NEAR tiny-amount quote/deposit/status proof | Pending JWT, assetId, refund path, and explicit live QA window |
 

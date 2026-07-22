@@ -35,7 +35,7 @@ resolution.
 | Gap | Current Position | Required Before Production |
 |---|---|---|
 | Admin dispute split UI | Not exposed in React app. `resolveDispute()` exists in the hook and contract, but no admin dashboard slider is shipped. | Add an authenticated operator console or document CLI/operator-only resolution for staging. |
-| Dispute outcome language | Contract marks resolved milestone as `Refunded` even when part goes to provider. | Define user-facing labels for partial settlement, full refund, provider win, and cancelled-with-dispute. |
+| Dispute outcome language | Contract now distinguishes provider win (`Released`), full client refund (`Refunded`), and partial settlement (`Resolved`). | Capture updated UI/admin evidence for each outcome before final submission. |
 | Event ledger persistence | Browser event ledger uses local metadata, while chain/indexer events are authoritative. | Use indexed events for durable dispute/release history across browsers. |
 | Wrong-wallet screenshots | Role gating exists, but screenshot/video evidence is not yet captured. | Capture client, provider, connector, and nonparticipant states. |
 | Admin resolution evidence | Contract tests cover resolution; browser does not. | Add operator CLI/API smoke evidence or admin UI screenshot once built. |

@@ -102,7 +102,8 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
           const isCompleted = getDealStatus(deal) === 'Completed';
           let msReleased = 0;
           for (const m of deal.milestones) {
-            if (getMilestoneStatus(m) === 'Released') msReleased++;
+            const status = getMilestoneStatus(m);
+            if (status === 'Released' || status === 'Resolved') msReleased++;
           }
 
           if (deal.client) {
@@ -199,7 +200,8 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
           totalVolume += deal.total_amount;
           for (const m of deal.milestones) {
             milestonesTotal++;
-            if (getMilestoneStatus(m) === 'Released') milestonesReleased++;
+            const status = getMilestoneStatus(m);
+            if (status === 'Released' || status === 'Resolved') milestonesReleased++;
           }
         }
 

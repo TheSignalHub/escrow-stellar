@@ -20,7 +20,7 @@ const ESCROW_ERROR_CODES: Record<number, string> = {
   1: 'NotInitialized', 2: 'AlreadyInitialized', 3: 'Unauthorized',
   4: 'DealNotFound', 5: 'InvalidMilestone', 6: 'MilestoneNotPending',
   7: 'MilestoneNotFunded', 8: 'DealNotActive', 9: 'InvalidAmount',
-  10: 'InvalidSplit', 11: 'AlreadyFunded',
+  10: 'InvalidSplit', 11: 'AlreadyFunded', 12: 'TooManyMilestones',
 };
 
 const OP_LABELS: Record<EscrowOperation, string> = {
@@ -66,6 +66,7 @@ function contextualContractError(errorName: string, operation: EscrowOperation):
       Unauthorized: 'Deal creation requires wallet authorization. Make sure you approve the transaction in your wallet.',
       InvalidSplit: 'The platform fee or connector share exceeds 100%. Check your split configuration.',
       InvalidAmount: 'All milestone amounts must be greater than zero.',
+      TooManyMilestones: 'This deal has too many milestones. Use 20 or fewer milestones.',
       NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
     },
     resolve_dispute: {
@@ -99,6 +100,7 @@ function contextualContractError(errorName: string, operation: EscrowOperation):
     InvalidSplit: 'The fee split configuration is invalid.',
     AlreadyFunded: 'This milestone has already been funded.',
     AlreadyInitialized: 'The contract has already been initialized.',
+    TooManyMilestones: 'This deal has too many milestones.',
   };
 
   return generic[errorName] || `Contract error: ${errorName}. ${capitalize(OP_LABELS[operation])} could not be completed.`;

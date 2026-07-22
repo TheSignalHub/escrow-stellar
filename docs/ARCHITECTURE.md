@@ -59,7 +59,8 @@ Instance storage is used for global config that rarely changes. Persistent stora
       resolve_dispute()
              │
              ▼
-     (back to Active or Cancelled)
+     (Released / Resolved / Refunded outcome,
+      then Active / Completed / Cancelled / Resolved)
 ```
 
 ### Milestone Lifecycle
@@ -72,7 +73,7 @@ Pending ──deposit()──▶ Funded ──release_milestone()──▶ Relea
                      dispute()
                           │
                           ▼
-                     Disputed ──resolve_dispute()──▶ Refunded
+                     Disputed ──resolve_dispute()──▶ Released / Resolved / Refunded
 ```
 
 ### Split Calculation
@@ -135,8 +136,8 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Liquidity              — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents panel)
-    ├── Deploy Contract        — CreateDeal (form + review + success)
+    ├── Payment Routes         — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents panel)
+    ├── Create Deal            — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```

@@ -64,6 +64,7 @@ const STATUS_ACTION_MAP: Record<string, string> = {
   Completed: 'DEAL_COMPLETED',
   Cancelled: 'DEAL_CANCELLED',
   Disputed: 'DISPUTE_OPEN',
+  Resolved: 'DEAL_RESOLVED',
 };
 
 function normalizeTickerStatus(val: any): string {
@@ -84,12 +85,17 @@ function dealToTickerItems(deal: DealData, dealId: number): TickerItem[] {
   // Append individual milestone events for funded or released milestones
   deal.milestones.forEach((m: any, i: number) => {
     const mStatus = normalizeTickerStatus(m.status);
-    if (mStatus === 'Released' || mStatus === 'Funded') {
+    if (mStatus === 'Released' || mStatus === 'Resolved' || mStatus === 'Funded') {
       const mXlm = (Number(m.amount) / 1e7).toLocaleString('en-US', { maximumFractionDigits: 0 });
       items.push({
         hash: `CONTRACT #${String(dealId).padStart(3, '0')} · MS${i + 1}`,
         amount: mXlm,
-        type: mStatus === 'Released' ? 'MILESTONE_RELEASED' : 'MILESTONE_FUNDED',
+        type:
+          mStatus === 'Funded'
+            ? 'MILESTONE_FUNDED'
+            : mStatus === 'Resolved'
+              ? 'MILESTONE_RESOLVED'
+              : 'MILESTONE_RELEASED',
       });
     }
   });
@@ -99,7 +105,9 @@ function dealToTickerItems(deal: DealData, dealId: number): TickerItem[] {
 
 const TICKER_TYPE_COLORS: Record<string, string> = {
   DEAL_COMPLETED:     'text-emerald-400',
+  DEAL_RESOLVED:      'text-emerald-300',
   MILESTONE_RELEASED: 'text-emerald-400',
+  MILESTONE_RESOLVED: 'text-emerald-300',
   ESCROW_ACTIVE:      'text-blue-400',
   MILESTONE_FUNDED:   'text-blue-400',
   AWAITING_FUNDING:   'text-amber-400',

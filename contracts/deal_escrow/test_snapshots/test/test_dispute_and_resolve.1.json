@@ -334,7 +334,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 500000000000
+                          "lo": 0
                         }
                       }
                     },
@@ -364,7 +364,7 @@
                                 "val": {
                                   "vec": [
                                     {
-                                      "symbol": "Refunded"
+                                      "symbol": "Resolved"
                                     }
                                   ]
                                 }
@@ -405,7 +405,7 @@
                       "val": {
                         "vec": [
                           {
-                            "symbol": "Cancelled"
+                            "symbol": "Resolved"
                           }
                         ]
                       }

@@ -209,7 +209,7 @@ Validation performed:
 cd indexer
 npm run build
 DATABASE_URI=mongodb://127.0.0.1:27017/escrow-stellar-gap1-smoke \
-  VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC \
+  VITE_DEAL_ESCROW_CONTRACT=CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ \
   npm run seed:marketplace-bindings
 ```
 
@@ -289,7 +289,7 @@ Steps:
    required paths and NEAR-specific unhappy paths, browser/API evidence still
    pending.
 
-Acceptance criteria: Near Intents is no longer a bypassed or merely advisory
+Acceptance criteria: Near Intents is no longer a deferred or merely advisory
 claim. A reviewer can request a quote, see quote/intent metadata persisted on a
 marketplace binding, track status changes, and verify that escrow funding still
 requires the DealEscrow `funded` event.

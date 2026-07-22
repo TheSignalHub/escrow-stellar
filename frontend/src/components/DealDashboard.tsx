@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<string, "emerald" | "amber" | "blue" | "red" | "zinc
   Completed: 'emerald',
   Cancelled: 'red',
   Disputed: 'red',
+  Resolved: 'emerald',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -26,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed',
   Cancelled: 'Cancelled',
   Disputed: 'Disputed',
+  Resolved: 'Resolved',
 };
 
 const MILESTONE_LABELS: Record<string, string> = {
@@ -33,6 +35,7 @@ const MILESTONE_LABELS: Record<string, string> = {
   Funded: 'Funded',
   Released: 'Released',
   Disputed: 'Disputed',
+  Resolved: 'Resolved',
   Refunded: 'Refunded',
 };
 
@@ -41,6 +44,7 @@ const MILESTONE_COLORS: Record<string, "emerald" | "amber" | "blue" | "red" | "z
   Funded: 'blue',
   Released: 'emerald',
   Disputed: 'red',
+  Resolved: 'emerald',
   Refunded: 'zinc',
 };
 
@@ -54,7 +58,10 @@ function getDealStatus(deal: DealData): string { return normalizeEnum(deal.statu
 function getMilestoneStatus(m: any): string { return normalizeEnum(m.status); }
 
 function getMilestoneProgress(deal: DealData): string {
-  const released = deal.milestones.filter((m) => getMilestoneStatus(m) === 'Released').length;
+  const released = deal.milestones.filter((m) => {
+    const status = getMilestoneStatus(m);
+    return status === 'Released' || status === 'Resolved';
+  }).length;
   return `${released}/${deal.milestones.length}`;
 }
 
@@ -79,7 +86,7 @@ async function copyToClipboard(text: string, setCopied: (key: string) => void, k
 }
 
 interface DealWithId { id: number; data: DealData; }
-type StatusFilter = 'all' | 'Active' | 'Created' | 'Completed' | 'Disputed' | 'Cancelled';
+type StatusFilter = 'all' | 'Active' | 'Created' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
 
 interface Props {
   getDeal: (dealId: number) => Promise<DealData | null>;
@@ -213,6 +220,7 @@ export function DealDashboard({
       Created: base.filter((d) => getDealStatus(d.data) === 'Created').length,
       Completed: base.filter((d) => getDealStatus(d.data) === 'Completed').length,
       Disputed: base.filter((d) => getDealStatus(d.data) === 'Disputed').length,
+      Resolved: base.filter((d) => getDealStatus(d.data) === 'Resolved').length,
       Cancelled: base.filter((d) => getDealStatus(d.data) === 'Cancelled').length,
     };
   }, [allDeals, myDealsOnly, walletAddress]);
@@ -451,7 +459,7 @@ export function DealDashboard({
               className="flex flex-nowrap items-center gap-1 bg-black/60 p-1 rounded-xl border border-zinc-800/60 overflow-x-auto pb-2 shadow-inner"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 transparent' }}
             >
-              {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
+              {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Resolved', 'Cancelled'] as const).map((tab) => {
                 const count = statusCounts[tab as keyof typeof statusCounts];
                 const isActive = statusFilter === tab;
                 const activeStyle: Record<string, string> = {
@@ -460,6 +468,7 @@ export function DealDashboard({
                   Created:   'text-amber-300 bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)]',
                   Completed: 'text-emerald-300 bg-emerald-500/20 shadow-[0_0_8px_rgba(52,211,153,0.2)]',
                   Disputed:  'text-red-300 bg-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.2)]',
+                  Resolved:  'text-emerald-300 bg-emerald-500/15 shadow-[0_0_8px_rgba(52,211,153,0.15)]',
                   Cancelled: 'text-zinc-400 bg-zinc-700/50 shadow-[0_1px_4px_rgba(0,0,0,0.4)]',
                 };
                 const dotStyle: Record<string, string> = {
@@ -467,6 +476,7 @@ export function DealDashboard({
                   Created:   'bg-amber-400',
                   Completed: 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.9)]',
                   Disputed:  'bg-red-400',
+                  Resolved:  'bg-emerald-300',
                   Cancelled: 'bg-zinc-500',
                 };
                 return (
@@ -791,8 +801,8 @@ export function DealDashboard({
                       return (
                         <div key={i} className={`relative flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-center bg-[#02040a] border ${status === 'Active' || status === 'Funded' ? 'border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-zinc-800/50'} p-4 lg:p-5 rounded-2xl z-10 animate-fade-in`} style={{ animationDelay: `${i*100}ms` }}>
                           
-                          <div className={`hidden lg:flex shrink-0 w-10 h-10 rounded-full border-2 items-center justify-center font-bold text-sm bg-black ${status === 'Released' ? 'border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : status === 'Funded' ? 'border-blue-500 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-zinc-700 text-zinc-500'}`}>
-                            {status === 'Released' ? <CheckCircle size={16} /> : (i + 1)}
+                          <div className={`hidden lg:flex shrink-0 w-10 h-10 rounded-full border-2 items-center justify-center font-bold text-sm bg-black ${status === 'Released' || status === 'Resolved' ? 'border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : status === 'Funded' ? 'border-blue-500 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-zinc-700 text-zinc-500'}`}>
+                            {status === 'Released' || status === 'Resolved' ? <CheckCircle size={16} /> : (i + 1)}
                           </div>
                           
                           <div className="flex-1 space-y-2">
@@ -873,6 +883,12 @@ export function DealDashboard({
                                   <span>Funds distributed via atomic 3-way split.</span>
                                 </div>
                               )}
+                              {status === 'Resolved' && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[10px]">
+                                  <CheckCircle size={12} className="shrink-0" />
+                                  <span>Dispute resolved with an admin-approved client/provider split.</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -888,7 +904,10 @@ export function DealDashboard({
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between items-center text-zinc-400">
                         <span>Unlocked</span>
-                        <span className="font-mono text-emerald-400 border-b border-emerald-500/30">{formatAmount(selectedDeal.milestones.filter((m: any) => getMilestoneStatus(m) === 'Released').reduce((sum: number, m: any) => sum + Number(m.amount), 0).toString())} {tokenSymbol}</span>
+                        <span className="font-mono text-emerald-400 border-b border-emerald-500/30">{formatAmount(selectedDeal.milestones.filter((m: any) => {
+                          const status = getMilestoneStatus(m);
+                          return status === 'Released' || status === 'Resolved';
+                        }).reduce((sum: number, m: any) => sum + Number(m.amount), 0).toString())} {tokenSymbol}</span>
                       </div>
                       <div className="flex justify-between items-center text-zinc-400">
                         <span>Secured</span>

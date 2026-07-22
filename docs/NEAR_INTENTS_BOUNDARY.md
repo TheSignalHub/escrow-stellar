@@ -343,7 +343,7 @@ provider-pushed state changes.
 
 ## UI Requirements
 
-The frontend now includes **Pay from another chain** in the Liquidity tab
+The frontend now includes **Pay from another chain** in the Payment Routes tab
 alongside Friendbot and the Stellar broker route:
 
 - Shows source asset, approved Stellar settlement asset, amount due, route
@@ -416,6 +416,6 @@ order:
 3. Confirm live Stellar destination `assetId` through `OneClickService.getTokens()`. Status: endpoint added; live env/JWT evidence pending.
 4. Extend marketplace binding persistence with quote/status/deposit fields. Status: done for `nearIntent` metadata.
 5. Add protected quote/status/webhook-or-poll/reconcile endpoints. Status: done for token list, quote, status polling, deposit tx submission, and per-binding reconcile; webhook remains future work.
-6. Add frontend funding state for NEAR Intents using existing UI components. Status: first pass done in the Liquidity tab; live wallet deposit execution remains future work.
+6. Add frontend funding state for NEAR Intents using existing UI components. Status: first pass done in the Payment Routes tab; live wallet deposit execution remains future work.
 7. Add unhappy-path QA and evidence capture for quote expiry, failed route,
    delayed settlement, refund, dispute-after-Near-funded, and mismatch review.

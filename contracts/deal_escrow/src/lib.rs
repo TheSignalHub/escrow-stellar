@@ -15,6 +15,7 @@ pub enum MilestoneStatus {
     Funded,
     Released,
     Disputed,
+    Resolved,
     Refunded,
 }
 
@@ -26,6 +27,7 @@ pub enum DealStatus {
     Completed,
     Cancelled,
     Disputed,
+    Resolved,
 }
 
 #[contracttype]
@@ -78,7 +80,10 @@ pub enum EscrowError {
     InvalidAmount = 9,
     InvalidSplit = 10,
     AlreadyFunded = 11,
+    TooManyMilestones = 12,
 }
+
+const MAX_MILESTONES: u32 = 20;
 
 // =====================================================
 // CONTRACT
@@ -89,6 +94,76 @@ pub struct DealEscrowContract;
 
 #[contractimpl]
 impl DealEscrowContract {
+    fn refresh_deal_status(deal: &mut Deal) {
+        let mut has_pending = false;
+        let mut has_funded = false;
+        let mut has_disputed = false;
+        let mut has_released_or_resolved = false;
+        let mut has_resolved = false;
+        let mut all_refunded = true;
+
+        for i in 0..deal.milestones.len() {
+            let milestone = deal.milestones.get(i).unwrap();
+            match milestone.status {
+                MilestoneStatus::Pending => {
+                    has_pending = true;
+                    all_refunded = false;
+                }
+                MilestoneStatus::Funded => {
+                    has_funded = true;
+                    all_refunded = false;
+                }
+                MilestoneStatus::Disputed => {
+                    has_disputed = true;
+                    all_refunded = false;
+                }
+                MilestoneStatus::Released | MilestoneStatus::Resolved => {
+                    has_released_or_resolved = true;
+                    all_refunded = false;
+                    if milestone.status == MilestoneStatus::Resolved {
+                        has_resolved = true;
+                    }
+                }
+                MilestoneStatus::Refunded => {}
+            }
+        }
+
+        deal.status = if has_disputed {
+            DealStatus::Disputed
+        } else if has_funded {
+            DealStatus::Active
+        } else if all_refunded {
+            DealStatus::Cancelled
+        } else if !has_pending && has_resolved {
+            DealStatus::Resolved
+        } else if !has_pending {
+            DealStatus::Completed
+        } else if has_released_or_resolved {
+            DealStatus::Active
+        } else {
+            DealStatus::Created
+        };
+    }
+
+    fn complete_if_all_released(env: &Env, deal_id: u64, deal: &mut Deal) {
+        let all_released = (0..deal.milestones.len()).all(|i| {
+            let milestone = deal.milestones.get(i).unwrap();
+            milestone.status == MilestoneStatus::Released
+        });
+
+        if all_released {
+            deal.status = DealStatus::Completed;
+
+            let rep_key = DataKey::Reputation(deal.provider.clone());
+            let current: u64 = env.storage().persistent().get(&rep_key).unwrap_or(0);
+            env.storage().persistent().set(&rep_key, &(current + 1));
+
+            env.events()
+                .publish((symbol_short!("done"), deal_id), current + 1);
+        }
+    }
+
+
     /// Initialize the contract with admin and protocol wallet addresses.
     /// Must be called once before any other function.
     pub fn initialize(
@@ -133,6 +208,9 @@ impl DealEscrowContract {
 
         if milestone_amounts.is_empty() {
             return Err(EscrowError::InvalidAmount);
+        }
+        if milestone_amounts.len() > MAX_MILESTONES {
+            return Err(EscrowError::TooManyMilestones);
         }
 
         // Calculate total amount
@@ -304,23 +382,10 @@ impl DealEscrowContract {
         milestone.status = MilestoneStatus::Released;
         deal.milestones.set(idx, milestone);
 
-        // Check if all milestones are released → complete the deal
-        let all_released = (0..deal.milestones.len()).all(|i| {
-            let m = deal.milestones.get(i).unwrap();
-            m.status == MilestoneStatus::Released
-        });
-
-        if all_released {
-            deal.status = DealStatus::Completed;
-
-            // Increment provider's on-chain reputation counter
-            let rep_key = DataKey::Reputation(deal.provider.clone());
-            let current: u64 = env.storage().persistent().get(&rep_key).unwrap_or(0);
-            env.storage().persistent().set(&rep_key, &(current + 1));
-
-            // Emit completion event
-            env.events()
-                .publish((symbol_short!("done"), deal_id), current + 1);
+        deal.funded_amount -= amount;
+        Self::complete_if_all_released(&env, deal_id, &mut deal);
+        if deal.status != DealStatus::Completed {
+            Self::refresh_deal_status(&mut deal);
         }
 
         env.storage().persistent().set(&DataKey::Deal(deal_id), &deal);
@@ -426,20 +491,18 @@ impl DealEscrowContract {
             token_client.transfer(&contract_addr, &deal.provider, &provider_amount);
         }
 
-        milestone.status = MilestoneStatus::Refunded;
-        deal.milestones.set(idx, milestone);
-
-        // Check if any milestones are still active
-        let has_active = (0..deal.milestones.len()).any(|i| {
-            let m = deal.milestones.get(i).unwrap();
-            m.status == MilestoneStatus::Funded || m.status == MilestoneStatus::Disputed
-        });
-
-        if !has_active {
-            deal.status = DealStatus::Cancelled;
+        milestone.status = if refund_bps == 0 {
+            MilestoneStatus::Released
+        } else if refund_bps == 10000 {
+            MilestoneStatus::Refunded
         } else {
-            deal.status = DealStatus::Active;
-        }
+            MilestoneStatus::Resolved
+        };
+        deal.milestones.set(idx, milestone);
+        deal.funded_amount -= amount;
+
+        Self::complete_if_all_released(&env, deal_id, &mut deal);
+        Self::refresh_deal_status(&mut deal);
 
         env.storage().persistent().set(&DataKey::Deal(deal_id), &deal);
 

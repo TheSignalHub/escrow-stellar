@@ -34,7 +34,7 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
 | 2026-07-01 10:29 HKT | Gap 6 unhappy-path QA | Added UI unhappy-path QA matrix and corrected the demo guide so admin dispute resolution is documented as operator/contract-level, not an existing browser slider. | Static review of frontend dispute/error code and docs. Browser evidence still pending. |
 | 2026-07-01 10:31 HKT | Gap 7 admin/security operations | Added operations/security runbook covering single-admin authority, lack of rotation/pause, dispute operator flow, emergency refunds, secrets, monitoring, and production hardening backlog. | Static review of contract/admin/deployment code and docs. No runtime behavior changed. |
 | 2026-07-01 10:33 HKT | Gap 8 evidence package | Added final evidence package with current test/build results, reviewer links, demo boundaries, and remaining screenshot/operator capture tasks. | `cargo test`, `indexer npm run build`, and `frontend npm run build` passed. Root `docs:check` script does not exist. |
-| 2026-07-01 10:40 HKT | Gap 5 Near Intents required integration | Reopened Near Intents as mandatory final-tranche work and replaced the bypass/boundary stance with a staged adapter plan. | Static docs update using NEAR docs and NEAR sandbox 1Click interface reference; executable client still pending. |
+| 2026-07-01 10:40 HKT | Gap 5 Near Intents required integration | Reopened Near Intents as mandatory final-tranche work and replaced the previous deferral stance with a staged adapter plan. | Static docs update using NEAR docs and NEAR sandbox 1Click interface reference; executable client still pending. |
 | 2026-07-01 10:45 HKT | Gap 5 NEAR Intents SDK path | Updated the required Near Intents plan to use the official 1Click TypeScript SDK behind a local adapter. | `npm view @defuse-protocol/one-click-sdk-typescript` returned latest `0.1.25`; docs-only update. |
 | 2026-07-01 12:14 HKT | Gap 5 NEAR Intents server spine | Added the SDK-backed provider wrapper, protected token/quote/status/deposit-tx/reconcile endpoints, `nearIntent` binding metadata, and env gates. | `npm run build` passed in `indexer/`. Live quote evidence still requires JWT and approved asset envs. |
 | 2026-07-01 13:39 HKT | Gap 5 NEAR Intents frontend panel | Added Liquidity-tab UI for readiness, dry quote request, deposit instructions, status refresh, and explicit Soroban-funded source-of-truth messaging. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live tiny-amount QA still pending. |
@@ -93,7 +93,7 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
 3. Stellar Broker is represented by an adapter, not a production broker integration.
    The current `stellarBrokerClient` delegates to `soroswapOnchainClient`. This proves the flow, but final tranche needs the real broker/aggregator contract or API contract, route failure handling, quote expiry semantics, asset allowlists, and production liquidity assumptions.
 
-4. Near Intents is now a required integration gap, not an acceptable bypass.
+4. Near Intents is now a required integration gap, not an optional integration.
    The attached brief includes Near Intents for cross-chain payment initiation. This repo now includes the 1Click SDK dependency, a feature-flagged provider wrapper, protected quote/status/deposit-tx/reconcile APIs, persisted `nearIntent` metadata on marketplace bindings, a Liquidity-tab readiness/dry-quote/status panel, approved destination asset selection, and server-side quote signature verification. Remaining gaps are JWT provisioning, live Stellar asset ID confirmation from token discovery, source-chain wallet execution, no-testnet tiny-amount QA evidence, webhook support if needed, and refund/support execution.
 
 5. Stripe/payment rail boundary must remain explicit.
@@ -135,7 +135,7 @@ Current frontend coverage is stronger than the happy path only, but it is not co
 Covered in `DealDashboard.tsx` and `useDealEscrow.ts`:
 
 - Role-aware action states: client can fund/release/dispute, provider can dispute funded milestones, connector is read-only for lifecycle actions, and non-participants are read-only.
-- Balance failure on configured settlement-token deposits shows a contextual error and a `Fund Wallet` path back to the Liquidity tab.
+- Balance failure on configured settlement-token deposits shows a contextual error and a `Fund Wallet` path back to the Payment Routes tab.
 - Transaction failures display contextual error cards, toasts, role context, suggested next steps, and a refresh action.
 - Dispute filing has a confirmation modal and sends the on-chain `dispute` call.
 - Disputed milestones show an "Under review" state.
@@ -149,7 +149,7 @@ Still incomplete / should be clarified for final tranche:
 - The `frontend/README.md` previously described an arbiter address set at deal creation; the contract actually uses a global admin set during initialization. This was corrected in the docs.
 - Event ledger metadata is local-only, so dispute/release UI history can be lost across devices or browsers.
 - There is no dedicated QA evidence for wrong-wallet dispute attempts, connector dispute denial, provider dispute success, disputed milestone release override, admin resolution, or indexer/dashboard reflection of dispute/resolved/refund events.
-- The contract marks dispute resolutions as `Refunded` even when part of the funds go to the provider; final tranche should define clearer product language for `Resolved`, partial refund, cancelled, and completed-with-dispute outcomes.
+- Contract dispute outcomes now distinguish provider wins (`Released`), full client refunds (`Refunded`), and partial settlements (`Resolved`); final tranche should capture browser/operator evidence for each path.
 
 ### P1 - High Priority Gaps
 
@@ -159,8 +159,8 @@ Still incomplete / should be clarified for final tranche:
 2. Indexer cursor and retention strategy need production recovery.
    Docs acknowledge Soroban Testnet RPC event retention. Production needs replay/backfill strategy, monitoring, alerting, checkpoint migration, and dead-letter handling.
 
-3. Contract lifecycle semantics need product review.
-   `resolve_dispute` sets the milestone to `Refunded` even when a portion goes to provider, and a deal can become `Cancelled` when no active milestones remain after a dispute resolution. That may be acceptable for the demo, but final tranche should define product language for partial settlement, cancelled, resolved, and completed states.
+3. Contract lifecycle semantics need final evidence capture.
+   The mainnet-candidate contract now recomputes deal status from milestone states, reduces locked `funded_amount` when funds leave escrow, and maps dispute outcomes to `Released`, `Resolved`, or `Refunded`. Remaining work is to capture operator/admin resolution evidence and confirm the frontend labels are acceptable.
 
 4. Contract storage rent / TTL plan is not implemented.
    Docs mention storage rent as a mainnet concern. The contract does not expose TTL extension, archival recovery, or rent reserve handling.
@@ -188,8 +188,8 @@ Still incomplete / should be clarified for final tranche:
 3. Frontend docs previously overemphasized `soroswap.ts` public aggregator behavior while the active broker client uses `soroswapOnchain.ts`.
    Resolved in the 2026-07-01 05:58 HKT docs freshness update; keep future docs clear that the public aggregator check is informational and the executable demo route calls the seeded on-chain router path.
 
-4. UX copy should reduce "Deploy Contract" ambiguity.
-   The tab creates a deal, not a new contract deployment. For production users, "Create Deal" or "New Escrow" would be clearer.
+4. UX copy should keep contract language out of the public path.
+   The public tab now says "Create Deal" instead of "Deploy Contract"; future QA should keep operational/deployment concepts out of the customer checkout path.
 
 ## Expected Final Tranche Work
 

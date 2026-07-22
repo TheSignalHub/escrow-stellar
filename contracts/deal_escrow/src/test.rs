@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![allow(unused_variables)]
 
 use super::*;
 use soroban_sdk::{
@@ -75,6 +76,7 @@ fn test_happy_path_single_milestone() {
     let deal = escrow.get_deal(&deal_id);
     assert_eq!(deal.status, DealStatus::Active);
     assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Funded);
+    assert_eq!(deal.funded_amount, 100_000_0000000i128);
 
     // Check contract received funds
     assert_eq!(token.balance(&contract_id), 100_000_0000000i128);
@@ -85,6 +87,7 @@ fn test_happy_path_single_milestone() {
     let deal = escrow.get_deal(&deal_id);
     assert_eq!(deal.status, DealStatus::Completed);
     assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Released);
+    assert_eq!(deal.funded_amount, 0);
 
     // Verify splits:
     // platform_fee = 10,000 * 10% = 1,000
@@ -128,6 +131,7 @@ fn test_multi_milestone_30_50_20() {
 
     let deal = escrow.get_deal(&deal_id);
     assert_eq!(deal.status, DealStatus::Completed);
+    assert_eq!(deal.funded_amount, 0);
 
     // Total: $100,000
     // Provider: 90% = $90,000
@@ -201,7 +205,9 @@ fn test_dispute_and_resolve() {
     escrow.resolve_dispute(&deal_id, &0u32, &5000u32);
 
     let deal = escrow.get_deal(&deal_id);
-    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Refunded);
+    assert_eq!(deal.status, DealStatus::Resolved);
+    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Resolved);
+    assert_eq!(deal.funded_amount, 0);
 
     // Client gets 50% = $2,500
     // Provider gets 50% = $2,500
@@ -241,12 +247,69 @@ fn test_full_refund() {
 
     let deal = escrow.get_deal(&deal_id);
     assert_eq!(deal.status, DealStatus::Cancelled);
+    assert_eq!(deal.funded_amount, 0);
     assert_eq!(token.balance(&client), client_initial); // Client got all back
     assert_eq!(token.balance(&contract_id), 0); // Contract empty
 }
 
 // =====================================================
-// TEST 6: Auth Checks
+// TEST 6: Dispute Provider Win
+// =====================================================
+
+#[test]
+fn test_resolve_dispute_provider_win_marks_released() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+    let token = TokenClient::new(&env, &token_id);
+
+    let amounts = vec![&env, 50_000_0000000i128];
+    let deal_id = escrow.create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &amounts,
+    );
+
+    escrow.deposit(&deal_id, &0u32);
+    escrow.dispute(&provider, &deal_id, &0u32);
+    escrow.resolve_dispute(&deal_id, &0u32, &0u32);
+
+    let deal = escrow.get_deal(&deal_id);
+    assert_eq!(deal.status, DealStatus::Completed);
+    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Released);
+    assert_eq!(deal.funded_amount, 0);
+    assert_eq!(escrow.get_reputation(&provider), 1);
+    assert_eq!(token.balance(&provider), 50_000_0000000i128);
+}
+
+// =====================================================
+// TEST 7: Dispute Client Win
+// =====================================================
+
+#[test]
+fn test_resolve_dispute_client_win_marks_refunded() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+    let token = TokenClient::new(&env, &token_id);
+    let client_initial = token.balance(&client);
+
+    let amounts = vec![&env, 50_000_0000000i128];
+    let deal_id = escrow.create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &amounts,
+    );
+
+    escrow.deposit(&deal_id, &0u32);
+    escrow.dispute(&client, &deal_id, &0u32);
+    escrow.resolve_dispute(&deal_id, &0u32, &10000u32);
+
+    let deal = escrow.get_deal(&deal_id);
+    assert_eq!(deal.status, DealStatus::Cancelled);
+    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Refunded);
+    assert_eq!(deal.funded_amount, 0);
+    assert_eq!(token.balance(&client), client_initial);
+}
+
+// =====================================================
+// TEST 8: Auth Checks
 // =====================================================
 
 #[test]
@@ -283,7 +346,7 @@ fn test_unauthorized_deposit() {
 }
 
 // =====================================================
-// TEST 7: Double Deposit Prevention
+// TEST 9: Double Deposit Prevention
 // =====================================================
 
 #[test]
@@ -305,7 +368,7 @@ fn test_double_deposit_fails() {
 }
 
 // =====================================================
-// TEST 8: Release Unfunded Milestone Fails
+// TEST 10: Release Unfunded Milestone Fails
 // =====================================================
 
 #[test]
@@ -326,7 +389,7 @@ fn test_release_unfunded_fails() {
 }
 
 // =====================================================
-// TEST 9: Deal Count Tracking
+// TEST 11: Deal Count Tracking
 // =====================================================
 
 #[test]
@@ -352,7 +415,7 @@ fn test_deal_count() {
 }
 
 // =====================================================
-// TEST 10: Variable Commission Rates
+// TEST 12: Variable Commission Rates
 // =====================================================
 
 #[test]
@@ -381,4 +444,25 @@ fn test_architect_tier_65_percent() {
     assert_eq!(token.balance(&provider), 90_000_0000000i128);   // $9,000
     assert_eq!(token.balance(&connector), 6_500_0000000i128);   // $650
     assert_eq!(token.balance(&admin), 3_500_0000000i128);       // $350
+}
+
+// =====================================================
+// TEST 13: Milestone Count Limit
+// =====================================================
+
+#[test]
+fn test_too_many_milestones_fails() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+    let mut amounts = Vec::new(&env);
+
+    for _ in 0..21 {
+        amounts.push_back(1_000_0000i128);
+    }
+
+    let result = escrow.try_create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &amounts,
+    );
+    assert!(result.is_err());
 }

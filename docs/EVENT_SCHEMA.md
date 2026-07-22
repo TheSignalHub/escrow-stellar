@@ -95,6 +95,12 @@ env.events().publish((symbol_short!("dispute"), deal_id, milestone_idx), caller)
 ### 6. `resolved` — Admin split of disputed funds
 
 Emitted by `resolve_dispute`. Admin has split the locked milestone amount between client and provider.
+The event payload is unchanged across dispute outcomes; consumers should infer
+the final milestone/deal state from the split:
+
+- `client_refund = 0`: provider win, milestone becomes `Released`.
+- `provider_amount = 0`: full client refund, milestone becomes `Refunded`.
+- both values non-zero: partial settlement, milestone becomes `Resolved`.
 
 | Field | XDR type | Notes |
 |---|---|---|
@@ -134,6 +140,9 @@ created → funded ── deposit──→ funded ────┤
                                           └─ dispute ──→  funded → disputed ──┐
                                                                               │
                                                                   resolved ←──┘
+                                                                  ├─ provider win → released → done?
+                                                                  ├─ full refund  → refunded
+                                                                  └─ split        → resolved
                                                                   refund ←── (any time on any funded/disputed milestone)
 ```
 

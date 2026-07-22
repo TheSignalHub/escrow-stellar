@@ -1,6 +1,6 @@
 # Operations and Security Runbook
 
-Last updated: 2026-07-01 10:31 HKT
+Last updated: 2026-07-21 14:29 BST
 
 Scope: final-tranche operations posture for the Stellar escrow demo and the
 path toward production-grade administration.
@@ -10,6 +10,7 @@ path toward production-grade administration.
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
 | 2026-07-01 10:31 HKT | Gap 7 admin/security operations | Documented contract admin authority, rotation limitation, dispute operator flow, emergency refund criteria, secrets handling, monitoring, and production hardening gaps. | Static review of `contracts/deal_escrow/src/lib.rs`, admin dashboard routes, deployment docs, and package READMEs. No runtime behavior changed. |
+| 2026-07-21 14:29 BST | Mainnet-candidate dispute operations | Updated dispute operations to reflect explicit provider-win, client-refund, and partial-settlement states in the contract. | `cargo test` passed with 13 tests; docs cross-check performed. |
 
 ## Current Admin Model
 
@@ -54,6 +55,12 @@ split controls. Operator/admin resolution is contract-level:
 
 Operator evidence for final review should include the transaction hash,
 `resolved` event row, and before/after dashboard state.
+
+Resolution outcomes are now explicit:
+
+- `refund_bps = 0`: provider win, milestone `Released`; if all milestones are released, deal `Completed`.
+- `refund_bps = 10000`: client win, milestone `Refunded`; if all milestones are refunded, deal `Cancelled`.
+- `0 < refund_bps < 10000`: partial settlement, milestone `Resolved`; deal `Resolved` only when no pending/funded/disputed milestones remain.
 
 ## Emergency Refund Criteria
 
@@ -104,8 +111,6 @@ Before a mainnet production launch, decide whether to implement:
 - Admin rotation or a new versioned contract with rotatable admin.
 - Pause/emergency stop for deposits/releases during incident response.
 - Multisig or governance-controlled admin address.
-- Explicit dispute outcome states instead of mapping every resolution to
-  milestone `Refunded`.
 - Storage TTL/rent extension strategy and archival recovery plan.
 - Formal threat model, external audit, and invariant/property tests.
 - Alerting for indexer lag, binding reconciliation failures, and admin actions.
@@ -115,10 +120,10 @@ Before a mainnet production launch, decide whether to implement:
 For this tranche, describe operations honestly:
 
 ```text
-The deployed testnet contract uses a single initialized admin address for
-dispute resolution and emergency refunds. The browser demo exposes dispute
-filing and client release override; admin split resolution remains an
-operator/contract path. Production use should initialize admin to a multisig or
-governance-controlled address and add rotation/pause/versioning controls in a
-future contract version.
+The current testnet contract uses a single initialized admin address for
+dispute resolution and emergency refunds. The mainnet-candidate contract
+hardens dispute outcome states and escrow accounting, but admin split
+resolution remains an operator/contract path. Production use should initialize
+admin to a multisig or governance-controlled address and add rotation/pause
+controls in a future contract version if operational policy requires them.
 ```
