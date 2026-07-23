@@ -966,16 +966,16 @@ export function DealDashboard({
                 <div className="lg:col-span-4 space-y-6">
                   <Card className="p-5">
                     <h4 className="text-xs uppercase font-bold tracking-wider text-zinc-500 mb-4 border-b border-zinc-800 pb-2">Wallet Balance</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 min-w-0">
                         <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1">XLM</div>
-                        <div className="font-mono text-emerald-300 font-bold text-lg">
+                        <div className="font-mono text-emerald-300 font-bold text-base break-words">
                           {parseFloat(xlmBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
+                      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3 min-w-0">
                         <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1">{SETTLEMENT_TOKEN_SYMBOL}</div>
-                        <div className="font-mono text-cyan-300 font-bold text-lg">
+                        <div className="font-mono text-cyan-300 font-bold text-base break-words">
                           {parseFloat(usdcBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
                       </div>
