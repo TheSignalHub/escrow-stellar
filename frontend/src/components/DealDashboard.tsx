@@ -235,6 +235,10 @@ export function DealDashboard({
   const tokenSymbol = selectedDeal ? getTokenSymbol(selectedDeal.token) : 'TOKEN';
   const selectedStatus = selectedDeal ? getDealStatus(selectedDeal) : '';
   const selectedMeta = selectedDealId !== null ? getDealMetadata(selectedDealId) : null;
+  const crossChainMilestone =
+    selectedDeal && crossChainMilestoneIdx !== null
+      ? selectedDeal.milestones[crossChainMilestoneIdx]
+      : null;
   const activityLog = useMemo(() => {
     if (selectedDealId === null || !selectedDeal) return [];
     return getAllDealEvents(selectedDealId, selectedDeal.milestones.length);
@@ -275,7 +279,7 @@ export function DealDashboard({
     });
     setError('');
     setErrorContext(null);
-    setCrossChainMilestoneIdx(crossChainMilestoneIdx === milestoneIdx ? null : milestoneIdx);
+    setCrossChainMilestoneIdx(milestoneIdx);
   };
 
   const getWalletSettlementBalance = (deal: DealData) => {
@@ -394,6 +398,20 @@ export function DealDashboard({
       return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handleEsc); };
     }
   }, [confirmAction]);
+
+  useEffect(() => {
+    if (crossChainMilestoneIdx === null) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCrossChainMilestoneIdx(null);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [crossChainMilestoneIdx]);
 
   const CopyableText = ({ text, display, label }: { text: string; display?: string; label: string }) => {
     const key = `addr-${label}`;
@@ -965,18 +983,6 @@ export function DealDashboard({
                                 </div>
                               )}
                             </div>
-                            {selectedDealId !== null && status === 'Pending' && crossChainMilestoneIdx === i && (
-                              <div className="pt-3 animate-fade-in">
-                                <NearIntentsPanel
-                                  walletAddress={walletAddress}
-                                  mode="dealFunding"
-                                  dealId={selectedDealId}
-                                  milestoneIdx={i}
-                                  amountDue={m.amount.toString()}
-                                  onClose={() => setCrossChainMilestoneIdx(null)}
-                                />
-                              </div>
-                            )}
                           </div>
                         </div>
                       )
@@ -1058,6 +1064,28 @@ export function DealDashboard({
           )}
         </div>
       </div>
+
+      {/* Cross-chain funding modal */}
+      {selectedDeal && selectedDealId !== null && crossChainMilestoneIdx !== null && crossChainMilestone && getMilestoneStatus(crossChainMilestone) === 'Pending' && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setCrossChainMilestoneIdx(null)}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[92vh] overflow-y-auto rounded-[2rem] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <NearIntentsPanel
+              walletAddress={walletAddress}
+              mode="dealFunding"
+              dealId={selectedDealId}
+              milestoneIdx={crossChainMilestoneIdx}
+              amountDue={crossChainMilestone.amount.toString()}
+              onClose={() => setCrossChainMilestoneIdx(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal overlay rendering */}
       {confirmAction && selectedDeal && (

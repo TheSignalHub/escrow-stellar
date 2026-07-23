@@ -159,7 +159,7 @@ The segmented filter bar at the top of the deal list:
    - **Pay from Another Chain** for a NEAR Intents-backed quote using this milestone amount
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet
-5. For cross-chain funding, review the quote and payment status. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded`
+5. For cross-chain funding, a focused funding modal opens for the selected pending milestone. Review the quote and payment status there. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded`
 6. Once funded on-chain, the milestone transitions to **Funded** and the deal becomes **Active**
 
 The public UI intentionally hides binding ids, raw asset ids, refund fallback
