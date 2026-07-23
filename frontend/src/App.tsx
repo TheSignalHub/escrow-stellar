@@ -16,7 +16,7 @@ import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
-import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, getExplorerContractLink } from './lib/stellar';
+import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, SETTLEMENT_TOKEN_SYMBOL, getExplorerContractLink } from './lib/stellar';
 import { SignalLogo, GlowingBackground } from './components/ui/Branding';
 import { Button, Card } from './components/ui/Components';
 
@@ -402,7 +402,12 @@ export default function App() {
                 {/* Connected Wallet Info */}
                 <div className="flex items-center gap-2 lg:gap-4 bg-[#09090b] border border-zinc-800/80 rounded-xl lg:rounded-2xl pl-3 lg:pl-5 pr-1 lg:pr-1.5 py-1 lg:py-1.5 shadow-xl">
                   <div className="hidden sm:flex flex-col items-end">
-                    <span className="text-xs font-mono text-emerald-400 font-bold">{wallet.xlmBalance} XLM</span>
+                    <span className="text-xs font-mono text-emerald-400 font-bold">
+                      {parseFloat(wallet.xlmBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM
+                    </span>
+                    <span className="text-[10px] font-mono text-cyan-300 font-bold">
+                      {parseFloat(wallet.usdcBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {SETTLEMENT_TOKEN_SYMBOL}
+                    </span>
                     <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
                       {wallet.activeSource === 'privy' ? 'Privy · Testnet' : 'Testnet'}
                     </span>

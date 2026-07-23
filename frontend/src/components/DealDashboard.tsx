@@ -141,13 +141,12 @@ export function DealDashboard({
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchAllDeals = useCallback(async () => {
-    setListLoading(true);
+  const fetchAllDeals = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setListLoading(true);
     try {
       const count = await getDealCount();
       if (count === 0) {
         setAllDeals([]);
-        setListLoading(false);
         return;
       }
 
@@ -168,7 +167,7 @@ export function DealDashboard({
     } catch (err: any) {
       console.error(err.message || 'Failed to fetch deals');
     } finally {
-      setListLoading(false);
+      if (!options?.silent) setListLoading(false);
     }
   }, [getDeal, getDealCount]);
 
@@ -179,7 +178,7 @@ export function DealDashboard({
   const fetchRef = useRef(fetchAllDeals);
   fetchRef.current = fetchAllDeals;
   useEffect(() => {
-    const interval = setInterval(() => fetchRef.current(), 30000);
+    const interval = setInterval(() => fetchRef.current({ silent: true }), 30000);
     return () => clearInterval(interval);
   }, []);
 
