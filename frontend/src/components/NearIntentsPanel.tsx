@@ -57,14 +57,6 @@ const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc
   disabled: 'zinc',
 };
 
-function formatBaseAmount(value?: string): string {
-  if (!value) return '0';
-  if (!/^\d+$/.test(value)) return value;
-  const asNumber = Number(value);
-  if (!Number.isFinite(asNumber)) return value;
-  return asNumber.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
 function shortText(value?: string): string {
   if (!value) return 'not available';
   if (value.length <= 18) return value;
@@ -91,6 +83,24 @@ function formatStellarBaseUnits(value?: string): string {
     return fractionText ? `${whole.toLocaleString()}.${fractionText}` : whole.toLocaleString();
   } catch {
     return value;
+  }
+}
+
+function formatDestinationAmount(value?: string, destinationAsset?: string): string {
+  if (!value || !/^\d+$/.test(value)) return value || 'Awaiting quote';
+  const label = friendlySettlementAsset(destinationAsset);
+  const symbol = label.includes('XLM') ? 'XLM' : label.includes('USDC') ? 'USDC' : label;
+  try {
+    const decimals = 7;
+    const scale = 10n ** BigInt(decimals);
+    const raw = BigInt(value);
+    const whole = raw / scale;
+    const fraction = raw % scale;
+    const fractionText = fraction.toString().padStart(decimals, '0').replace(/0+$/, '');
+    const display = fractionText ? `${whole.toLocaleString()}.${fractionText}` : whole.toLocaleString();
+    return `${display} ${symbol}`;
+  } catch {
+    return `${value} ${symbol}`;
   }
 }
 
@@ -775,8 +785,8 @@ export function NearIntentsPanel({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <RouteMetric label="Send from" value={tokenLabel(selectedOriginAsset)} />
                   <RouteMetric label="Settle as" value={settlementLabel} />
-                  <RouteMetric label="Estimated received" value={`${formatBaseAmount(expectedSettlement)} base units`} />
-                  <RouteMetric label="Minimum received" value={`${formatBaseAmount(minimumSettlement)} base units`} />
+                  <RouteMetric label="Estimated received" value={formatDestinationAmount(expectedSettlement, destinationAsset)} />
+                  <RouteMetric label="Minimum received" value={formatDestinationAmount(minimumSettlement, destinationAsset)} />
                   <RouteMetric label="Quote expires" value={formatDateTime(quoteExpiry)} />
                   <RouteMetric label="Quote verified" value={nearIntent.signatureVerified ? 'Yes' : 'Pending'} />
                 </div>

@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 21:07 BST | Add Funds quote amount display | Formatted 1Click destination quote amounts in human Stellar units for XLM/USDC instead of showing raw base-unit labels in the quote summary. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 17:39 BST | 1Click source token discovery | Replaced hardcoded Add Funds source-token cards with live 1Click token discovery. Users now choose source chain, source asset, and source amount from supported non-Stellar routes while the destination remains locked to the deal settlement asset. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-23 17:25 BST | Multi-chain Add Funds quote previews | Enabled dry quote previews for Ethereum USDC, Base USDC, and Solana USDC using current 1Click token discovery IDs, while keeping live source-wallet execution gated until native wallet signing and refund routing are wired. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 17:18 BST | Add Funds dry quote amount | Split deal amount due from the 1Click dry quote source amount in deal funding mode. The modal now keeps the escrow target visible while using a fixed 1 NEAR preview amount for route evidence, avoiding false `No liquidity available` errors caused by sending Stellar base-unit amounts as NEAR base units. | `npm run build` passed in `frontend/`. |
