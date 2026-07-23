@@ -10,7 +10,8 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
-| 2026-07-23 10:33 BST | Deal-level NEAR funding UX | Reused `NearIntentsPanel` inside pending milestone funding so users start cross-chain payment from a selected deal/milestone with the amount locked, while keeping Payment Routes as wallet prep and route preview. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from the wallet-prep tab, kept NEAR Intents inside pending milestone funding, renamed the support tab to **Wallet Prep**, and replaced remaining create-deal deployment copy with deal-language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-23 10:33 BST | Deal-level NEAR funding UX | Reused `NearIntentsPanel` inside pending milestone funding so users start cross-chain payment from a selected deal/milestone with the amount locked, while keeping Wallet Prep as testnet settlement preparation. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-22 18:51 BST | Product flow naming | Renamed the public app flow from **Liquidity / Deploy Contract** to **Payment Routes / Create Deal**, updated pending milestone actions to distinguish payment-route preparation from direct Stellar funding, and forced quote-only NEAR demo destinations to remain preview-only even when live execution is enabled. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
 
 ## Component Architecture
@@ -29,7 +30,7 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Payment Routes         — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents preview)
+    ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
     ├── Create Deal            — CreateDeal (form + review + success)
     ├── Deals                  — DealDashboard (split-panel lifecycle + milestone-level NEAR funding entry)
     └── Oracle                 — ReputationBadge (on-chain reputation)
@@ -192,13 +193,13 @@ Wallet connection button displayed in the header when disconnected. Opens the un
 
 **File**: `src/components/SoroswapWidget.tsx`
 
-Three-part funding interface (Payment Routes tab):
+Two-part support interface (Wallet Prep tab):
 
 **Section 1 — Friendbot**: One-click 10,000 XLM testnet funding with duplicate-funding detection.
 
 **Section 2 — Stellar Broker Funding**: Quote → Sign → Swap for XLM -> test USDC through the Stellar Broker testnet route. The current testnet adapter executes against the seeded Soroswap router pool and uses 1% slippage tolerance.
 
-**Section 3 — Pay from another chain**: Standalone route preview for source chain/asset selection → approved Stellar settlement asset → amount due → quote → payment instructions/status. The same reusable `NearIntentsPanel` is also mounted from pending milestones in the Deals tab as the production-like funding path, where the deal and milestone amount are already selected and locked. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, raw 1Click asset ids, refund fallback, and binding id stay server-side or internal. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. Quote-only demo destinations remain forced dry previews and never show executable payment instructions. The panel shows signature-verified quote state in product terms and explicitly warns that payment status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
+**NEAR Intents funding lives in Deals**: Pending client milestones mount the reusable `NearIntentsPanel` as the production-like funding path, where the deal and milestone amount are already selected and locked. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, raw 1Click asset ids, refund fallback, and binding id stay server-side or internal. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. Quote-only demo destinations remain forced dry previews and never show executable payment instructions. The panel shows signature-verified quote state in product terms and explicitly warns that payment status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
 
 ### CreateDeal
 
@@ -329,7 +330,7 @@ Step indicator during the ~5-10 second confirmation window.
 
 | Shortcut | Action |
 |----------|--------|
-| `Alt+1` | Payment Routes tab |
+| `Alt+1` | Wallet Prep tab |
 | `Alt+2` | Create Deal tab |
 | `Alt+3` | Deals tab |
 | `Alt+4` | Oracle tab |

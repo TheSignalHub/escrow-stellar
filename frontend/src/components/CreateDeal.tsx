@@ -314,8 +314,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
               <CheckCircle2 size={40} className="text-emerald-400" />
             </div>
 
-            <h3 className="text-2xl lg:text-3xl font-black text-white mb-2 tracking-tight">Contract Deployed</h3>
-            <p className="text-zinc-400 mb-8">The trustless escrow agreement is now live on the Stellar network.</p>
+            <h3 className="text-2xl lg:text-3xl font-black text-white mb-2 tracking-tight">Deal Created</h3>
+            <p className="text-zinc-400 mb-8">The escrow agreement is now live on the Stellar network.</p>
 
             <div className="w-full bg-[#09090b]/80 border border-zinc-800 rounded-xl p-6 text-left space-y-4 mb-8">
               <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
@@ -346,7 +346,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                 View Dashboard
               </Button>
               <Button onClick={() => setResult(null)} variant="secondary" className="py-4 w-full" icon={Plus}>
-                Initialize New
+                Create Another Deal
               </Button>
             </div>
           </div>
@@ -390,8 +390,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     return (
       <div className="w-full max-w-4xl mx-auto animate-fade-in">
          <div className="mb-4 lg:mb-8">
-            <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Initialize Deployment</h2>
-            <p className="text-zinc-500 font-medium text-sm lg:text-base">Final verification of contract parameters before signing.</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Review Deal</h2>
+            <p className="text-zinc-500 font-medium text-sm lg:text-base">Final verification of escrow terms before signing.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">

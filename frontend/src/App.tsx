@@ -144,7 +144,7 @@ function LiveTicker({ items }: { items: TickerItem[] }) {
 type Tab = 'create' | 'dashboard' | 'fund' | 'reputation';
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
-  { id: 'fund', label: 'Payment Routes', icon: Coins },
+  { id: 'fund', label: 'Wallet Prep', icon: Coins },
   { id: 'create', label: 'Create Deal', icon: Plus },
   { id: 'dashboard', label: 'Deals', icon: TerminalSquare },
   { id: 'reputation', label: 'Oracle', icon: Award },
@@ -625,7 +625,7 @@ export default function App() {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-400 rounded-full" />
                 )}
                 <tab.icon size={20} />
-                <span className="text-[9px] font-bold uppercase tracking-wider">{tab.id === 'create' ? 'Deploy' : tab.label}</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider">{tab.id === 'create' ? 'Create' : tab.label}</span>
               </button>
             ))}
             <a

@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and deal-level cross-chain funding entry. Pending milestones can request a NEAR Intents quote from the Deals tab using the selected milestone amount, while Payment Routes remains available for wallet prep and standalone route preview. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and deal-level cross-chain funding entry. Pending milestones can request a NEAR Intents quote from the Deals tab using the selected milestone amount, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
 
 Reviewer links:
 
@@ -93,8 +93,9 @@ around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
 deal-level cross-chain funding entry for choosing source chain/asset,
 settlement asset, quote, payment instructions, and payment status against a
-selected pending milestone. Payment Routes keeps the same route component
-available for wallet preparation and standalone route preview.
+selected pending milestone. Wallet Prep remains a support surface for
+testnet funding and Stellar settlement-asset preparation, not the primary
+cross-chain checkout entry.
 Refund routing is managed through the source wallet in the production flow,
 with a server fallback reserved for internal quote QA. Soroban `funded` events
 remain the source of truth for escrow funding, even when NEAR Intents reports
@@ -120,7 +121,7 @@ mix production marketplace payments with the grant demo service. See
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states.
-- **Payment Routes** — Prepare testnet funds, swap XLM into the configured USDC-compatible testnet asset, and preview cross-chain routes before funding a milestone.
+- **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
 - **Cross-Chain Funding Entry** — From a pending milestone, choose a source chain/asset, quote a NEAR Intents route into approved Stellar settlement assets, view payment instructions/status, and keep escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
@@ -221,7 +222,7 @@ npm run dev
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
-4. Use the **Payment Routes** tab to swap XLM into demo test USDC through the seeded Soroswap testnet route
+4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
 6. In **Deals**, open a pending milestone and choose either **Fund with Stellar Wallet** or **Pay from Another Chain**
 7. For the cross-chain path, request a milestone funding quote and confirm that escrow state remains gated on the Stellar `funded` event

@@ -94,7 +94,7 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
    The current `stellarBrokerClient` delegates to `soroswapOnchainClient`. This proves the flow, but final tranche needs the real broker/aggregator contract or API contract, route failure handling, quote expiry semantics, asset allowlists, and production liquidity assumptions.
 
 4. Near Intents is now a required integration gap, not an optional integration.
-   The attached brief includes Near Intents for cross-chain payment initiation. This repo now includes the 1Click SDK dependency, a feature-flagged provider wrapper, protected quote/status/deposit-tx/reconcile APIs, persisted `nearIntent` metadata on marketplace bindings, a Liquidity-tab readiness/dry-quote/status panel, approved destination asset selection, and server-side quote signature verification. Remaining gaps are JWT provisioning, live Stellar asset ID confirmation from token discovery, source-chain wallet execution, no-testnet tiny-amount QA evidence, webhook support if needed, and refund/support execution.
+   The attached brief includes Near Intents for cross-chain payment initiation. This repo now includes the 1Click SDK dependency, a feature-flagged provider wrapper, protected quote/status/deposit-tx/reconcile APIs, persisted `nearIntent` metadata on marketplace bindings, a deal-level readiness/dry-quote/status panel from pending milestones, approved destination asset selection, and server-side quote signature verification. Remaining gaps are JWT provisioning, live Stellar asset ID confirmation from token discovery, source-chain wallet execution, no-testnet tiny-amount QA evidence, webhook support if needed, and refund/support execution.
 
 5. Stripe/payment rail boundary must remain explicit.
    Stripe Connect is not integrated in this repository and should not be added
@@ -135,7 +135,7 @@ Current frontend coverage is stronger than the happy path only, but it is not co
 Covered in `DealDashboard.tsx` and `useDealEscrow.ts`:
 
 - Role-aware action states: client can fund/release/dispute, provider can dispute funded milestones, connector is read-only for lifecycle actions, and non-participants are read-only.
-- Balance failure on configured settlement-token deposits shows a contextual error and a `Fund Wallet` path back to the Payment Routes tab.
+- Balance failure on configured settlement-token deposits shows a contextual error and a `Fund Wallet` path back to Wallet Prep.
 - Transaction failures display contextual error cards, toasts, role context, suggested next steps, and a refresh action.
 - Dispute filing has a confirmation modal and sends the on-chain `dispute` call.
 - Disputed milestones show an "Under review" state.

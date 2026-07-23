@@ -34,9 +34,9 @@ This repo can be submitted as a reusable Stellar escrow rail with:
 - isolated indexer and public reviewer dashboard
 - shadow marketplace binding layer that does not mutate The Signal production
   marketplace database
-- SDK-backed NEAR Intents server adapter and Liquidity-tab readiness/dry
-  quote/status UI with approved destination asset selection and verified quote
-  signatures
+- SDK-backed NEAR Intents server adapter and deal-level readiness/dry
+  quote/status UI from pending milestone funding, with approved destination
+  asset selection and verified quote signatures
 - explicit payment rail boundary documenting that Stripe remains The Signal's
   production marketplace fiat rail and is not implemented in this repo
 - operations, deployment, settlement asset, unhappy-path, and evidence docs
@@ -182,7 +182,7 @@ surface:
 5. Run one dry quote against `mb_sig-demo-001` and confirm quote metadata is
    stored on the marketplace binding. Status: blocked until NEAR envs and
    shadow binding are present on the deployed database.
-6. Capture Liquidity-tab NEAR readiness/dry-quote/status UI.
+6. Capture deal-level NEAR readiness/dry-quote/status UI from a pending milestone.
    Status: readiness disabled-state can be captured now; dry-quote capture
    remains blocked.
 7. Capture unhappy-path screenshots for dispute, role denial, insufficient

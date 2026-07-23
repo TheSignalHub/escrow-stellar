@@ -16,7 +16,6 @@ import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
-import { NearIntentsPanel } from './NearIntentsPanel';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
 
 type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
@@ -180,9 +179,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     <div className="w-full max-w-4xl mx-auto space-y-4 lg:space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4 lg:mb-8">
         <div>
-          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Payment Routes</h2>
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Wallet Prep</h2>
           <p className="text-zinc-500 font-medium text-sm lg:text-base">
-            {IS_TESTNET ? 'Prepare testnet funds and preview payment routes before funding a deal milestone.' : 'Choose the route used to fund escrow milestones.'}
+            {IS_TESTNET ? 'Prepare testnet funds before creating or funding a deal milestone.' : 'Prepare the connected Stellar wallet before funding escrow milestones.'}
           </p>
         </div>
         {xlmBalance && (
@@ -597,8 +596,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           )}
         </Card>
       </div>
-
-      <NearIntentsPanel walletAddress={walletAddress} />
     </div>
   );
 }

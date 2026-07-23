@@ -31,7 +31,8 @@ funds are actually locked in DealEscrow.
 | 2026-07-21 23:53 BST | Source-chain refund guard | Disabled Ethereum/Base source assets in the public panel until native source-wallet connection exists, and added backend validation so EVM source assets require an EVM refund address instead of falling back to the NEAR QA refund account. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-22 11:51 BST | NEAR quote evidence destination | Added an explicitly flagged demo destination allowlist so reviewers can request a signed 1Click quote for a liquid non-Stellar route when Stellar settlement liquidity is unavailable. The UI labels this as quote evidence only and never treats it as escrow funding. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live direct 1Click probe previously confirmed NEAR -> NEAR USDT dry quote succeeds while NEAR -> Stellar USDC returns no liquidity. |
 | 2026-07-22 18:51 BST | NEAR quote-only UX guard | Forced quote-evidence destinations to stay dry-preview even when live execution is enabled, preventing deposit instructions or pending-deposit status from appearing for routes that do not settle into Stellar escrow. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
-| 2026-07-23 10:33 BST | Deal-level NEAR funding entry | Reused the NEAR Intents panel from pending Deal Dashboard milestones so cross-chain payment starts from a selected deal/milestone with amount due locked. Payment Routes remains a standalone route preview and wallet-prep surface. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from Wallet Prep so cross-chain checkout starts from a pending deal milestone. Wallet Prep now remains for testnet funding and Stellar settlement-asset preparation only. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-23 10:33 BST | Deal-level NEAR funding entry | Reused the NEAR Intents panel from pending Deal Dashboard milestones so cross-chain payment starts from a selected deal/milestone with amount due locked. Wallet Prep remains a settlement-asset preparation surface. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 
 ## Researched Protocol Notes
 
@@ -346,8 +347,8 @@ provider-pushed state changes.
 ## UI Requirements
 
 The frontend now includes **Pay from another chain** from pending milestones in
-the Deal Dashboard. Payment Routes also keeps the same component available as a
-standalone route preview alongside Friendbot and the Stellar broker route:
+the Deal Dashboard. Wallet Prep intentionally does not show a standalone NEAR
+quote path; it remains for Friendbot and the Stellar broker settlement route:
 
 - Shows selected deal/milestone context, locked amount due, source asset,
   approved Stellar settlement asset, route summary, quote result, payment
@@ -420,6 +421,6 @@ order:
 3. Confirm live Stellar destination `assetId` through `OneClickService.getTokens()`. Status: endpoint added; live env/JWT evidence pending.
 4. Extend marketplace binding persistence with quote/status/deposit fields. Status: done for `nearIntent` metadata.
 5. Add protected quote/status/webhook-or-poll/reconcile endpoints. Status: done for token list, quote, status polling, deposit tx submission, and per-binding reconcile; webhook remains future work.
-6. Add frontend funding state for NEAR Intents using existing UI components. Status: deal-level funding entry is mounted from pending milestones, with Payment Routes retained as route preview; live wallet deposit execution remains future work.
+6. Add frontend funding state for NEAR Intents using existing UI components. Status: deal-level funding entry is mounted from pending milestones, with Wallet Prep kept for settlement-asset preparation only; live source-wallet deposit execution remains future work.
 7. Add unhappy-path QA and evidence capture for quote expiry, failed route,
    delayed settlement, refund, dispute-after-Near-funded, and mismatch review.

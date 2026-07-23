@@ -268,7 +268,7 @@ export function DealDashboard({
       setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}, have ${available.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}.`);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use Payment Routes to prepare the settlement asset, then retry the deposit.`,
+        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain on this milestone.`,
       });
       return;
     }

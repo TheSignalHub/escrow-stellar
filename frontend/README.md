@@ -68,8 +68,8 @@ NEAR Intents keys and approved settlement asset lists are also backend-only.
 Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
 live execution flags; the frontend uses local `/api/near-intents/*` routes so
 secrets stay on the server. The reusable cross-chain panel reads the public
-readiness payload to prefill/select approved settlement assets from either the
-Deals funding flow or the Payment Routes preview. Refund routing is
+readiness payload to prefill/select approved settlement assets from the Deals
+funding flow. Refund routing is
 managed through the connected source wallet in production; the backend default
 refund account is only a dry-quote QA fallback.
 
@@ -133,7 +133,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Payment Routes** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and preview NEAR Intents-backed route availability
+- **Wallet Prep** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path before funding milestones
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -145,9 +145,8 @@ asset. Pending milestones in the Deals tab also expose a NEAR Intents-backed
 cross-chain funding entry. The panel locks to the selected deal/milestone
 amount, lets the user choose a source asset and approved Stellar settlement
 asset, gets a quote, shows payment instructions/status, and reports whether the
-returned 1Click quote was verified. The Payment Routes tab keeps the same
-component available as a standalone route preview. It intentionally hides
-binding ids, raw asset ids, JWT/readiness internals, refund fallback envs, and
+returned 1Click quote was verified. It intentionally hides binding ids, raw
+asset ids, JWT/readiness internals, refund fallback envs, and
 internal smoke terminology. The demo test USDC token is not Circle-issued
 production USDC, and NEAR/payment status never marks escrow funded until the
 Stellar DealEscrow `funded` event exists. If the backend exposes a quote-only
@@ -177,7 +176,7 @@ frontend/src/
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
-│   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding and route preview
+│   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

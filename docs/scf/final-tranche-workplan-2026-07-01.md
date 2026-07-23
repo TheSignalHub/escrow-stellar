@@ -332,7 +332,7 @@ Steps:
    marketplace binding. Status: blocked until NEAR envs and live shadow binding
    seed/reconcile are ready; public summary currently returns
    `marketplaceBindings:[]`.
-5. Capture Liquidity-tab readiness, dry-quote result, disabled/live gating,
+5. Capture deal-level readiness, dry-quote result, disabled/live gating,
    status refresh behavior, and the warning that Soroban `funded` remains the
    escrow source of truth. Status: readiness disabled-state is capturable now;
    dry quote capture remains blocked.
@@ -403,7 +403,7 @@ Required scenarios:
 - Provider files dispute on funded milestone.
 - Connector tries to dispute and is denied/read-only.
 - Nonparticipant sees read-only mode.
-- Client lacks settlement token and is routed to Liquidity.
+- Client lacks settlement token and is routed to Wallet Prep.
 - User cancels signing.
 - Disputed milestone shows under-review state.
 - Client accepts and releases disputed milestone.

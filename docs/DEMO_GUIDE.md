@@ -44,9 +44,10 @@ To connect:
 
 ---
 
-## Step 2: Prepare Payment Routes
+## Step 2: Prepare Wallet
 
-Navigate to the **Payment Routes** tab (`Alt+1`).
+Navigate to the **Wallet Prep** tab (`Alt+1`) only if you need testnet XLM or
+the demo settlement asset before funding a milestone.
 
 ### Option A: Friendbot (Free 10,000 XLM)
 
@@ -68,32 +69,8 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 
-### Option C: Preview Cross-Chain Routes
-
-The Payment Routes tab also includes the same cross-chain route component used
-by deal funding. In this tab it behaves as a standalone route preview.
-
-1. Choose **Pay from another chain**.
-2. Select the source asset, such as NEAR, Ethereum USDC, Base USDC, or Stellar
-   XLM.
-3. Confirm the settlement asset is the approved Stellar settlement asset shown
-   by the app.
-4. Enter the amount due and click **Get Quote**.
-5. Review the estimated received amount, minimum received amount, quote expiry,
-   quote verification state, and payment status timeline.
-6. If live execution is enabled and payment instructions are returned, send the
-   source-chain payment to the displayed address and memo.
-7. Click **Refresh Payment Status** to follow the route through source payment,
-   NEAR Intents routing, Stellar settlement, and escrow funding.
-
-The production-like path starts from a pending milestone in the Deals tab. The
-public UI intentionally hides binding ids, raw asset ids, refund fallback envs,
-JWT/readiness internals, and internal smoke terminology. The internal binding
-for reviewer QA remains server/internal context. NEAR Intents status is
-payment-initiation evidence only. Quote-only demo destinations are forced dry
-previews and do not show executable deposit instructions. The deal is not
-considered escrow-funded until the Stellar DealEscrow contract emits a `funded`
-event and the indexer sees it.
+Cross-chain funding is not started from Wallet Prep. It starts from a pending
+milestone in the Deals tab so the quote is tied to a real deal and amount due.
 
 ---
 
@@ -180,6 +157,13 @@ The segmented filter bar at the top of the deal list:
 4. For direct Stellar funding, approve the token transfer in your wallet
 5. For cross-chain funding, review the quote and payment status. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded`
 6. Once funded on-chain, the milestone transitions to **Funded** and the deal becomes **Active**
+
+The public UI intentionally hides binding ids, raw asset ids, refund fallback
+envs, JWT/readiness internals, and internal smoke terminology. NEAR Intents
+status is payment-initiation evidence only. Quote-only demo destinations are
+forced dry previews and do not show executable deposit instructions. The deal is
+not considered escrow-funded until the Stellar DealEscrow contract emits a
+`funded` event and the indexer sees it.
 
 **What happens on-chain**: The `deposit` function executes a SAC `transfer()` from your wallet to the contract address. The tokens are held in escrow until released or refunded.
 
@@ -289,7 +273,7 @@ After completing the full flow, verify:
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 
-1. Open Payment Routes and use **Pay from another chain**.
+1. Open a pending milestone in **Deals** and use **Pay from Another Chain**.
 2. If cross-chain payments are unavailable, capture the product-facing
    availability message and confirm the quote button is unavailable or returns
    a clear payment-route error.
@@ -312,7 +296,7 @@ After completing the full flow, verify:
 
 | Shortcut | Action |
 |----------|--------|
-| `Alt+1` | Switch to Payment Routes tab |
+| `Alt+1` | Switch to Wallet Prep tab |
 | `Alt+2` | Switch to Create Deal tab |
 | `Alt+3` | Switch to Deals tab |
 | `Alt+4` | Switch to Oracle tab |
@@ -327,7 +311,7 @@ Only active when wallet is connected.
 | Issue | Solution |
 |-------|----------|
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
-| "Insufficient balance" | Go to the Payment Routes tab and use Friendbot to get 10,000 XLM. |
+| "Insufficient balance" | Go to Wallet Prep and use Friendbot to get 10,000 XLM, or choose Pay from Another Chain on the pending milestone. |
 | "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
