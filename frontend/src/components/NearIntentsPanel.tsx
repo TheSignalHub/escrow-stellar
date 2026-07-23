@@ -21,6 +21,7 @@ import {
   type NearIntentStatusResponse,
   type NearIntentsReadiness,
 } from '../lib/nearIntents';
+import { SETTLEMENT_TOKEN_DECIMALS, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
 import { Card, Button, Tag } from './ui/Components';
 
 interface NearIntentsPanelProps {
@@ -29,6 +30,8 @@ interface NearIntentsPanelProps {
   dealId?: number;
   milestoneIdx?: number;
   amountDue?: string;
+  settlementTokenAddress?: string;
+  settlementTokenSymbol?: string;
   onClose?: () => void;
 }
 
@@ -106,6 +109,44 @@ function friendlySettlementAsset(assetId?: string): string {
   return 'Approved Stellar asset';
 }
 
+function formatStellarBaseUnits(value?: string): string {
+  if (!value || !/^\d+$/.test(value)) return value || '0';
+  try {
+    const decimals = Number.isFinite(SETTLEMENT_TOKEN_DECIMALS) ? SETTLEMENT_TOKEN_DECIMALS : 7;
+    const scale = 10n ** BigInt(decimals);
+    const raw = BigInt(value);
+    const whole = raw / scale;
+    const fraction = raw % scale;
+    const fractionText = fraction.toString().padStart(decimals, '0').replace(/0+$/, '');
+    return fractionText ? `${whole.toLocaleString()}.${fractionText}` : whole.toLocaleString();
+  } catch {
+    return value;
+  }
+}
+
+function getSettlementKindFromAssetId(assetId?: string): 'xlm' | 'usdc' | 'demo' | 'unknown' {
+  if (!assetId) return 'unknown';
+  if (assetId === NEAR_QUOTE_DEMO_ASSET_ID) return 'demo';
+  const label = friendlySettlementAsset(assetId).toLowerCase();
+  const raw = assetId.toLowerCase();
+  if (label.includes('xlm') || raw.includes('xlm')) return 'xlm';
+  if (label.includes('usdc') || raw.includes('usdc')) return 'usdc';
+  return 'unknown';
+}
+
+function getSettlementKindFromToken(tokenAddress?: string): 'xlm' | 'usdc' | 'unknown' {
+  if (!tokenAddress) return 'unknown';
+  if (tokenAddress === XLM_SAC_ADDRESS) return 'xlm';
+  if (tokenAddress === USDC_TOKEN_ADDRESS) return 'usdc';
+  return 'unknown';
+}
+
+function findPreferredDestinationAsset(assetIds: string[], tokenAddress?: string): string {
+  const expectedKind = getSettlementKindFromToken(tokenAddress);
+  if (expectedKind === 'unknown') return '';
+  return assetIds.find((assetId) => getSettlementKindFromAssetId(assetId) === expectedKind) || '';
+}
+
 function uniqueAssets(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -164,6 +205,8 @@ export function NearIntentsPanel({
   dealId,
   milestoneIdx,
   amountDue,
+  settlementTokenAddress,
+  settlementTokenSymbol,
   onClose,
 }: NearIntentsPanelProps) {
   const toast = useToast();
@@ -177,11 +220,6 @@ export function NearIntentsPanel({
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState<NearIntentsApiError | null>(null);
-
-  useEffect(() => {
-    const configuredDefault = readiness?.destinationAssets?.default;
-    if (configuredDefault && !destinationAsset) setDestinationAsset(configuredDefault);
-  }, [destinationAsset, readiness?.destinationAssets?.default]);
 
   useEffect(() => {
     if (amountDue) setAmount(amountDue);
@@ -208,8 +246,25 @@ export function NearIntentsPanel({
   const stellarDestinationAllowlist = readiness?.destinationAssets?.allowlist || [];
   const demoDestinationAllowlist = readiness?.destinationAssets?.demoAllowlist || [];
   const destinationAllowlist = uniqueAssets([...stellarDestinationAllowlist, ...demoDestinationAllowlist]);
+  const preferredDestinationAsset = findPreferredDestinationAsset(stellarDestinationAllowlist, settlementTokenAddress);
+  const configuredDefaultDestination = readiness?.destinationAssets?.default || '';
+
+  useEffect(() => {
+    const nextDestinationAsset = preferredDestinationAsset || configuredDefaultDestination;
+    if (nextDestinationAsset && !destinationAsset) setDestinationAsset(nextDestinationAsset);
+  }, [configuredDefaultDestination, destinationAsset, preferredDestinationAsset]);
+
   const quoteDemoDestination = demoDestinationAllowlist.includes(destinationAsset);
   const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
+  const dealSettlementKind = getSettlementKindFromToken(settlementTokenAddress);
+  const selectedDestinationKind = getSettlementKindFromAssetId(destinationAsset);
+  const settlementRouteMismatch =
+    isDealFundingMode &&
+    dealSettlementKind !== 'unknown' &&
+    selectedDestinationKind !== 'unknown' &&
+    selectedDestinationKind !== 'demo' &&
+    selectedDestinationKind !== dealSettlementKind;
+  const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination;
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
@@ -366,7 +421,7 @@ export function NearIntentsPanel({
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Amount due</span>
                 <input
-                  value={amount}
+                  value={isDealFundingMode ? topUpAmountLabel : amount}
                   onChange={(event) => {
                     if (!isDealFundingMode) setAmount(event.target.value);
                   }}
@@ -473,6 +528,20 @@ export function NearIntentsPanel({
               </div>
             </div>
 
+            {isDealFundingMode && (
+              <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
+                Top-up destination auto-matches the deal settlement asset when the configured 1Click routes support it.
+                The source asset is the asset the user chooses to pay from.
+              </div>
+            )}
+
+            {settlementRouteMismatch && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                This deal settles in {settlementTokenSymbol || 'the selected asset'}, but the current cross-chain route is
+                configured for {settlementLabel}. Use direct funding or Wallet Prep for this deal unless a matching route is enabled.
+              </div>
+            )}
+
             {quoteDemoDestination && (
               <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-200">
                 {isDealFundingMode
@@ -506,7 +575,7 @@ export function NearIntentsPanel({
               className="w-full py-4"
               icon={loadingQuote ? Loader2 : ShieldCheck}
             >
-              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Milestone Funding Quote' : 'Get Quote'}
+              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Top-Up Quote' : 'Get Quote'}
             </Button>
           </div>
 

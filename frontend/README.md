@@ -158,7 +158,10 @@ NEAR/payment status never marks escrow funded. After the Stellar wallet is
 topped up, the user confirms **Fund Deal**, and only Stellar DealEscrow
 `funded` events mark escrow funded. If the backend exposes a quote-only demo destination
 because Stellar-route liquidity is unavailable, the panel labels it as quote
-evidence rather than escrow settlement.
+evidence rather than escrow settlement. For deal-tied top-ups, the amount is
+shown in human Stellar units and the destination route auto-prefers the deal's
+settlement asset when that Stellar asset exists in the backend-approved 1Click
+allowlist.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

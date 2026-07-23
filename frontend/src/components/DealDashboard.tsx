@@ -1111,6 +1111,8 @@ export function DealDashboard({
               dealId={selectedDealId}
               milestoneIdx={crossChainMilestoneIdx}
               amountDue={remainingPendingAmount.toString()}
+              settlementTokenAddress={selectedDeal.token}
+              settlementTokenSymbol={getTokenSymbol(selectedDeal.token)}
               onClose={() => setCrossChainMilestoneIdx(null)}
             />
           </div>
