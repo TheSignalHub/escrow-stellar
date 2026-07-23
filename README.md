@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and deal-level cross-chain funding entry. The first pending milestone can request a NEAR Intents quote from the Deals tab using the remaining pending deal balance, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter for cross-chain Stellar wallet top-up, not direct escrow funding. The first pending milestone can request a NEAR Intents quote from the Deals tab using the remaining pending deal balance, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. After the Stellar wallet is topped up, the user must confirm **Fund Deal**, which calls `fund_deal` and keeps escrow funding gated on Soroban `funded` events. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery and verify 1Click quote signatures server-side. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
 
 Reviewer links:
 
@@ -91,11 +91,13 @@ NEAR Intents is now treated as a required final-tranche integration workstream,
 not an optional deferral. The current repo includes a feature-flagged adapter
 around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-deal-level cross-chain funding entry for choosing source chain/asset,
+deal-level cross-chain top-up entry for choosing source chain/asset,
 settlement asset, quote, payment instructions, and payment status against a
-selected pending milestone. Wallet Prep remains a support surface for
+selected pending milestone. The NEAR route prepares the connected Stellar
+wallet; the escrow is funded only when the user confirms **Fund Deal** and the
+frontend calls `fund_deal`. Wallet Prep remains a support surface for
 testnet funding and Stellar settlement-asset preparation, not the primary
-cross-chain checkout entry.
+cross-chain top-up entry.
 Refund routing is managed through the source wallet in the production flow,
 with a server fallback reserved for internal quote QA. Soroban `funded` events
 remain the source of truth for escrow funding, even when NEAR Intents reports
@@ -122,7 +124,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states.
 - **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
-- **Cross-Chain Funding Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents route into approved Stellar settlement assets while keeping escrow funding gated on Soroban events.
+- **Cross-Chain Wallet Top-Up Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents top-up into the connected Stellar wallet before confirming Fund Deal.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -224,8 +226,8 @@ npm run dev
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
-6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Pay from Another Chain** when it does not
-7. For the cross-chain path, request a remaining-balance funding quote and confirm that escrow state remains gated on Stellar `funded` events
+6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Top Up from Another Chain** when it does not
+7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`
 10. For final-tranche marketplace proof, run `npm run seed:marketplace-bindings` from `indexer/` to create shadow Signal-style bindings, then reconcile through the protected binding API

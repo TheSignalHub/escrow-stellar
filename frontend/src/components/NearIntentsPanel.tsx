@@ -55,7 +55,7 @@ const ORIGIN_ASSETS = [
     chain: 'NEAR',
     symbol: 'NEAR',
     label: 'NEAR',
-    description: 'Pay from a NEAR wallet and settle into Stellar escrow.',
+    description: 'Top up the connected Stellar wallet from a NEAR wallet.',
     assetId: 'nep141:wrap.near',
   },
   {
@@ -333,17 +333,17 @@ export function NearIntentsPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
-                {isDealFundingMode ? 'Fund deal from another chain' : 'Pay from another chain'}
+                Top up from another chain
               </h3>
               <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
               <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
               {isDealFundingMode
-                ? `Request a cross-chain quote for the remaining balance on Deal #${dealId ?? '-'}, anchored to Milestone ${
+                ? `Request a cross-chain top-up quote for the remaining balance on Deal #${dealId ?? '-'}, anchored to Milestone ${
                     milestoneIdx !== undefined ? milestoneIdx + 1 : '-'
-                  }. Milestones are marked funded only after the Stellar contract emits funded events.`
-                : 'Start a cross-chain payment and settle into Stellar escrow. The deal is marked funded only after the Stellar contract emits the funded event.'}
+                  }. The route tops up the connected Stellar wallet; the deal is funded only after the user confirms Fund Deal from that wallet.`
+                : 'Start a cross-chain top-up into the connected Stellar wallet. Escrow funding still requires a separate Stellar transaction.'}
             </p>
           </div>
         </div>
@@ -476,8 +476,8 @@ export function NearIntentsPanel({
             {quoteDemoDestination && (
               <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-200">
                 {isDealFundingMode
-                  ? 'This selected destination is quote evidence only. It proves the route can price successfully, but it will not fund this milestone.'
-                  : 'This destination is for signed 1Click quote evidence only. It proves the NEAR Intents route can price successfully; it does not settle into Stellar escrow or mark a deal funded.'}
+                  ? 'This selected destination is quote evidence only. It proves the route can price successfully, but it will not top up the Stellar wallet or fund this deal.'
+                  : 'This destination is for signed 1Click quote evidence only. It proves the NEAR Intents route can price successfully; it does not top up the Stellar wallet or mark a deal funded.'}
               </div>
             )}
 

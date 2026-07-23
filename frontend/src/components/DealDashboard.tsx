@@ -264,23 +264,23 @@ export function DealDashboard({
 
   const openCrossChainFunding = (milestoneIdx: number, status: string) => {
     if (!selectedDeal || selectedDealId === null) {
-      console.error('[DealDashboard] Pay from another chain blocked: no selected deal', {
+      console.error('[DealDashboard] Top up from another chain blocked: no selected deal', {
         selectedDealId,
         milestoneIdx,
       });
-      toast('Select a deal before starting cross-chain funding.', 'error');
+      toast('Select a deal before starting cross-chain top-up.', 'error');
       return;
     }
     if (status !== 'Pending') {
-      console.error('[DealDashboard] Pay from another chain blocked: milestone is not pending', {
+      console.error('[DealDashboard] Top up from another chain blocked: milestone is not pending', {
         dealId: selectedDealId,
         milestoneIdx,
         status,
       });
-      toast('Cross-chain funding is only available for pending milestones.', 'error');
+      toast('Cross-chain top-up is only available from the pending deal funding entry.', 'error');
       return;
     }
-    console.info('[DealDashboard] Opening cross-chain funding panel', {
+    console.info('[DealDashboard] Opening cross-chain top-up panel', {
       dealId: selectedDealId,
       milestoneIdx,
       amountDue: selectedDeal.milestones[milestoneIdx]?.amount?.toString(),
@@ -316,7 +316,7 @@ export function DealDashboard({
       setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${settlementBalance.label}, have ${available.toFixed(2)} ${settlementBalance.label}.`);
       setErrorContext({
         title: 'Deal Funding Failed',
-        suggestion: `This deal needs ${settlementBalance.label}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain from the funding entry.`,
+        suggestion: `This deal needs ${settlementBalance.label}. Use Wallet Prep to prepare the settlement asset, or choose Top Up from Another Chain from the funding entry.`,
       });
       return;
     }
@@ -932,8 +932,11 @@ export function DealDashboard({
                                     onClick={() => openCrossChainFunding(i, status)}
                                     className="text-xs py-1.5 px-3"
                                   >
-                                    Pay from Another Chain
+                                    Top Up from Another Chain
                                   </Button>
+                                  <div className="w-full text-[10px] leading-relaxed text-zinc-500">
+                                    Cross-chain top-up prepares your Stellar wallet. After it arrives, use Fund Deal to lock escrow.
+                                  </div>
                                   <Button onClick={handleFundDeal} disabled={actionLoading === 'fund-deal' || hasEnoughSettlement === false} className="text-xs py-1.5 px-4">
                                     {actionLoading === 'fund-deal' ? 'Signing...' : `Fund Deal with ${settlementBalance.label}`}
                                   </Button>

@@ -33,6 +33,7 @@ funds are actually locked in DealEscrow.
 | 2026-07-22 18:51 BST | NEAR quote-only UX guard | Forced quote-evidence destinations to stay dry-preview even when live execution is enabled, preventing deposit instructions or pending-deposit status from appearing for routes that do not settle into Stellar escrow. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
 | 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from Wallet Prep so cross-chain checkout starts from a pending deal milestone. Wallet Prep now remains for testnet funding and Stellar settlement-asset preparation only. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-23 10:33 BST | Deal-level NEAR funding entry | Reused the NEAR Intents panel from pending Deal Dashboard milestones so cross-chain payment starts from a selected deal/milestone with amount due locked. Wallet Prep remains a settlement-asset preparation surface. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
+| 2026-07-23 14:55 BST | NEAR top-up boundary | Clarified that NEAR Intents is a connected Stellar wallet top-up route, not a direct escrow funding route. Escrow funding still requires the user to confirm **Fund Deal** and emit Soroban `funded` events. | `npm run build` passed in `frontend/`. |
 
 ## Researched Protocol Notes
 
@@ -177,33 +178,35 @@ Marketplace deal
   -> NEAR Intents quote
   -> user approval and source-chain funding
   -> NEAR intent status tracking
-  -> settlement asset arrives on Stellar
+  -> settlement asset arrives in connected Stellar wallet
+  -> user confirms Fund Deal
   -> DealEscrow fund_deal()
   -> Soroban funded events
   -> marketplace binding reconciliation
 ```
 
 The escrow rail must not mark funds as locked from NEAR status alone. A Near
-intent can prove that payment initiation is moving, but DealEscrow is funded
-only after the Stellar settlement asset is deposited through DealEscrow and the
-indexer observes the Soroban `funded` events.
+intent can prove that wallet top-up is moving, but DealEscrow is funded only
+after the connected Stellar wallet confirms **Fund Deal**, `fund_deal` moves the
+settlement asset into the contract, and the indexer observes the Soroban
+`funded` events.
 
 ## Product-Facing Checkout Shape
 
 The public flow should read like checkout, not an integration console:
 
 1. User opens a deal and uses the first pending milestone as the funding entry.
-2. The app offers **Stellar USDC**, **Swap into Stellar USDC**, and **Pay from
-   another chain**.
-3. **Pay from another chain** lets the user choose a source chain/asset, review
-   the Stellar settlement asset, use the remaining pending deal balance, and
-   request a quote.
+2. The app offers **Stellar USDC**, **Swap into Stellar USDC**, and **Top Up
+   from Another Chain**.
+3. **Top Up from Another Chain** lets the user choose a source chain/asset,
+   review the Stellar wallet destination asset, use the remaining pending deal
+   balance, and request a quote.
 4. The quote view shows estimated received amount, minimum received amount,
    expiry, verification state, payment instructions when live execution is
    enabled, and the payment status timeline.
-5. Status progresses through source payment, NEAR Intents routing, Stellar
-   settlement, and then escrow funding only after a matching Soroban `funded`
-   event is indexed.
+5. Status progresses through source payment, NEAR Intents routing, and Stellar
+   wallet top-up. Escrow funding happens only after the user confirms **Fund
+   Deal** and matching Soroban `funded` events are indexed.
 
 Do not expose these implementation details in the public checkout surface:
 binding ids, raw asset ids, JWT/readiness internals, refund fallback envs,
@@ -346,12 +349,12 @@ provider-pushed state changes.
 
 ## UI Requirements
 
-The frontend now includes **Pay from another chain** from pending milestones in
-the Deal Dashboard. Wallet Prep intentionally does not show a standalone NEAR
+The frontend now includes **Top Up from Another Chain** from the first pending
+milestone in the Deal Dashboard. Wallet Prep intentionally does not show a standalone NEAR
 quote path; it remains for Friendbot and the Stellar broker settlement route:
 
-- Shows selected deal/milestone context, locked amount due, source asset,
-  approved Stellar settlement asset, route summary, quote result, payment
+- Shows selected deal context, remaining pending amount due, source asset,
+  approved Stellar wallet destination asset, route summary, quote result, payment
   instructions when live execution returns them, and a payment status timeline.
 - Hides binding id, raw 1Click asset ids, JWT/readiness internals, refund
   fallback envs, dry-quote labels, and smoke/admin terminology from the public
@@ -363,8 +366,9 @@ quote path; it remains for Friendbot and the Stellar broker settlement route:
   server configuration details.
 - Shows provider/payment status and keeps `SUCCESS`, `FAILED`, `REFUNDED`, and
   pending states separate from Soroban escrow funding.
-- Continues to warn that "escrow funded" only means a DealEscrow `funded` event
-  was indexed on Stellar.
+- Continues to warn that top-up is not escrow funding; "escrow funded" only
+  means the user confirmed **Fund Deal** and DealEscrow `funded` events were
+  indexed on Stellar.
 
 Remaining UI hardening before production: add wallet-specific source-chain
 deposit execution, hide preview-only copy once live execution is permanently

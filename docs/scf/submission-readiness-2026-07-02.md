@@ -18,6 +18,7 @@ without overstating demo, testnet, marketplace, or NEAR Intents readiness.
 | 2026-07-21 15:57 BST | Live RC backend smoke | Confirmed the deployed backend now points at the hardened RC contract and has indexed the RC smoke events. | `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed public checks; `/health` reports the RC contract; dashboard summary has 17 events including 3 disputes and 3 resolved events. Shadow bindings were seeded/reconciled in the 16:01 BST follow-up. |
 | 2026-07-21 16:01 BST | Live shadow binding smoke | Seeded/reconciled deployed shadow marketplace bindings and reran protected backend smoke. | Live smoke now passes shadow bindings; protected admin smoke found `mb_sig-demo-001`, 5 mapped binding events, and 175 NEAR tokens. Dry quote remains pending. |
 | 2026-07-23 14:50 BST | Full-deal funding RC | Added `fund_deal`, updated frontend checkout to fund the remaining deal balance once, adjusted refund state handling for released + refunded deals, and deployed/initialized the new Stellar Testnet contract. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`; contract `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; CLI live smoke passed create/fund/release/refund/readback. Coolify env switch and live deployed-backend smoke still required. |
+| 2026-07-23 14:55 BST | NEAR wallet top-up boundary | Clarified that NEAR Intents is a cross-chain Stellar wallet top-up route, while escrow funding requires the separate user-confirmed `fund_deal` transaction. | `npm run build` passed in `frontend/`. |
 
 ## Submit Status
 
@@ -36,7 +37,7 @@ This repo can be submitted as a reusable Stellar escrow rail with:
 - shadow marketplace binding layer that does not mutate The Signal production
   marketplace database
 - SDK-backed NEAR Intents server adapter and deal-level readiness/dry
-  quote/status UI from the deal funding entry, with approved destination
+  quote/status UI from the wallet top-up entry, with approved destination
   asset selection and verified quote signatures
 - explicit payment rail boundary documenting that Stripe remains The Signal's
   production marketplace fiat rail and is not implemented in this repo
@@ -52,7 +53,7 @@ marketplace deals: fund-once milestone escrow, atomic provider/connector/protoco
 dispute and admin resolution paths, on-chain reputation, event indexing, a
 reviewer dashboard, shadow marketplace bindings, and a feature-flagged NEAR
 Intents adapter with SDK-backed quote/status APIs plus frontend readiness and
-dry-quote UI.
+dry-quote UI for Stellar wallet top-up before user-confirmed escrow funding.
 ```
 
 Use this Stripe/payment boundary wording:
@@ -72,8 +73,10 @@ official 1Click SDK, server-side token/quote/status/deposit/reconcile endpoints,
 binding metadata persistence, approved destination asset selection, server-side
 quote signature verification, and a frontend panel. Live NEAR execution remains
 disabled until JWT provisioning, exact Stellar assetId validation, refund path,
-and tiny live-amount no-testnet evidence are complete. Escrow funding is still
-recognized only after Stellar DealEscrow `funded` events.
+and tiny live-amount no-testnet evidence are complete. NEAR Intents is treated
+as Stellar wallet top-up evidence only; escrow funding is still recognized only
+after the user confirms `fund_deal` and Stellar DealEscrow `funded` events are
+indexed.
 ```
 
 ## Do Not Claim

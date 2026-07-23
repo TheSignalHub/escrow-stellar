@@ -26,9 +26,9 @@ resolution.
 | Wallet rejects signing | Error mapping surfaces cancellation/retry path from wallet/provider failure. | `useDealEscrow.ts`, `docs/DEMO_GUIDE.md` troubleshooting |
 | Transaction timeout | Shows timeout text and Explorer check guidance. | `useDealEscrow.ts` polling guard |
 | Contract unauthorized error | Maps to operation-specific messages for deposit, release, dispute, resolve, and refund. | `useDealEscrow.ts` contextual errors |
-| NEAR Intents disabled | Deal-level cross-chain funding panel shows disabled readiness; quote path surfaces provider/API error instead of implying payment availability. | `NearIntentsPanel.tsx`, `/api/near-intents/readiness` |
+| NEAR Intents disabled | Deal-level cross-chain top-up panel shows disabled readiness; quote path surfaces provider/API error instead of implying payment availability. | `NearIntentsPanel.tsx`, `/api/near-intents/readiness` |
 | NEAR Intents admin auth missing | Protected quote/status errors surface an `/admin` recovery link. | `NearIntentsPanel.tsx`, `nearIntents.ts` |
-| NEAR status succeeds before Soroban funding | UI labels provider success separately and warns to reconcile Soroban `funded` before marking escrow funded. | `NearIntentsPanel.tsx`, `docs/NEAR_INTENTS_BOUNDARY.md` |
+| NEAR status succeeds before Soroban funding | UI labels provider success separately and warns that top-up is not escrow funding; the user must confirm Fund Deal and reconcile Soroban `funded` before marking escrow funded. | `NearIntentsPanel.tsx`, `docs/NEAR_INTENTS_BOUNDARY.md` |
 
 ## Known Product Gaps
 

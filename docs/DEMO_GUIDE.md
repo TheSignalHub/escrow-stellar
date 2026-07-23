@@ -156,10 +156,10 @@ The segmented filter bar at the top of the deal list:
 2. Find the first milestone showing **Pending** status
 3. Choose a funding path:
    - **Fund Deal with XLM/tUSDC** when the deal-funding balance row shows enough wallet balance
-   - **Pay from Another Chain** for a NEAR Intents-backed quote using the remaining pending deal amount
+   - **Top Up from Another Chain** for a NEAR Intents-backed wallet top-up quote using the remaining pending deal amount
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet
-5. For cross-chain funding, a focused funding modal opens for the selected deal. Review the quote and payment status there. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded` events
+5. For cross-chain top-up, a focused modal opens for the selected deal. Review the quote and payment status there. Escrow remains pending after the top-up until the connected Stellar wallet confirms **Fund Deal** and the contract emits `funded` events
 6. Once funded on-chain, all pending milestones transition to **Funded** and the deal becomes **Active**
 
 The public UI intentionally hides binding ids, raw asset ids, refund fallback
@@ -249,7 +249,7 @@ After completing the full flow, verify:
 | Reputation increments | Lookup shows 1 after first completed deal |
 | Dispute freezes funds | Disputed milestone cannot be released |
 | Resolution distributes correctly | Operator/admin `resolve_dispute` evidence shows client + provider portions sum to original milestone amount |
-| NEAR funding does not overclaim | NEAR panel can show quote/status, but escrow remains unfunded until a Soroban `funded` event exists |
+| NEAR top-up does not overclaim | NEAR panel can show quote/status, but escrow remains unfunded until the user confirms Fund Deal and Soroban `funded` events exist |
 
 ---
 
@@ -276,14 +276,14 @@ After completing the full flow, verify:
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 
-1. Open a pending milestone in **Deals** and use **Pay from Another Chain**.
+1. Open the first pending milestone in **Deals** and use **Top Up from Another Chain**.
 2. If cross-chain payments are unavailable, capture the product-facing
    availability message and confirm the quote button is unavailable or returns
    a clear payment-route error.
 3. If the protected reviewer session is missing, sign in through `/admin`, then
    retry the quote without exposing the admin session details in screenshots.
 4. Capture any failed/refunded/provider-pending status as payment status only;
-   do not mark the escrow funded unless a matching Soroban `funded` event is
+   do not mark the escrow funded unless the user confirms Fund Deal and matching Soroban `funded` events are
    visible.
 
 ### Scenario 3: Multiple Deals + Reputation (3 minutes)
@@ -314,7 +314,7 @@ Only active when wallet is connected.
 | Issue | Solution |
 |-------|----------|
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
-| "Insufficient balance" | Go to Wallet Prep and use Friendbot to get 10,000 XLM, or choose Pay from Another Chain on the pending milestone. |
+| "Insufficient balance" | Go to Wallet Prep and use Friendbot to get 10,000 XLM, or choose Top Up from Another Chain on the first pending milestone. |
 | "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |

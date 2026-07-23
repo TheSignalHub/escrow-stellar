@@ -655,7 +655,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
                     </p>
                   )}
                   <p className="text-[10px] text-zinc-500 mt-1.5">
-                    Swaps, top-ups, and cross-chain payments happen later from the pending milestone funding step.
+                    Swaps, top-ups, and cross-chain wallet top-ups happen later from the deal funding step.
                   </p>
                 </div>
 
