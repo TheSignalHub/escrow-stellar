@@ -285,14 +285,19 @@ export async function requestNearIntentQuote(
   }
 
   const destinationAsset = resolveDestinationAsset(config, input);
-  const refundTo = input.refundTo || config.nearIntents.defaultRefundAccount;
+  const isDemoDestination = isDemoDestinationAsset(config, destinationAsset);
+  const allowQaRefundFallback = dry || isDemoDestination;
+  const refundTo =
+    input.refundTo ||
+    (allowQaRefundFallback ? config.nearIntents.defaultRefundAccount : undefined);
   if (!refundTo) {
     throw new NearIntentsProviderError(
-      'refundTo or NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required.'
+      'Connect the source-chain wallet before requesting this quote. Failed cross-chain routes refund to the connected source wallet.',
+      400,
+      { refundAddressType: 'source-wallet' }
     );
   }
 
-  const isDemoDestination = isDemoDestinationAsset(config, destinationAsset);
   if (isDemoDestination && !config.nearIntents.defaultRefundAccount) {
     throw new NearIntentsProviderError(
       'NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required for quote-only demo destinations.',

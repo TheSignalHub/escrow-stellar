@@ -15,6 +15,7 @@ funds are actually locked in DealEscrow.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 16:34 BST | Source-wallet refund routing | Tightened the quote path so production-style cross-chain routes require an explicit connected source-wallet refund address. The server default refund account remains available only for dry/internal QA or quote-evidence destinations. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:25 HKT | Near Intents boundary | Documented NEAR Intents as an external payment initiation boundary and added optional marketplace binding metadata for cross-chain intent tracking. | Superseded by 10:28 HKT validation. |
 | 2026-07-01 10:28 HKT | Near Intents boundary validation | Confirmed the optional binding metadata compiles in the indexer type model and kept executable payment flow explicitly out of scope for this tranche. | Superseded by 10:40 HKT direction change. |
 | 2026-07-01 10:40 HKT | Near Intents required integration | Reopened Gap 5 as a required integration workstream. Added researched protocol flow, staged adapter plan, status mapping, API/env readiness, and acceptance criteria. | Static docs update using NEAR docs and NEAR sandbox 1Click interface reference; production endpoint contract still requires provider validation. |

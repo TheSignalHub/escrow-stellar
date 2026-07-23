@@ -297,6 +297,8 @@ export function NearIntentsPanel({
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination;
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
+  const sourceRefundAddress = selectedOriginAsset.chain === 'Stellar' ? walletAddress : undefined;
+  const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
 
   const sourceAssetAvailable = selectedOriginAsset.available !== false;
   const canRequestQuote = useMemo(() => {
@@ -304,11 +306,12 @@ export function NearIntentsPanel({
       readiness?.enabled &&
         hasValidStellarRecipient &&
         sourceAssetAvailable &&
+        hasSourceRefundRoute &&
         originAsset.trim() &&
         destinationAsset.trim() &&
         amount.trim()
     );
-  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
+  }, [amount, destinationAsset, hasSourceRefundRoute, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -360,7 +363,7 @@ export function NearIntentsPanel({
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
         amount: amount.trim(),
-        refundTo: originAsset.includes('1100_') ? walletAddress : undefined,
+        refundTo: sourceRefundAddress,
         recipient: quoteDemoDestination ? undefined : walletAddress,
         dry: paymentPreviewOnly,
         slippageTolerance: 100,
@@ -602,6 +605,12 @@ export function NearIntentsPanel({
             {!sourceAssetAvailable && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 This source will become available after its native wallet connection and refund route are wired.
+              </div>
+            )}
+
+            {sourceAssetAvailable && !hasSourceRefundRoute && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                Connect or create the source-chain wallet before requesting a live top-up quote. Failed routes refund to that source wallet automatically.
               </div>
             )}
 
