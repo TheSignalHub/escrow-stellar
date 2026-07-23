@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 13:33 BST | Cross-chain funding panel visibility | Moved the NEAR Intents funding panel to render directly under the clicked pending milestone and added console/toast guard logs when the flow is blocked by missing deal context or a non-pending milestone. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 12:08 BST | Deal-page wallet balance UX | Kept the connected wallet header compact and added a Deals sidebar wallet-balance card showing XLM and the configured settlement token beside Vault Analytics. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 11:46 BST | Wallet balance and ledger refresh UX | Updated the connected wallet header to expose balance context and changed Deals auto-sync to refresh silently so the left ledger list does not show loading skeletons on each polling interval. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 11:30 BST | Create Deal settlement-only flow | Removed the create-time XLM -> configured-settlement-token swap route from Create Deal. Create Deal now only selects the escrow settlement asset; swaps/top-ups/cross-chain payment remain in Wallet Prep or pending milestone funding. | `npm run build` passed in `frontend/`. |

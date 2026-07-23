@@ -235,11 +235,6 @@ export function DealDashboard({
   const tokenSymbol = selectedDeal ? getTokenSymbol(selectedDeal.token) : 'TOKEN';
   const selectedStatus = selectedDeal ? getDealStatus(selectedDeal) : '';
   const selectedMeta = selectedDealId !== null ? getDealMetadata(selectedDealId) : null;
-  const crossChainMilestone =
-    selectedDeal && crossChainMilestoneIdx !== null
-      ? selectedDeal.milestones[crossChainMilestoneIdx]
-      : null;
-
   const activityLog = useMemo(() => {
     if (selectedDealId === null || !selectedDeal) return [];
     return getAllDealEvents(selectedDealId, selectedDeal.milestones.length);
@@ -253,6 +248,34 @@ export function DealDashboard({
     const protocolCut = platformFee - connectorCut;
     const providerCut = amount - platformFee;
     return { providerCut, connectorCut, protocolCut, total: amount };
+  };
+
+  const openCrossChainFunding = (milestoneIdx: number, status: string) => {
+    if (!selectedDeal || selectedDealId === null) {
+      console.error('[DealDashboard] Pay from another chain blocked: no selected deal', {
+        selectedDealId,
+        milestoneIdx,
+      });
+      toast('Select a deal before starting cross-chain funding.', 'error');
+      return;
+    }
+    if (status !== 'Pending') {
+      console.error('[DealDashboard] Pay from another chain blocked: milestone is not pending', {
+        dealId: selectedDealId,
+        milestoneIdx,
+        status,
+      });
+      toast('Cross-chain funding is only available for pending milestones.', 'error');
+      return;
+    }
+    console.info('[DealDashboard] Opening cross-chain funding panel', {
+      dealId: selectedDealId,
+      milestoneIdx,
+      amountDue: selectedDeal.milestones[milestoneIdx]?.amount?.toString(),
+    });
+    setError('');
+    setErrorContext(null);
+    setCrossChainMilestoneIdx(crossChainMilestoneIdx === milestoneIdx ? null : milestoneIdx);
   };
 
   const getWalletSettlementBalance = (deal: DealData) => {
@@ -867,7 +890,7 @@ export function DealDashboard({
                                   </div>
                                   <Button
                                     variant={crossChainMilestoneIdx === i ? 'primary' : 'secondary'}
-                                    onClick={() => setCrossChainMilestoneIdx(crossChainMilestoneIdx === i ? null : i)}
+                                    onClick={() => openCrossChainFunding(i, status)}
                                     className="text-xs py-1.5 px-3"
                                   >
                                     Pay from Another Chain
@@ -942,24 +965,23 @@ export function DealDashboard({
                                 </div>
                               )}
                             </div>
+                            {selectedDealId !== null && status === 'Pending' && crossChainMilestoneIdx === i && (
+                              <div className="pt-3 animate-fade-in">
+                                <NearIntentsPanel
+                                  walletAddress={walletAddress}
+                                  mode="dealFunding"
+                                  dealId={selectedDealId}
+                                  milestoneIdx={i}
+                                  amountDue={m.amount.toString()}
+                                  onClose={() => setCrossChainMilestoneIdx(null)}
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
                     })}
                   </div>
-
-                  {crossChainMilestone && selectedDealId !== null && getMilestoneStatus(crossChainMilestone) === 'Pending' && (
-                    <div className="pt-2 animate-fade-in">
-                      <NearIntentsPanel
-                        walletAddress={walletAddress}
-                        mode="dealFunding"
-                        dealId={selectedDealId}
-                        milestoneIdx={crossChainMilestoneIdx ?? undefined}
-                        amountDue={crossChainMilestone.amount.toString()}
-                        onClose={() => setCrossChainMilestoneIdx(null)}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Right Sidebar: Signal Data */}
