@@ -19,6 +19,17 @@ export interface NearIntentsReadiness {
   pollIntervalSeconds: number;
 }
 
+export interface NearIntentsToken {
+  assetId: string;
+  decimals: number;
+  blockchain: string;
+  symbol: string;
+  price: number;
+  priceUpdatedAt: string;
+  contractAddress?: string;
+  coingeckoId?: string;
+}
+
 export type NearIntentProviderStatus =
   | 'PENDING_DEPOSIT'
   | 'KNOWN_DEPOSIT_TX'
@@ -161,6 +172,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const nearIntentsClient = {
   readiness(): Promise<NearIntentsReadiness> {
     return request<NearIntentsReadiness>('/api/near-intents/readiness');
+  },
+
+  async tokens(): Promise<NearIntentsToken[]> {
+    const response = await request<{ tokens: NearIntentsToken[] }>('/api/near-intents/tokens');
+    return response.tokens;
   },
 
   createQuote(bindingId: string, body: NearIntentQuoteRequest): Promise<NearIntentQuoteResponse> {

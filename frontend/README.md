@@ -149,11 +149,13 @@ asset.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
 cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
-pending balance, lets the user choose a supported source asset, locks the destination
-to the deal's Stellar settlement asset, gets a quote, shows payment instructions/status, and reports whether the
-returned 1Click quote was verified. It intentionally hides binding ids, raw
-asset ids, JWT/readiness internals, refund fallback envs, and internal smoke
-terminology. The demo test USDC token is not Circle-issued production USDC, and
+pending balance, discovers source chain/source asset options from 1Click,
+locks the destination to the deal's Stellar settlement asset, gets a quote, and
+reports whether the returned 1Click quote was verified. It intentionally hides
+binding ids, JWT/readiness internals, refund fallback envs, and internal smoke
+terminology. Source token metadata is public 1Click discovery data; destination
+settlement assets remain backend-approved. The demo test USDC token is not
+Circle-issued production USDC, and
 NEAR/payment status never marks escrow funded. After the Stellar wallet is
 topped up, the user confirms **Fund Deal**, and only Stellar DealEscrow
 `funded` events mark escrow funded. If the backend exposes a quote-only demo destination
@@ -162,9 +164,8 @@ evidence rather than escrow settlement. For deal-tied top-ups, the amount is
 shown in human Stellar units and the destination route is constrained to the
 deal's approved Stellar settlement asset: Stellar USDC-compatible settlement
 token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
-user-selectable only where the provider route and wallet/refund handling are
-available; disabled Ethereum/Base cards are labeled as coming-next source-wallet
-work rather than executable routes.
+user-selectable from supported non-Stellar 1Click routes; live execution still
+requires the native source-wallet signing and refund route to be wired.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

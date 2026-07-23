@@ -20,6 +20,7 @@ import {
   type NearIntentQuoteResponse,
   type NearIntentStatusResponse,
   type NearIntentsReadiness,
+  type NearIntentsToken,
 } from '../lib/nearIntents';
 import { SETTLEMENT_TOKEN_DECIMALS, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
 import { Card, Button, Tag } from './ui/Components';
@@ -39,10 +40,10 @@ type StepState = 'done' | 'active' | 'pending';
 
 const REVIEW_BINDING_ID = 'mb_sig-demo-001';
 const NEAR_QUOTE_DEMO_ASSET_ID = 'nep141:usdt.tether-token.near';
-const ONE_NEAR_BASE_UNITS = '1000000000000000000000000';
-const ONE_USDC_BASE_UNITS = '1000000';
 const EVM_DRY_QUOTE_REFUND_ADDRESS = '0x1111111111111111111111111111111111111111';
 const SOLANA_DRY_QUOTE_REFUND_ADDRESS = '11111111111111111111111111111111';
+const EVM_CHAINS = new Set(['eth', 'base', 'arb', 'op', 'avax', 'bsc', 'pol', 'gnosis', 'bera', 'xlayer', 'monad', 'plasma', 'scroll']);
+const DRY_QUOTE_SOURCE_CHAINS = new Set(['near', 'sol', ...EVM_CHAINS]);
 
 const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc'> = {
   QUOTE_CREATED: 'blue',
@@ -55,57 +56,6 @@ const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc
   FAILED: 'red',
   disabled: 'zinc',
 };
-
-const ORIGIN_ASSETS = [
-  {
-    chain: 'NEAR',
-    symbol: 'NEAR',
-    label: 'NEAR',
-    description: 'Top up the connected Stellar wallet from a NEAR wallet.',
-    assetId: 'nep141:wrap.near',
-    previewAmount: ONE_NEAR_BASE_UNITS,
-    previewAmountLabel: '1 NEAR',
-  },
-  {
-    chain: 'Ethereum',
-    symbol: 'USDC',
-    label: 'Ethereum USDC',
-    description: 'Preview the Ethereum USDC route. Live payment requires an Ethereum wallet connection.',
-    assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
-    previewAmount: ONE_USDC_BASE_UNITS,
-    previewAmountLabel: '1 USDC',
-    previewRefundAddress: EVM_DRY_QUOTE_REFUND_ADDRESS,
-  },
-  {
-    chain: 'Base',
-    symbol: 'USDC',
-    label: 'Base USDC',
-    description: 'Preview the Base USDC route. Live payment requires a Base wallet connection.',
-    assetId: 'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near',
-    previewAmount: ONE_USDC_BASE_UNITS,
-    previewAmountLabel: '1 USDC',
-    previewRefundAddress: EVM_DRY_QUOTE_REFUND_ADDRESS,
-  },
-  {
-    chain: 'Solana',
-    symbol: 'USDC',
-    label: 'Solana USDC',
-    description: 'Preview the Solana USDC route. Live payment requires a Solana wallet connection.',
-    assetId: 'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near',
-    previewAmount: ONE_USDC_BASE_UNITS,
-    previewAmountLabel: '1 USDC',
-    previewRefundAddress: SOLANA_DRY_QUOTE_REFUND_ADDRESS,
-  },
-  {
-    chain: 'Stellar',
-    symbol: 'XLM',
-    label: 'Stellar XLM',
-    description: 'Use Fund Deal or Wallet Prep instead; this is not a cross-chain top-up route.',
-    assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
-    available: false,
-    unavailableLabel: 'Use Fund Deal',
-  },
-];
 
 function formatBaseAmount(value?: string): string {
   if (!value) return '0';
@@ -144,26 +94,6 @@ function formatStellarBaseUnits(value?: string): string {
   }
 }
 
-function formatNearBaseUnits(value?: string): string {
-  if (!value || !/^\d+$/.test(value)) return value || '0';
-  try {
-    const scale = 10n ** 24n;
-    const raw = BigInt(value);
-    const whole = raw / scale;
-    const fraction = raw % scale;
-    const fractionText = fraction.toString().padStart(24, '0').replace(/0+$/, '');
-    return `${fractionText ? `${whole}.${fractionText}` : whole.toString()} NEAR`;
-  } catch {
-    return value;
-  }
-}
-
-function formatPreviewSourceAmount(asset: typeof ORIGIN_ASSETS[number]): string {
-  if (asset.previewAmountLabel) return asset.previewAmountLabel;
-  if (asset.assetId === 'nep141:wrap.near') return formatNearBaseUnits(asset.previewAmount);
-  return formatBaseAmount(asset.previewAmount);
-}
-
 function getSettlementKindFromAssetId(assetId?: string): 'xlm' | 'usdc' | 'demo' | 'unknown' {
   if (!assetId) return 'unknown';
   if (assetId === NEAR_QUOTE_DEMO_ASSET_ID) return 'demo';
@@ -194,6 +124,60 @@ function findPreferredDestinationAsset(assetIds: string[], tokenAddress?: string
 
 function uniqueAssets(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function chainLabel(chain?: string): string {
+  const labels: Record<string, string> = {
+    arb: 'Arbitrum',
+    avax: 'Avalanche',
+    base: 'Base',
+    bera: 'Berachain',
+    bsc: 'BNB Chain',
+    eth: 'Ethereum',
+    gnosis: 'Gnosis',
+    monad: 'Monad',
+    near: 'NEAR',
+    op: 'Optimism',
+    plasma: 'Plasma',
+    pol: 'Polygon',
+    scroll: 'Scroll',
+    sol: 'Solana',
+    xlayer: 'X Layer',
+  };
+  if (!chain) return 'Source chain';
+  return labels[chain] || chain.charAt(0).toUpperCase() + chain.slice(1);
+}
+
+function tokenLabel(token?: NearIntentsToken): string {
+  if (!token) return 'Source asset';
+  return `${token.symbol} on ${chainLabel(token.blockchain)}`;
+}
+
+function isQuotePreviewSourceToken(token: NearIntentsToken): boolean {
+  return (
+    Boolean(token.assetId && token.symbol) &&
+    token.blockchain !== 'stellar' &&
+    DRY_QUOTE_SOURCE_CHAINS.has(token.blockchain) &&
+    Number(token.decimals) >= 0 &&
+    Number(token.price || 0) > 0
+  );
+}
+
+function decimalToBaseUnits(value: string, decimals: number): string {
+  const normalized = value.trim();
+  if (!/^\d*(\.\d*)?$/.test(normalized) || normalized === '' || normalized === '.') return '';
+  const [wholeRaw, fractionRaw = ''] = normalized.split('.');
+  const whole = wholeRaw || '0';
+  const fraction = fractionRaw.slice(0, decimals).padEnd(decimals, '0');
+  const combined = `${whole}${fraction}`.replace(/^0+/, '');
+  return combined || '0';
+}
+
+function getDryQuoteRefundAddress(token?: NearIntentsToken): string | undefined {
+  if (!token) return undefined;
+  if (EVM_CHAINS.has(token.blockchain)) return EVM_DRY_QUOTE_REFUND_ADDRESS;
+  if (token.blockchain === 'sol') return SOLANA_DRY_QUOTE_REFUND_ADDRESS;
+  return undefined;
 }
 
 function formatDateTime(value?: string): string {
@@ -256,12 +240,16 @@ export function NearIntentsPanel({
 }: NearIntentsPanelProps) {
   const toast = useToast();
   const [readiness, setReadiness] = useState<NearIntentsReadiness | null>(null);
-  const [originAsset, setOriginAsset] = useState('nep141:wrap.near');
+  const [sourceTokens, setSourceTokens] = useState<NearIntentsToken[]>([]);
+  const [sourceChain, setSourceChain] = useState('');
+  const [originAsset, setOriginAsset] = useState('');
   const [destinationAsset, setDestinationAsset] = useState('');
   const [amount, setAmount] = useState(amountDue || '1000000');
+  const [sourceAmount, setSourceAmount] = useState('1');
   const [quote, setQuote] = useState<NearIntentQuoteResponse | null>(null);
   const [status, setStatus] = useState<NearIntentStatusResponse | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
+  const [loadingTokens, setLoadingTokens] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState<NearIntentsApiError | null>(null);
@@ -286,7 +274,58 @@ export function NearIntentsPanel({
     void loadReadiness();
   }, []);
 
-  const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset) || ORIGIN_ASSETS[0];
+  const loadTokens = async () => {
+    setLoadingTokens(true);
+    try {
+      const tokens = await nearIntentsClient.tokens();
+      setSourceTokens(tokens.filter(isQuotePreviewSourceToken));
+    } catch (err) {
+      setError(err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500));
+    } finally {
+      setLoadingTokens(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadTokens();
+  }, []);
+
+  const sourceChains = useMemo(() => {
+    const chains = uniqueAssets(sourceTokens.map((token) => token.blockchain));
+    const priority = ['near', 'eth', 'base', 'sol'];
+    return chains.sort((a, b) => {
+      const aPriority = priority.indexOf(a);
+      const bPriority = priority.indexOf(b);
+      if (aPriority !== -1 || bPriority !== -1) {
+        return (aPriority === -1 ? 999 : aPriority) - (bPriority === -1 ? 999 : bPriority);
+      }
+      return chainLabel(a).localeCompare(chainLabel(b));
+    });
+  }, [sourceTokens]);
+  const sourceTokensForChain = useMemo(
+    () => sourceTokens.filter((token) => token.blockchain === sourceChain),
+    [sourceChain, sourceTokens]
+  );
+  const selectedOriginAsset = sourceTokens.find((token) => token.assetId === originAsset);
+
+  useEffect(() => {
+    if (sourceChain && sourceChains.includes(sourceChain)) return;
+    setSourceChain(sourceChains[0] || '');
+  }, [sourceChain, sourceChains]);
+
+  useEffect(() => {
+    if (!sourceTokensForChain.length) {
+      setOriginAsset('');
+      return;
+    }
+    if (sourceTokensForChain.some((token) => token.assetId === originAsset)) return;
+    const preferred =
+      sourceTokensForChain.find((token) => token.symbol.toUpperCase() === 'USDC') ||
+      sourceTokensForChain.find((token) => token.symbol.toUpperCase() === 'NEAR') ||
+      sourceTokensForChain[0];
+    setOriginAsset(preferred.assetId);
+  }, [originAsset, sourceTokensForChain]);
+
   const isDealFundingMode = mode === 'dealFunding';
   const stellarDestinationAllowlist = readiness?.destinationAssets?.allowlist || [];
   const demoDestinationAllowlist = readiness?.destinationAssets?.demoAllowlist || [];
@@ -336,14 +375,14 @@ export function NearIntentsPanel({
   const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
-  const sourceRefundAddress = selectedOriginAsset.chain === 'Stellar' ? walletAddress : undefined;
+  const sourceRefundAddress: string | undefined = undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
-  const quoteSourceAmount = selectedOriginAsset.previewAmount || ONE_NEAR_BASE_UNITS;
-  const quoteRefundAddress = sourceRefundAddress || (paymentPreviewOnly ? selectedOriginAsset.previewRefundAddress : undefined);
-  const quoteRequestAmount = isDealFundingMode ? quoteSourceAmount : amount;
+  const quoteSourceAmount = selectedOriginAsset ? decimalToBaseUnits(sourceAmount, selectedOriginAsset.decimals) : '';
+  const quoteRefundAddress = sourceRefundAddress || (paymentPreviewOnly ? getDryQuoteRefundAddress(selectedOriginAsset) : undefined);
+  const quoteRequestAmount = quoteSourceAmount;
 
-  const sourceAssetAvailable = selectedOriginAsset.available !== false;
+  const sourceAssetAvailable = Boolean(selectedOriginAsset);
   const canRequestQuote = useMemo(() => {
     return Boolean(
         readiness?.enabled &&
@@ -521,9 +560,6 @@ export function NearIntentsPanel({
                     onChange={(event) => {
                       const nextDestinationAsset = event.target.value;
                       setDestinationAsset(nextDestinationAsset);
-                      if (!isDealFundingMode && nextDestinationAsset === NEAR_QUOTE_DEMO_ASSET_ID && amount === '1000000') {
-                        setAmount(ONE_NEAR_BASE_UNITS);
-                      }
                     }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none"
                   >
@@ -545,47 +581,88 @@ export function NearIntentsPanel({
 
             <div className="space-y-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay from</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {ORIGIN_ASSETS.map((asset) => {
-                  const selected = asset.assetId === originAsset;
-                  return (
-                    <button
-                      key={asset.assetId}
-                      type="button"
-                      onClick={() => {
-                        if (asset.available !== false) {
-                          setOriginAsset(asset.assetId);
-                          setError(null);
-                          setQuote(null);
-                          setStatus(null);
-                        }
-                      }}
-                      disabled={asset.available === false}
-                      className={`text-left rounded-lg border px-3 py-3 transition ${
-                        selected
-                          ? 'border-blue-500/50 bg-blue-500/10 text-white'
-                          : asset.available === false
-                            ? 'border-zinc-900 bg-black/10 text-zinc-600 cursor-not-allowed'
-                            : 'border-zinc-800 bg-black/20 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold">{asset.label}</span>
-                        <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                          {asset.chain}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs leading-relaxed text-zinc-500">{asset.description}</p>
-                      {asset.available === false && (
-                        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-400/80">
-                          {asset.unavailableLabel || 'Coming next'}
-                        </p>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-1 sm:grid-cols-[0.85fr_1.15fr] gap-3">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source chain</span>
+                  <select
+                    value={sourceChain}
+                    onChange={(event) => {
+                      setSourceChain(event.target.value);
+                      setQuote(null);
+                      setStatus(null);
+                      setError(null);
+                    }}
+                    disabled={loadingTokens || sourceChains.length === 0}
+                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                  >
+                    {sourceChains.length === 0 ? (
+                      <option value="">{loadingTokens ? 'Loading chains...' : 'No source chains available'}</option>
+                    ) : (
+                      sourceChains.map((chain) => (
+                        <option key={chain} value={chain}>
+                          {chainLabel(chain)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source asset</span>
+                  <select
+                    value={originAsset}
+                    onChange={(event) => {
+                      setOriginAsset(event.target.value);
+                      setQuote(null);
+                      setStatus(null);
+                      setError(null);
+                    }}
+                    disabled={loadingTokens || sourceTokensForChain.length === 0}
+                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                  >
+                    {sourceTokensForChain.length === 0 ? (
+                      <option value="">{loadingTokens ? 'Loading assets...' : 'No assets available'}</option>
+                    ) : (
+                      sourceTokensForChain.map((token) => (
+                        <option key={token.assetId} value={token.assetId}>
+                          {token.symbol}
+                          {token.contractAddress ? ` · ${shortText(token.contractAddress)}` : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
               </div>
+              <label className="block space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source amount</span>
+                <input
+                  value={sourceAmount}
+                  onChange={(event) => {
+                    setSourceAmount(event.target.value.replace(/[^\d.]/g, ''));
+                    setQuote(null);
+                    setStatus(null);
+                    setError(null);
+                  }}
+                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none"
+                  placeholder="1"
+                />
+              </label>
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Source assets come from live 1Click token discovery. Stellar direct funding stays in Fund Deal / Wallet Prep; this flow quotes cross-chain top-ups only.
+              </p>
+              {loadingTokens && (
+                <p className="text-xs text-blue-300">Loading supported 1Click source assets...</p>
+              )}
+              {!loadingTokens && sourceTokens.length === 0 && (
+                <p className="text-xs text-amber-300">No source assets are available from token discovery right now.</p>
+              )}
             </div>
+
+            {isDealFundingMode && sourceAssetAvailable && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-100/75">
+                Dry quote preview: {sourceAmount || '0'} {selectedOriginAsset?.symbol} from {chainLabel(selectedOriginAsset?.blockchain)} into {settlementLabel}.
+                Escrow still needs the full Stellar balance before Fund Deal.
+              </div>
+            )}
 
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -595,7 +672,7 @@ export function NearIntentsPanel({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-zinc-100">
-                      {selectedOriginAsset.symbol} on {selectedOriginAsset.chain}
+                      {tokenLabel(selectedOriginAsset)}
                     </p>
                     <p className="text-xs text-zinc-500">Source payment</p>
                   </div>
@@ -614,28 +691,6 @@ export function NearIntentsPanel({
                 </div>
               </div>
             </div>
-
-            {isDealFundingMode && sourceAssetAvailable && (
-              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3">
-                <label className="grid grid-cols-1 sm:grid-cols-[0.9fr_1.1fr] gap-3 sm:items-center">
-                  <span>
-                    <span className="block text-[10px] font-black uppercase tracking-widest text-blue-200/70">Quote preview source</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-blue-100/70">
-                      Dry quotes price the route from a source amount; escrow still needs the full Stellar balance before Fund Deal.
-                    </span>
-                  </span>
-                  <input
-                    value={formatPreviewSourceAmount(selectedOriginAsset)}
-                    readOnly
-                    className="w-full bg-[#09090b] border border-blue-500/20 rounded-lg px-3 py-2.5 text-sm text-blue-50 font-mono outline-none cursor-not-allowed"
-                    aria-label="Quote source amount"
-                  />
-                </label>
-                <p className="mt-2 text-[11px] text-blue-100/60">
-                  Default is 1 NEAR in base units for route evidence. Live exact-output funding is a later production enhancement.
-                </p>
-              </div>
-            )}
 
             {isDealFundingMode && (
               <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
@@ -718,7 +773,7 @@ export function NearIntentsPanel({
             {nearIntent ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <RouteMetric label="Send from" value={`${selectedOriginAsset.chain} ${selectedOriginAsset.symbol}`} />
+                  <RouteMetric label="Send from" value={tokenLabel(selectedOriginAsset)} />
                   <RouteMetric label="Settle as" value={settlementLabel} />
                   <RouteMetric label="Estimated received" value={`${formatBaseAmount(expectedSettlement)} base units`} />
                   <RouteMetric label="Minimum received" value={`${formatBaseAmount(minimumSettlement)} base units`} />

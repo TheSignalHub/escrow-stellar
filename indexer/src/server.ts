@@ -209,7 +209,7 @@ app.post('/api/marketplace-bindings/reconcile', requireAdminAuth, async (req, re
   }
 });
 
-app.get('/api/near-intents/tokens', requireAdminAuth, async (_req, res) => {
+app.get('/api/near-intents/tokens', async (_req, res) => {
   try {
     const tokens = await listNearIntentTokens(config);
     res.json({ tokens });
