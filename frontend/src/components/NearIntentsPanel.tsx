@@ -127,6 +127,20 @@ function formatStellarBaseUnits(value?: string): string {
   }
 }
 
+function formatNearBaseUnits(value?: string): string {
+  if (!value || !/^\d+$/.test(value)) return value || '0';
+  try {
+    const scale = 10n ** 24n;
+    const raw = BigInt(value);
+    const whole = raw / scale;
+    const fraction = raw % scale;
+    const fractionText = fraction.toString().padStart(24, '0').replace(/0+$/, '');
+    return `${fractionText ? `${whole}.${fractionText}` : whole.toString()} NEAR`;
+  } catch {
+    return value;
+  }
+}
+
 function getSettlementKindFromAssetId(assetId?: string): 'xlm' | 'usdc' | 'demo' | 'unknown' {
   if (!assetId) return 'unknown';
   if (assetId === NEAR_QUOTE_DEMO_ASSET_ID) return 'demo';
@@ -302,6 +316,8 @@ export function NearIntentsPanel({
   const sourceRefundAddress = selectedOriginAsset.chain === 'Stellar' ? walletAddress : undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
+  const quoteSourceAmount = ONE_NEAR_BASE_UNITS;
+  const quoteRequestAmount = isDealFundingMode ? quoteSourceAmount : amount;
 
   const sourceAssetAvailable = selectedOriginAsset.available !== false;
   const canRequestQuote = useMemo(() => {
@@ -311,9 +327,9 @@ export function NearIntentsPanel({
         sourceAssetAvailable &&
         originAsset.trim() &&
         destinationAsset.trim() &&
-        amount.trim()
+        quoteRequestAmount.trim()
     );
-  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
+  }, [destinationAsset, hasValidStellarRecipient, originAsset, quoteRequestAmount, readiness?.enabled, sourceAssetAvailable]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -364,7 +380,7 @@ export function NearIntentsPanel({
       const result = await nearIntentsClient.createQuote(REVIEW_BINDING_ID, {
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
-        amount: amount.trim(),
+        amount: quoteRequestAmount.trim(),
         refundTo: sourceRefundAddress,
         recipient: quoteDemoDestination ? undefined : walletAddress,
         dry: paymentPreviewOnly,
@@ -574,6 +590,28 @@ export function NearIntentsPanel({
                 </div>
               </div>
             </div>
+
+            {isDealFundingMode && sourceAssetAvailable && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3">
+                <label className="grid grid-cols-1 sm:grid-cols-[0.9fr_1.1fr] gap-3 sm:items-center">
+                  <span>
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-blue-200/70">Quote preview source</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-blue-100/70">
+                      Dry quotes price the route from a source amount; escrow still needs the full Stellar balance before Fund Deal.
+                    </span>
+                  </span>
+                  <input
+                    value={formatNearBaseUnits(quoteSourceAmount)}
+                    readOnly
+                    className="w-full bg-[#09090b] border border-blue-500/20 rounded-lg px-3 py-2.5 text-sm text-blue-50 font-mono outline-none cursor-not-allowed"
+                    aria-label="Quote source amount"
+                  />
+                </label>
+                <p className="mt-2 text-[11px] text-blue-100/60">
+                  Default is 1 NEAR in base units for route evidence. Live exact-output funding is a later production enhancement.
+                </p>
+              </div>
+            )}
 
             {isDealFundingMode && (
               <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
