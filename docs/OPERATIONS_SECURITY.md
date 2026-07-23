@@ -59,7 +59,7 @@ Operator evidence for final review should include the transaction hash,
 Resolution outcomes are now explicit:
 
 - `refund_bps = 0`: provider win, milestone `Released`; if all milestones are released, deal `Completed`.
-- `refund_bps = 10000`: client win, milestone `Refunded`; if all milestones are refunded, deal `Cancelled`.
+- `refund_bps = 10000`: client win, milestone `Refunded`; if all milestones are refunded with no released work, deal `Cancelled`; if released work exists and the remaining locked balance is refunded, deal `Resolved`.
 - `0 < refund_bps < 10000`: partial settlement, milestone `Resolved`; deal `Resolved` only when no pending/funded/disputed milestones remain.
 
 ## Emergency Refund Criteria

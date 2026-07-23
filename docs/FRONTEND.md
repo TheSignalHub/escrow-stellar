@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 14:43 BST | Deal-level funding checkout | Updated the Deals tab to use `fund_deal` as the primary client funding action: the first pending milestone shows the remaining deal balance, funds all pending milestones in one transaction, and keeps releases/disputes per milestone. Cross-chain funding modal now quotes the remaining deal balance. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`. |
 | 2026-07-23 13:42 BST | Cross-chain funding modal UX | Moved pending-milestone NEAR Intents funding from inline card rendering into a focused modal overlay with Escape/backdrop close and page scroll lock, preserving selected deal/milestone/amount locking. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 13:33 BST | Cross-chain funding panel visibility | Moved the NEAR Intents funding panel to render directly under the clicked pending milestone and added console/toast guard logs when the flow is blocked by missing deal context or a non-pending milestone. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 12:08 BST | Deal-page wallet balance UX | Kept the connected wallet header compact and added a Deals sidebar wallet-balance card showing XLM and the configured settlement token beside Vault Analytics. | `npm run build` passed in `frontend/`. |
@@ -39,7 +40,7 @@ App.tsx (Root)
 └── App Tabs (when connected)
     ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle + milestone settlement-balance check + NEAR funding entry)
+    ├── Deals                  — DealDashboard (split-panel lifecycle + deal-level settlement-balance check + NEAR funding entry)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 
@@ -206,7 +207,7 @@ Two-part support interface (Wallet Prep tab):
 
 **Section 2 — Stellar Broker Funding**: Quote → Sign → Swap for XLM -> test USDC through the Stellar Broker testnet route. The current testnet adapter executes against the seeded Soroswap router pool and uses 1% slippage tolerance.
 
-**NEAR Intents funding lives in Deals**: Pending client milestones open the reusable `NearIntentsPanel` in a focused funding modal as the production-like payment path, where the deal and milestone amount are already selected and locked. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, raw 1Click asset ids, refund fallback, and binding id stay server-side or internal. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. Quote-only demo destinations remain forced dry previews and never show executable payment instructions. The panel shows signature-verified quote state in product terms and explicitly warns that payment status does not mark escrow funded until the Stellar DealEscrow `funded` event exists.
+**NEAR Intents funding lives in Deals**: The first pending client milestone opens the reusable `NearIntentsPanel` in a focused funding modal as the production-like payment path, where the deal and remaining pending balance are already selected and locked. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, raw 1Click asset ids, refund fallback, and binding id stay server-side or internal. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. Quote-only demo destinations remain forced dry previews and never show executable payment instructions. The panel shows signature-verified quote state in product terms and explicitly warns that payment status does not mark escrow funded until the Stellar DealEscrow `funded` events exist.
 
 ### CreateDeal
 
@@ -234,13 +235,13 @@ Split-panel deal lifecycle management:
 - Per-deal cards: title, status tag, total amount, milestone progress, role badge (Client/Provider/Connector)
 - Auto-refresh every 30 seconds via ref-based interval
 
-**Pending milestone funding**: The Deals tab receives the connected wallet's XLM and configured settlement-token balances from `useUnifiedWallet`. For each pending client milestone it shows the required settlement amount, the wallet's matching settlement balance when known, disables direct Stellar funding if the known balance is short, and leaves Wallet Prep / Pay from Another Chain as the recovery paths. Create Deal selects the escrow settlement asset; funding-time UI decides whether the user can fund directly or should prepare/swap/top up first.
+**Deal-level funding**: The Deals tab receives the connected wallet's XLM and configured settlement-token balances from `useUnifiedWallet`. The first pending client milestone acts as the checkout entry, shows the remaining pending deal amount, disables direct Stellar funding if the known balance is short, and leaves Wallet Prep / Pay from Another Chain as the recovery paths. The direct Stellar action calls `fund_deal`, locking all pending milestones in one payment. Create Deal selects the escrow settlement asset; funding-time UI decides whether the user can fund directly or should prepare/swap/top up first.
 
 **Right panel — Deal Detail**:
 - Empty state: centered Activity icon + "Select a Deal" prompt (uses inner flex wrapper to bypass Card's internal wrapper)
 - Deal header: status badge, escrow protection indicator, title, Deal ID copy, participant addresses with "YOU" badge, fee breakdown
 - Milestone timeline: numbered nodes, color-coded status, context-aware action buttons
-- Pending client milestones expose **Pay from Another Chain**, opening the reusable NEAR Intents funding panel with the selected deal, milestone, and amount due locked
+- The first pending client milestone exposes **Pay from Another Chain**, opening the reusable NEAR Intents funding panel with the selected deal and remaining pending balance locked
 - 3-Way Split Visualization: animated bar chart after release, exact amounts + percentages per party
 - Vault Analytics sidebar: Unlocked / Secured / Pending amounts
 - Event Ledger sidebar: chronological milestone events with transaction trace links

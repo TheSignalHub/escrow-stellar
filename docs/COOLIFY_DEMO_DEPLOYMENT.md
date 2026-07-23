@@ -1,6 +1,6 @@
 # Coolify Demo Deployment Runbook
 
-Last updated: 2026-07-21 15:09 BST
+Last updated: 2026-07-23 14:50 BST
 
 Scope: single-service Coolify deployment for the SCF testnet demo at
 `stellar.thesignal.directory`. This runbook records the required environment
@@ -17,6 +17,7 @@ shape without committing live secrets.
 | 2026-07-01 13:39 HKT | NEAR Intents frontend route support | Documented public readiness route used by the Liquidity-tab NEAR panel. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-01 15:57 HKT | Coolify pasted-env capture | Converted the exact demo env shape into a redacted reviewer-safe Coolify checklist with public values preserved and server secrets replaced by placeholders. | Static documentation update. No runtime behavior changed. Secrets pasted outside Coolify should be rotated. |
 | 2026-07-21 15:09 BST | Hardened contract release candidate | Updated Coolify env examples to point at the hardened testnet release-candidate contract. | Release-candidate contract deployed and CLI smoke passed for create/deposit/release/provider-win/client-refund/partial-settlement. Coolify redeploy still required. |
+| 2026-07-23 14:50 BST | Full-deal funding contract RC | Updated Coolify env examples to point at the `fund_deal` testnet release-candidate contract. | Contract deployed/initialized as `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; CLI live smoke passed create/fund/release/refund/readback; Coolify env switch and redeploy still required. |
 
 ## Security Note
 
@@ -67,7 +68,7 @@ PORT=3000
 
 # Public frontend config
 VITE_PRIVY_APP_ID=cmms8z22d03cv0dihy31etezu
-VITE_DEAL_ESCROW_CONTRACT=CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+VITE_DEAL_ESCROW_CONTRACT=CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 VITE_USDC_TOKEN_ADDRESS=CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
 VITE_SOROSWAP_POOL_ADDRESS=CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
@@ -129,7 +130,7 @@ PORT=3000
 
 # Public frontend config
 VITE_PRIVY_APP_ID=cmms8z22d03cv0dihy31etezu
-VITE_DEAL_ESCROW_CONTRACT=CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+VITE_DEAL_ESCROW_CONTRACT=CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 VITE_USDC_TOKEN_ADDRESS=CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
 VITE_SOROSWAP_POOL_ADDRESS=CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
@@ -162,7 +163,7 @@ at build time.
 
 ```env
 VITE_PRIVY_APP_ID=<privy-app-id>
-VITE_DEAL_ESCROW_CONTRACT=CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+VITE_DEAL_ESCROW_CONTRACT=CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 VITE_STELLAR_NETWORK=testnet
 VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org

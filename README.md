@@ -6,7 +6,7 @@ Milestone-based escrow with atomic 3-way payment splits on Soroban. Built for th
 
 A fully functional implementation of The Signal's deal escrow system on Stellar's Soroban smart contract platform. It demonstrates how a real-world B2B marketplace handles milestone-based payments with three-party atomic splits — the exact logic running in production at [thesignal.directory](https://thesignal.directory).
 
-**Contract on Testnet**: [`CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`](https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ)
+**Contract on Testnet**: [`CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`](https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP)
 
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
@@ -17,7 +17,7 @@ This repository is configured for the Tranche 2 testnet review:
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and deal-level cross-chain funding entry. Pending milestones can request a NEAR Intents quote from the Deals tab using the selected milestone amount, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
+- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter and deal-level cross-chain funding entry. The first pending milestone can request a NEAR Intents quote from the Deals tab using the remaining pending deal balance, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. Quotes use user-selected origin assets and approved Stellar destination asset IDs from 1Click token discovery, verify 1Click quote signatures server-side, and keep escrow funding gated on Soroban `funded` events. Live source-chain execution remains disabled until no-testnet tiny-amount evidence is complete.
 
 Reviewer links:
 
@@ -25,7 +25,7 @@ Reviewer links:
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 ```
 
 Coolify deployment env and operations are documented in
@@ -49,7 +49,7 @@ or indexer actions when admin credentials are supplied.
 Current testnet funding configuration:
 
 ```text
-DealEscrow:        CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+DealEscrow:        CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
@@ -117,12 +117,12 @@ mix production marketplace payments with the grant demo service. See
 
 ## Key Features
 
-- **Milestone-Based Escrow** — Deals split into milestones (e.g., 30/50/20). Each funded independently, released only on client approval.
+- **Fund-Once Milestone Escrow** — Deals split into milestones (e.g., 30/50/20). The client can lock the remaining deal balance once, then release or dispute each milestone independently.
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states.
 - **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
-- **Cross-Chain Funding Entry** — From a pending milestone, review the wallet's settlement-asset balance, fund directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents route into approved Stellar settlement assets while keeping escrow funding gated on Soroban events.
+- **Cross-Chain Funding Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents route into approved Stellar settlement assets while keeping escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -151,7 +151,7 @@ mix production marketplace payments with the grant demo service. See
 │  ┌──────────────────┴────────────────────────────┐   │
 │  │         DealEscrow Smart Contract              │   │
 │  │                                                │   │
-│  │  create_deal() → deposit() → release_milestone()│  │
+│  │  create_deal() → fund_deal() → release_milestone()│ │
 │  │                    ↓                            │  │
 │  │            Atomic 3-Way Split                   │  │
 │  │     ┌──────────┬──────────┬──────────┐         │  │
@@ -224,8 +224,8 @@ npm run dev
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
-6. In **Deals**, open a pending milestone, confirm the settlement-balance row, then choose **Fund with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Pay from Another Chain** when it does not
-7. For the cross-chain path, request a milestone funding quote and confirm that escrow state remains gated on the Stellar `funded` event
+6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Pay from Another Chain** when it does not
+7. For the cross-chain path, request a remaining-balance funding quote and confirm that escrow state remains gated on Stellar `funded` events
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`
 10. For final-tranche marketplace proof, run `npm run seed:marketplace-bindings` from `indexer/` to create shadow Signal-style bindings, then reconcile through the protected binding API
@@ -279,7 +279,8 @@ escrow-stellar/
 |----------|------|-------------|
 | `initialize(admin, protocol_wallet)` | Deployer | One-time setup |
 | `create_deal(client, provider, connector, token, fee_bps, share_bps, milestones)` | Client | Create escrow deal |
-| `deposit(deal_id, milestone_idx)` | Client | Fund a milestone |
+| `fund_deal(deal_id)` | Client | Fund all pending milestones in one payment |
+| `deposit(deal_id, milestone_idx)` | Client | Fund one milestone; retained for staged funding/backwards compatibility |
 | `release_milestone(deal_id, milestone_idx)` | Client | Atomic 3-way split |
 | `dispute(caller, deal_id, milestone_idx)` | Client/Provider | Freeze disputed milestone |
 | `resolve_dispute(deal_id, milestone_idx, refund_bps)` | Admin | Split disputed funds |
@@ -309,7 +310,7 @@ provider_cut    = $10,000 − $1,000 = $9,000
 | # | Test | Verifies |
 |---|------|----------|
 | 1 | Happy path (single milestone) | Create → Fund → Release → verify split |
-| 2 | Multi-milestone (30/50/20) | 3 milestones sequentially |
+| 2 | Multi-milestone (30/50/20) | Fund deal once, release milestones independently |
 | 3 | Reputation counter | Increments on deal completion |
 | 4 | Dispute + resolve | Freeze → admin resolves 50/50 |
 | 5 | Full refund | Admin refunds all funded milestones |

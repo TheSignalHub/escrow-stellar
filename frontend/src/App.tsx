@@ -520,7 +520,7 @@ export default function App() {
                 <DealDashboard
                   getDeal={escrow.getDeal}
                   getDealCount={escrow.getDealCount}
-                  onDeposit={escrow.deposit}
+                  onFundDeal={escrow.fundDeal}
                   onRelease={escrow.releaseMilestone}
                   onDispute={escrow.dispute}
                   walletAddress={wallet.address}

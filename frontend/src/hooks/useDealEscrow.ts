@@ -13,7 +13,7 @@ const rpc = StellarSdk.rpc;
 const MAX_TX_POLL_RETRIES = 30; // 30 × 2s = 60s max wait
 
 // ── Operation types & Soroban error codes ──────────────────────────────
-type EscrowOperation = 'create_deal' | 'deposit' | 'release_milestone' | 'dispute' | 'resolve_dispute' | 'refund';
+type EscrowOperation = 'create_deal' | 'deposit' | 'fund_deal' | 'release_milestone' | 'dispute' | 'resolve_dispute' | 'refund';
 
 // Maps numeric error codes from EscrowError enum in lib.rs
 const ESCROW_ERROR_CODES: Record<number, string> = {
@@ -26,6 +26,7 @@ const ESCROW_ERROR_CODES: Record<number, string> = {
 const OP_LABELS: Record<EscrowOperation, string> = {
   create_deal: 'deal creation',
   deposit: 'deposit',
+  fund_deal: 'deal funding',
   release_milestone: 'milestone release',
   dispute: 'dispute',
   resolve_dispute: 'dispute resolution',
@@ -45,6 +46,13 @@ function contextualContractError(errorName: string, operation: EscrowOperation):
       InvalidMilestone: 'This milestone index does not exist in the deal.',
       AlreadyFunded: 'This milestone has already been funded. No additional deposit is needed.',
       MilestoneNotPending: 'This milestone is not in a pending state and cannot accept deposits.',
+      NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    },
+    fund_deal: {
+      Unauthorized: 'Only the client who created this deal can fund it.',
+      DealNotFound: 'This deal was not found on-chain. It may have been removed or the ID is incorrect.',
+      AlreadyFunded: 'This deal has no pending milestones left to fund.',
+      InvalidAmount: 'The remaining deal amount is invalid.',
       NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
     },
     release_milestone: {
@@ -309,6 +317,23 @@ export function useDealEscrow(
     [contractId, submitContractCall]
   );
 
+  // Fund all pending milestones in one transaction
+  const fundDeal = useCallback(
+    async (dealId: number): Promise<{ txHash: string }> => {
+      const contract = new StellarSdk.Contract(contractId);
+
+      const op = contract.call(
+        'fund_deal',
+        StellarSdk.nativeToScVal(dealId, { type: 'u64' })
+      );
+
+      const result = await submitContractCall(op, 'fund_deal');
+      const txHash = result._txHash || result.hash || '';
+      return { txHash };
+    },
+    [contractId, submitContractCall]
+  );
+
   // Release a milestone with atomic 3-way split
   const releaseMilestone = useCallback(
     async (
@@ -485,6 +510,7 @@ export function useDealEscrow(
   return {
     createDeal,
     deposit,
+    fundDeal,
     releaseMilestone,
     dispute,
     resolveDispute,

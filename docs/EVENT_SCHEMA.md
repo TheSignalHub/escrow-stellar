@@ -30,9 +30,13 @@ Emitted at the end of `create_deal`. The deal is in `Created` state with no fund
 env.events().publish((symbol_short!("created"), deal_id), deal.total_amount);
 ```
 
-### 2. `funded` — Milestone deposited
+### 2. `funded` — Milestone funded
 
-Emitted by `deposit`. The client has transferred `amount` to the contract via the Stellar Asset Contract.
+Emitted by `deposit` for one milestone or by `fund_deal` once per pending
+milestone. The client has transferred the relevant amount to the contract via
+the Stellar Asset Contract. `fund_deal` performs one token transfer for the
+remaining pending deal balance, then emits one `funded` event per milestone so
+existing indexer consumers keep the same event shape.
 
 | Field | XDR type | Notes |
 |---|---|---|
@@ -118,7 +122,10 @@ env.events().publish(
 
 ### 7. `refund` — Full refund
 
-Emitted by `refund`. Admin has refunded **all** funded/disputed milestones back to the client and cancelled the deal.
+Emitted by `refund`. Admin has refunded funded/disputed milestones back to the
+client. A full untouched refund leaves the deal `Cancelled`; if some milestones
+were already released and only the remaining locked balance was refunded, the
+deal becomes `Resolved`.
 
 | Field | XDR type | Notes |
 |---|---|---|

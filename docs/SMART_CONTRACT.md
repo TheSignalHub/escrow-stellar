@@ -4,7 +4,7 @@
 
 The `DealEscrowContract` is a Soroban smart contract that implements milestone-based escrow with atomic 3-way payment splits. It is written in Rust using `soroban-sdk` v22.0.0.
 
-**Contract ID (Testnet release candidate)**: `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`
+**Contract ID (Testnet release candidate)**: `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`
 
 **Source**: [`contracts/deal_escrow/src/lib.rs`](../contracts/deal_escrow/src/lib.rs)
 
@@ -12,6 +12,8 @@ The `DealEscrowContract` is a Soroban smart contract that implements milestone-b
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 14:50 BST | Testnet full-deal-funding deployment | Deployed and initialized the `fund_deal` DealEscrow release candidate on Stellar Testnet. | Contract `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; WASM hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`; deploy tx `3ea3d66a11a71012f6e796bf1a6439d0130024cd9a74b340f303ce3c2c70bed7`; initialize tx `53291c5a093f27c025b81515b517a93e94ff8f1811364d5ee92401e6b3e62775`; live smoke passed create `d62e7cdfc0fad5c98c7f13b50a7a42cbbb6bf71bd6b68ad5b54990969bc9ca6b`, fund `f0b75e1fa4fbf795ca581e4e3c7fde75b165ee2968a305c02b71e2a361e2e4b5`, release `713e92998b74e14ccd4144518848341164e15d6fcaf2fecd4fdfbc2031148129`, refund `1f9d4137f670115f24a382fdbe8a8fba8fe3a7564d28a3cfa5e72f03a61cd6c1`, readback `Resolved` with `funded_amount=0`. |
+| 2026-07-23 14:43 BST | Full-deal funding and remaining-funds refund | Added `fund_deal(deal_id)` to lock all pending milestones in one client payment, kept milestone-level release/dispute, and updated refund status handling so a partially released deal with refunded remaining milestones ends as `Resolved` rather than `Cancelled`. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`. |
 | 2026-07-21 14:29 BST | Mainnet-candidate contract hardening | Added explicit `Resolved` deal/milestone states for partial dispute settlements, reduced `funded_amount` whenever escrowed funds leave the contract, capped deals at 20 milestones, and expanded dispute outcome tests. | `cargo test` passed with 13 tests; frontend and indexer builds passed. |
 | 2026-07-21 15:09 BST | Testnet release-candidate deployment | Deployed and initialized hardened DealEscrow on Stellar Testnet as `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`. | CLI smoke passed: create, deposit, release, provider dispute win, client refund, partial settlement, reputation, and deal count. |
 
@@ -37,9 +39,9 @@ enum DealStatus {
     Created,    // Deal parameters set, no funding yet
     Active,     // At least one milestone funded
     Completed,  // All milestones released
-    Cancelled,  // All milestones refunded
+    Cancelled,  // All milestones refunded with no released work
     Disputed,   // At least one milestone disputed
-    Resolved,   // Terminal deal with at least one partial dispute settlement
+    Resolved,   // Terminal partial settlement or released + refunded mix
 }
 ```
 
@@ -151,7 +153,9 @@ Creates a new deal with defined participants and milestones.
 fn deposit(env: Env, deal_id: u64, milestone_idx: u32) -> Result<(), EscrowError>
 ```
 
-Funds a specific milestone by transferring tokens from client to contract.
+Funds a specific milestone by transferring tokens from client to contract. This
+remains available for backwards compatibility and staged funding, but
+`fund_deal` is the preferred production checkout path.
 
 **Authorization**: `deal.client.require_auth()`
 
@@ -163,6 +167,32 @@ Funds a specific milestone by transferring tokens from client to contract.
 5. If first deposit, updates deal to `Active`
 
 **Events**: `("funded", deal_id, milestone_idx) → amount`
+
+---
+
+### fund_deal
+
+```rust
+fn fund_deal(env: Env, deal_id: u64) -> Result<(), EscrowError>
+```
+
+Funds all currently pending milestones in a single client payment. The contract
+locks the remaining pending deal balance, marks each pending milestone as
+`Funded`, and keeps releases/disputes milestone-level.
+
+**Authorization**: `deal.client.require_auth()`
+
+**Flow**:
+1. Sums every milestone still in `Pending` status
+2. Fails with `AlreadyFunded` when no pending milestone remains
+3. Executes one SAC `transfer(client -> contract, pending_total)`
+4. Marks every pending milestone as `Funded`
+5. Increases `funded_amount` by the pending total
+6. Recomputes deal status as `Active`
+
+**Events**: emits one existing `("funded", deal_id, milestone_idx) -> amount`
+event for each milestone funded, so indexer consumers do not need a new event
+schema.
 
 ---
 
@@ -247,7 +277,7 @@ Admin resolves a dispute by splitting funds between client and provider.
 6. Recomputes deal status:
    - all released: `Completed`
    - all refunded: `Cancelled`
-   - any partial settlement with no remaining pending/funded/disputed milestone: `Resolved`
+   - any partial settlement or released/refunded mix with no remaining pending/funded/disputed milestone: `Resolved`
    - otherwise active/disputed/created based on remaining milestones
 
 **Events**: `("resolved", deal_id, milestone_idx) → (client_refund, provider_amount)`
@@ -260,7 +290,10 @@ Admin resolves a dispute by splitting funds between client and provider.
 fn refund(env: Env, deal_id: u64) -> Result<(), EscrowError>
 ```
 
-Full refund of all funded or disputed milestones. Admin only.
+Refunds all currently funded or disputed milestones. Admin only. If every
+funded milestone is refunded and no work was released, the deal becomes
+`Cancelled`. If earlier milestones were already released and only the remaining
+locked balance is refunded, the deal becomes `Resolved`.
 
 **Authorization**: `admin.require_auth()`
 
@@ -268,7 +301,7 @@ Full refund of all funded or disputed milestones. Admin only.
 1. Iterates all milestones
 2. Refunds every `Funded` or `Disputed` milestone to client
 3. Decreases `funded_amount` by the refunded amount
-4. Sets deal to `Cancelled`
+4. Recomputes deal state from milestone outcomes
 
 **Events**: `("refund", deal_id) → total_refunded`
 
@@ -304,21 +337,24 @@ Read-only. Returns the number of completed deals for a provider address. Returns
 
 ## Test Coverage
 
-The contract includes 13 unit tests covering:
+The contract includes 16 unit tests covering:
 
 1. **Happy path** — Single milestone: create, fund, release, verify exact split amounts ($9,000 / $400 / $600 on a $10,000 deal)
 2. **Multi-milestone** — Three milestones (30/50/20) totaling $100,000
-3. **Reputation** — Counter increments correctly across multiple deals
-4. **Dispute resolution** — Freeze + admin 50/50 split
-5. **Full refund** — Admin returns all escrowed funds
-6. **Authorization** — Non-client deposit panics with auth error
-7. **Double deposit** — Same milestone cannot be funded twice
-8. **Release unfunded** — Cannot release a Pending milestone
-9. **Deal counter** — Increments correctly across multiple deals
-10. **Variable rates** — Architect tier (65%) connector share
-11. **Provider dispute win** — `refund_bps = 0` marks the milestone `Released`, completes the deal, and increments reputation
-12. **Client dispute win** — `refund_bps = 10000` marks the milestone `Refunded` and cancels the deal
-13. **Milestone cap** — More than 20 milestones fails with `TooManyMilestones`
+3. **Full-deal funding** — `fund_deal` locks all pending milestones in one payment, while releases remain per milestone
+4. **Remaining refund** — Released work stays released, remaining locked milestones can be refunded, and the deal becomes `Resolved`
+5. **Double full-deal funding prevention** — `fund_deal` fails when no pending milestones remain
+6. **Reputation** — Counter increments correctly across multiple deals
+7. **Dispute resolution** — Freeze + admin 50/50 split
+8. **Full refund** — Admin returns all escrowed funds
+9. **Authorization** — Non-client deposit panics with auth error
+10. **Double deposit** — Same milestone cannot be funded twice
+11. **Release unfunded** — Cannot release a Pending milestone
+12. **Deal counter** — Increments correctly across multiple deals
+13. **Variable rates** — Architect tier (65%) connector share
+14. **Provider dispute win** — `refund_bps = 0` marks the milestone `Released`, completes the deal, and increments reputation
+15. **Client dispute win** — `refund_bps = 10000` marks the milestone `Refunded` and cancels the deal
+16. **Milestone cap** — More than 20 milestones fails with `TooManyMilestones`
 
 Run tests:
 ```bash

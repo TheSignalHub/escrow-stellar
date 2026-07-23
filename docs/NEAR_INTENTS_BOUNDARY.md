@@ -178,25 +178,25 @@ Marketplace deal
   -> user approval and source-chain funding
   -> NEAR intent status tracking
   -> settlement asset arrives on Stellar
-  -> DealEscrow deposit()
-  -> Soroban funded event
+  -> DealEscrow fund_deal()
+  -> Soroban funded events
   -> marketplace binding reconciliation
 ```
 
 The escrow rail must not mark funds as locked from NEAR status alone. A Near
 intent can prove that payment initiation is moving, but DealEscrow is funded
-only after the Stellar settlement asset is deposited and the indexer observes
-the Soroban `funded` event.
+only after the Stellar settlement asset is deposited through DealEscrow and the
+indexer observes the Soroban `funded` events.
 
 ## Product-Facing Checkout Shape
 
 The public flow should read like checkout, not an integration console:
 
-1. User opens a deal and chooses a pending milestone to fund.
+1. User opens a deal and uses the first pending milestone as the funding entry.
 2. The app offers **Stellar USDC**, **Swap into Stellar USDC**, and **Pay from
    another chain**.
 3. **Pay from another chain** lets the user choose a source chain/asset, review
-   the Stellar settlement asset, use the selected milestone amount due, and
+   the Stellar settlement asset, use the remaining pending deal balance, and
    request a quote.
 4. The quote view shows estimated received amount, minimum received amount,
    expiry, verification state, payment instructions when live execution is

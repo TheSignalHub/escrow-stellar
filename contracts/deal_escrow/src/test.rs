@@ -143,7 +143,101 @@ fn test_multi_milestone_30_50_20() {
 }
 
 // =====================================================
-// TEST 3: Reputation Counter
+// TEST 3: Fund Full Deal, Release Per Milestone
+// =====================================================
+
+#[test]
+fn test_fund_deal_locks_full_amount_and_releases_by_milestone() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+    let token = TokenClient::new(&env, &token_id);
+
+    let milestone_amounts = vec![
+        &env,
+        300_000_0000000i128,
+        500_000_0000000i128,
+        200_000_0000000i128,
+    ];
+
+    let deal_id = escrow.create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &milestone_amounts,
+    );
+
+    escrow.fund_deal(&deal_id);
+
+    let deal = escrow.get_deal(&deal_id);
+    assert_eq!(deal.status, DealStatus::Active);
+    assert_eq!(deal.funded_amount, 1000_000_0000000i128);
+    for i in 0u32..3 {
+        assert_eq!(deal.milestones.get(i).unwrap().status, MilestoneStatus::Funded);
+    }
+    assert_eq!(token.balance(&contract_id), 1000_000_0000000i128);
+
+    escrow.release_milestone(&deal_id, &0u32);
+
+    let deal = escrow.get_deal(&deal_id);
+    assert_eq!(deal.status, DealStatus::Active);
+    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Released);
+    assert_eq!(deal.milestones.get(1).unwrap().status, MilestoneStatus::Funded);
+    assert_eq!(deal.milestones.get(2).unwrap().status, MilestoneStatus::Funded);
+    assert_eq!(deal.funded_amount, 700_000_0000000i128);
+    assert_eq!(token.balance(&contract_id), 700_000_0000000i128);
+}
+
+#[test]
+fn test_refund_remaining_after_partial_release_resolves_deal() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+    let token = TokenClient::new(&env, &token_id);
+    let client_initial = token.balance(&client);
+
+    let milestone_amounts = vec![
+        &env,
+        300_000_0000000i128,
+        700_000_0000000i128,
+    ];
+
+    let deal_id = escrow.create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &milestone_amounts,
+    );
+
+    escrow.fund_deal(&deal_id);
+    escrow.release_milestone(&deal_id, &0u32);
+    escrow.refund(&deal_id);
+
+    let deal = escrow.get_deal(&deal_id);
+    assert_eq!(deal.status, DealStatus::Resolved);
+    assert_eq!(deal.milestones.get(0).unwrap().status, MilestoneStatus::Released);
+    assert_eq!(deal.milestones.get(1).unwrap().status, MilestoneStatus::Refunded);
+    assert_eq!(deal.funded_amount, 0);
+    assert_eq!(token.balance(&contract_id), 0);
+    assert_eq!(token.balance(&client), client_initial - 300_000_0000000i128);
+    assert_eq!(token.balance(&provider), 270_000_0000000i128);
+    assert_eq!(token.balance(&connector), 12_000_0000000i128);
+    assert_eq!(token.balance(&admin), 18_000_0000000i128);
+}
+
+#[test]
+fn test_fund_deal_twice_fails() {
+    let (env, contract_id, admin, client, provider, connector, token_id) = setup_env();
+    let escrow = DealEscrowContractClient::new(&env, &contract_id);
+
+    let milestone_amounts = vec![&env, 10_000_0000000i128, 20_000_0000000i128];
+    let deal_id = escrow.create_deal(
+        &client, &provider, &connector, &token_id,
+        &1000u32, &4000u32, &milestone_amounts,
+    );
+
+    escrow.fund_deal(&deal_id);
+
+    let result = escrow.try_fund_deal(&deal_id);
+    assert!(result.is_err());
+}
+
+// =====================================================
+// TEST 4: Reputation Counter
 // =====================================================
 
 #[test]

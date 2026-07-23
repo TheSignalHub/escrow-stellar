@@ -333,16 +333,16 @@ export function NearIntentsPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
-                {isDealFundingMode ? 'Fund milestone from another chain' : 'Pay from another chain'}
+                {isDealFundingMode ? 'Fund deal from another chain' : 'Pay from another chain'}
               </h3>
               <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
               <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
               {isDealFundingMode
-                ? `Request a cross-chain quote for Deal #${dealId ?? '-'}, Milestone ${
+                ? `Request a cross-chain quote for the remaining balance on Deal #${dealId ?? '-'}, anchored to Milestone ${
                     milestoneIdx !== undefined ? milestoneIdx + 1 : '-'
-                  }. The milestone is marked funded only after the Stellar contract emits the funded event.`
+                  }. Milestones are marked funded only after the Stellar contract emits funded events.`
                 : 'Start a cross-chain payment and settle into Stellar escrow. The deal is marked funded only after the Stellar contract emits the funded event.'}
             </p>
           </div>

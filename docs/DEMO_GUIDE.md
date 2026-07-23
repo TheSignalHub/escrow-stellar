@@ -155,12 +155,12 @@ The segmented filter bar at the top of the deal list:
 1. Select a deal from the left panel
 2. Find the first milestone showing **Pending** status
 3. Choose a funding path:
-   - **Fund with XLM/tUSDC** when the settlement-balance row shows enough wallet balance
-   - **Pay from Another Chain** for a NEAR Intents-backed quote using this milestone amount
+   - **Fund Deal with XLM/tUSDC** when the deal-funding balance row shows enough wallet balance
+   - **Pay from Another Chain** for a NEAR Intents-backed quote using the remaining pending deal amount
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet
-5. For cross-chain funding, a focused funding modal opens for the selected pending milestone. Review the quote and payment status there. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded`
-6. Once funded on-chain, the milestone transitions to **Funded** and the deal becomes **Active**
+5. For cross-chain funding, a focused funding modal opens for the selected deal. Review the quote and payment status there. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded` events
+6. Once funded on-chain, all pending milestones transition to **Funded** and the deal becomes **Active**
 
 The public UI intentionally hides binding ids, raw asset ids, refund fallback
 envs, JWT/readiness internals, and internal smoke terminology. NEAR Intents
@@ -169,7 +169,7 @@ forced dry previews and do not show executable deposit instructions. The deal is
 not considered escrow-funded until the Stellar DealEscrow contract emits a
 `funded` event and the indexer sees it.
 
-**What happens on-chain**: The `deposit` function executes a SAC `transfer()` from your wallet to the contract address. The tokens are held in escrow until released or refunded.
+**What happens on-chain**: The `fund_deal` function executes one SAC `transfer()` from your wallet to the contract address for the remaining pending deal balance. The contract marks pending milestones as funded, and those locked funds are released or refunded per milestone.
 
 ### 4b. Release a Milestone (3-Way Split)
 
@@ -267,13 +267,12 @@ After completing the full flow, verify:
 
 1. Quick Start → "Dev Sprint"
 2. Create deal
-3. Fund milestone 1
+3. Fund the deal once
 4. Release milestone 1 (normal flow)
-5. Fund milestone 2
-6. Dispute milestone 2
-7. Show the Disputed state and **Under review** banner
-8. Optionally reconnect as client and use **Accept & Release to Provider**
-9. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
+5. Dispute milestone 2
+6. Show the Disputed state and **Under review** banner
+7. Optionally reconnect as client and use **Accept & Release to Provider**
+8. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 

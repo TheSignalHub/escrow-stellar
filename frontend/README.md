@@ -133,28 +133,29 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection
-- **Wallet Prep** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path before funding milestones
+- **Wallet Prep** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path before funding the deal
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
 For the SCF #42 Tranche 2 demo, Create Deal selects the escrow settlement
 asset, while the Deals funding step decides whether the connected wallet can
-fund directly. Pending milestones show the required settlement amount and the
-matching wallet balance for XLM or the configured demo test USDC asset. If the
-wallet is short, direct Stellar funding is disabled and the UI keeps **Wallet
-Prep** and **Pay from Another Chain** available as recovery paths. Wallet Prep
-can route XLM through the seeded Soroswap testnet route into the configured demo
-test USDC settlement asset.
+fund directly. The first pending milestone acts as the checkout entry and shows
+the remaining pending deal amount plus the matching wallet balance for XLM or
+the configured demo test USDC asset. If the wallet is short, direct Stellar
+funding is disabled and the UI keeps **Wallet Prep** and **Pay from Another
+Chain** available as recovery paths. Wallet Prep can route XLM through the
+seeded Soroswap testnet route into the configured demo test USDC settlement
+asset.
 
-Pending milestones in the Deals tab also expose a NEAR Intents-backed
-cross-chain funding entry. The panel locks to the selected deal/milestone
-amount, lets the user choose a source asset and approved Stellar settlement
+The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
+cross-chain funding entry. The panel locks to the selected deal and remaining
+pending balance, lets the user choose a source asset and approved Stellar settlement
 asset, gets a quote, shows payment instructions/status, and reports whether the
 returned 1Click quote was verified. It intentionally hides binding ids, raw
 asset ids, JWT/readiness internals, refund fallback envs, and internal smoke
 terminology. The demo test USDC token is not Circle-issued production USDC, and
 NEAR/payment status never marks escrow funded until the Stellar DealEscrow
-`funded` event exists. If the backend exposes a quote-only demo destination
+`funded` events exist. If the backend exposes a quote-only demo destination
 because Stellar-route liquidity is unavailable, the panel labels it as quote
 evidence rather than escrow settlement.
 

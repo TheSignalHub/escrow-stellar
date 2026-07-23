@@ -17,6 +17,7 @@ Scope: reviewer-facing evidence index for the final-tranche readiness pass.
 | 2026-07-21 15:57 BST | Live backend smoke after RC env switch | Ran deployed backend smoke and direct health/dashboard/readiness checks against `https://stellar.thesignal.directory`. | Public checks passed. `/health` reports RC contract `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`; dashboard summary indexes 17 RC events including 3 disputes and 3 resolved events; NEAR readiness is enabled/configured with live execution disabled. Shadow bindings remain empty until seed/reconcile is run on the deployed DB. |
 | 2026-07-21 16:01 BST | Live shadow binding reconciliation | Seeded two shadow marketplace bindings into the deployed demo DB and reconciled them against indexed RC events. | Seed returned two updated bindings; reconcile checked 2 bindings, scanned 9 events, inserted 9 binding-event rows, and updated 2 bindings. Live smoke then passed shadow bindings, protected binding lookup, binding event lookup, and NEAR token discovery. |
 | 2026-07-21 16:34 BST | Cross-chain funding public UX cleanup | Reworked the Liquidity-tab NEAR flow into **Pay from another chain** so reviewers see source asset, settlement asset, quote, payment instructions, and payment status without binding ids, raw asset ids, JWT/readiness internals, refund fallback envs, dry-quote labels, or smoke/admin language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` event remains the escrow funding source of truth. |
+| 2026-07-23 14:50 BST | Full-deal funding release candidate | Added `fund_deal`, updated refund status handling for released + refunded deals, deployed the new contract to Stellar Testnet, and initialized it. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`; contract `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; WASM hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`; live smoke create/fund/release/refund passed and readback returned `Resolved`, `funded_amount=0`. |
 
 ## Reviewer Links
 
@@ -24,13 +25,13 @@ Scope: reviewer-facing evidence index for the final-tranche readiness pass.
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 ```
 
 ## Current Testnet Configuration
 
 ```text
-DealEscrow:        CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+DealEscrow:        CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
@@ -44,11 +45,12 @@ Circle USDC.
 
 | Area | Command | Result |
 |---|---|---|
-| Contract | `cargo test` in repo root | Passed: 13 tests, 0 failed. Includes provider-win, client-refund, partial-settlement, and milestone-cap coverage. |
+| Contract | `cargo test` in repo root | Passed: 16 tests, 0 failed. Includes full-deal funding, provider-win, client-refund, partial-settlement, remaining-balance refund, and milestone-cap coverage. |
 | Indexer | `npm run build` in `indexer/` | Passed: TypeScript compile succeeded. |
 | Backend smoke | `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` in `indexer/` | Passed public checks after RC switch. NEAR readiness is enabled/configured with live execution disabled. Current blocker: no live shadow bindings in the deployed dashboard summary. |
 | Frontend | `npm run build` in `frontend/` | Passed: TypeScript/Vite build succeeded. Existing Vite warning for chunks larger than 500 kB. |
 | Testnet RC contract | Stellar CLI on release-candidate contract | Passed: deployed/initialized hardened WASM, created 4 smoke deals, verified release, dispute provider-win, dispute client-refund, partial settlement, `funded_amount=0`, and provider reputation `2`. |
+| Full-deal funding RC contract | Stellar CLI on `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP` | Passed: create deal `0`, `fund_deal` emitted two `funded` events from one transfer, released milestone 0 with 90/4/6 split, refunded remaining milestone 1, and readback returned `Resolved` with `funded_amount=0`. |
 | Live backend after RC switch | `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` in `indexer/` | Passed public checks: NEAR readiness JSON, NEAR enabled/env configured, live execution disabled, backend health on testnet RC contract, indexer ok, 17 indexed events, dispute evidence, and 2 shadow bindings. |
 | Protected backend smoke | `DOTENV_CONFIG_PATH=../.env BACKEND_BASE_URL=https://stellar.thesignal.directory npx tsx -r dotenv/config src/backend-readiness-smoke.ts --tokens` in `indexer/` | Passed protected binding lookup for `mb_sig-demo-001`, 5 mapped binding events, and NEAR token discovery with 175 tokens. Dry quote still skipped unless `--quote` inputs are provided. |
 | Docs check | `npm run docs:check` at repo root | Not available: root package has no `docs:check` script. Manual consistency scan performed. |

@@ -92,7 +92,7 @@ type StatusFilter = 'all' | 'Active' | 'Created' | 'Completed' | 'Disputed' | 'R
 interface Props {
   getDeal: (dealId: number) => Promise<DealData | null>;
   getDealCount: () => Promise<number>;
-  onDeposit: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
+  onFundDeal: (dealId: number) => Promise<{ txHash: string }>;
   onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   walletAddress: string;
@@ -108,7 +108,7 @@ interface Props {
    ============================================ */
 
 export function DealDashboard({
-  getDeal, getDealCount, onDeposit, onRelease, onDispute,
+  getDeal, getDealCount, onFundDeal, onRelease, onDispute,
   walletAddress, xlmBalance, usdcBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
 }: Props) {
   const toast = useToast();
@@ -239,6 +239,14 @@ export function DealDashboard({
     selectedDeal && crossChainMilestoneIdx !== null
       ? selectedDeal.milestones[crossChainMilestoneIdx]
       : null;
+  const firstPendingMilestoneIdx = selectedDeal
+    ? selectedDeal.milestones.findIndex((m: any) => getMilestoneStatus(m) === 'Pending')
+    : -1;
+  const remainingPendingAmount = selectedDeal
+    ? selectedDeal.milestones.reduce((sum: bigint, m: any) => (
+      getMilestoneStatus(m) === 'Pending' ? sum + BigInt(m.amount) : sum
+    ), 0n)
+    : 0n;
   const activityLog = useMemo(() => {
     if (selectedDealId === null || !selectedDeal) return [];
     return getAllDealEvents(selectedDealId, selectedDeal.milestones.length);
@@ -292,42 +300,52 @@ export function DealDashboard({
     return { label: getTokenSymbol(deal.token), available: null, known: false };
   };
 
-  const handleDeposit = async (milestoneIdx: number) => {
+  const handleFundDeal = async () => {
     if (!selectedDeal || selectedDealId === null) return;
-    const milestone = selectedDeal.milestones[milestoneIdx];
-    if (!milestone) return;
 
-    const requiredAmount = Number(milestone.amount) / 1e7;
+    const requiredAmount = Number(remainingPendingAmount) / 1e7;
+    if (requiredAmount <= 0) {
+      toast('This deal has no pending amount left to fund.', 'info');
+      return;
+    }
+
     const settlementBalance = getWalletSettlementBalance(selectedDeal);
     const available = settlementBalance.available;
 
     if (available !== null && available < requiredAmount) {
       setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${settlementBalance.label}, have ${available.toFixed(2)} ${settlementBalance.label}.`);
       setErrorContext({
-        title: 'Deposit Failed',
-        suggestion: `This milestone needs ${settlementBalance.label}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain on this milestone.`,
+        title: 'Deal Funding Failed',
+        suggestion: `This deal needs ${settlementBalance.label}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain from the funding entry.`,
       });
       return;
     }
 
-    setActionLoading(`deposit-${milestoneIdx}`);
+    setActionLoading('fund-deal');
     setError('');
     setErrorContext(null);
     setSplitView(null);
     try {
-      const res = await onDeposit(selectedDealId, milestoneIdx);
+      const pendingIndexes = selectedDeal.milestones
+        .map((m: any, idx: number) => ({ status: getMilestoneStatus(m), idx }))
+        .filter((m: { status: string }) => m.status === 'Pending')
+        .map((m: { idx: number }) => m.idx);
+      const res = await onFundDeal(selectedDealId);
       setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'funded', timestamp: new Date().toISOString(), txHash: res.txHash });
-      toast('Milestone funded successfully!', 'success');
+      const timestamp = new Date().toISOString();
+      pendingIndexes.forEach((idx: number) => {
+        recordMilestoneEvent(selectedDealId, idx, { action: 'funded', timestamp, txHash: res.txHash });
+      });
+      toast('Deal funded. Milestones are locked for approval.', 'success');
       await fetchAllDeals();
     } catch (err: any) {
-      const msg = err.message || 'Deposit failed';
+      const msg = err.message || 'Deal funding failed';
       setError(msg);
       setErrorContext({
-        title: 'Deposit Failed',
-        suggestion: `Only the deal client can fund milestones. Make sure the milestone is pending and your wallet has enough ${SETTLEMENT_TOKEN_SYMBOL} for the deposit.`,
+        title: 'Deal Funding Failed',
+        suggestion: `Only the deal client can fund the deal. Make sure there is a pending balance and your wallet has enough ${SETTLEMENT_TOKEN_SYMBOL}.`,
       });
-      toast(`Deposit failed: ${msg.slice(0, 80)}`, 'error');
+      toast(`Funding failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -444,7 +462,7 @@ export function DealDashboard({
             <Activity className="text-emerald-400" size={28} />
             Deal Terminal
           </h1>
-          <p className="text-zinc-400 mt-1">Review deals, fund milestones, release payments, and file disputes.</p>
+          <p className="text-zinc-400 mt-1">Review deals, fund locked balances, release milestones, and file disputes.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -715,7 +733,7 @@ export function DealDashboard({
                   </div>
                 );
                 const roleInfo: Record<string, string> = {
-                  Client: 'You can fund milestones, release payments, and file disputes.',
+                  Client: 'You can fund deals, release milestones, and file disputes.',
                   Provider: 'You will receive payment when the client releases funded milestones. You can file disputes on funded milestones.',
                   Connector: 'You will receive your BD share when milestones are released. You cannot fund, release, or dispute.',
                 };
@@ -863,9 +881,12 @@ export function DealDashboard({
                       const isClient = selectedDeal.client === walletAddress;
                       const isParty = selectedDeal.client === walletAddress || selectedDeal.provider === walletAddress;
                       const requiredAmount = Number(m.amount) / 1e7;
+                      const isFundingEntryMilestone = i === firstPendingMilestoneIdx;
+                      const remainingRequiredAmount = Number(remainingPendingAmount) / 1e7;
+                      const fundingRequiredAmount = isFundingEntryMilestone ? remainingRequiredAmount : requiredAmount;
                       const settlementBalance = getWalletSettlementBalance(selectedDeal);
                       const balanceKnown = settlementBalance.known && settlementBalance.available !== null && Number.isFinite(settlementBalance.available);
-                      const hasEnoughSettlement = balanceKnown ? settlementBalance.available! >= requiredAmount : null;
+                      const hasEnoughSettlement = balanceKnown ? settlementBalance.available! >= fundingRequiredAmount : null;
                       
                       return (
                         <div key={i} className={`relative flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-center bg-[#02040a] border ${status === 'Active' || status === 'Funded' ? 'border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-zinc-800/50'} p-4 lg:p-5 rounded-2xl z-10 animate-fade-in`} style={{ animationDelay: `${i*100}ms` }}>
@@ -887,7 +908,7 @@ export function DealDashboard({
                             </div>
                             
                             <div className="pt-3 flex flex-wrap gap-2 justify-end w-full">
-                              {status === 'Pending' && isClient && (
+                              {status === 'Pending' && isClient && isFundingEntryMilestone && (
                                 <>
                                   <div className={`w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 rounded-lg border text-[10px] ${
                                     hasEnoughSettlement === true
@@ -897,10 +918,10 @@ export function DealDashboard({
                                         : 'bg-zinc-800/50 border-zinc-700/30 text-zinc-400'
                                   }`}>
                                     <span className="font-bold uppercase tracking-wider">
-                                      Settlement balance
+                                      Deal funding balance
                                     </span>
                                     <span className="font-mono">
-                                      Need {requiredAmount.toFixed(2)} {settlementBalance.label}
+                                      Need {fundingRequiredAmount.toFixed(2)} {settlementBalance.label}
                                       {balanceKnown
                                         ? ` · Wallet ${settlementBalance.available!.toFixed(2)} ${settlementBalance.label}`
                                         : ' · Balance check unavailable for this asset'}
@@ -913,8 +934,8 @@ export function DealDashboard({
                                   >
                                     Pay from Another Chain
                                   </Button>
-                                  <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}` || hasEnoughSettlement === false} className="text-xs py-1.5 px-4">
-                                    {actionLoading === `deposit-${i}` ? 'Signing...' : `Fund with ${settlementBalance.label}`}
+                                  <Button onClick={handleFundDeal} disabled={actionLoading === 'fund-deal' || hasEnoughSettlement === false} className="text-xs py-1.5 px-4">
+                                    {actionLoading === 'fund-deal' ? 'Signing...' : `Fund Deal with ${settlementBalance.label}`}
                                   </Button>
                                   {onNavigateToFund && (
                                     <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">
@@ -922,6 +943,12 @@ export function DealDashboard({
                                     </Button>
                                   )}
                                 </>
+                              )}
+                              {status === 'Pending' && isClient && !isFundingEntryMilestone && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-[10px]">
+                                  <Clock size={12} className="shrink-0 text-zinc-500" />
+                                  <span>This milestone is locked when the deal is funded once from the first pending milestone.</span>
+                                </div>
                               )}
                               {status === 'Funded' && isClient && (
                                 <>
@@ -1080,7 +1107,7 @@ export function DealDashboard({
               mode="dealFunding"
               dealId={selectedDealId}
               milestoneIdx={crossChainMilestoneIdx}
-              amountDue={crossChainMilestone.amount.toString()}
+              amountDue={remainingPendingAmount.toString()}
               onClose={() => setCrossChainMilestoneIdx(null)}
             />
           </div>

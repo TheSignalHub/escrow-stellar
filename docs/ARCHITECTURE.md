@@ -43,7 +43,7 @@ Instance storage is used for global config that rarely changes. Persistent stora
                     ┌─────────┐
                     │ Created │
                     └────┬────┘
-                         │ deposit() (first milestone)
+                         │ fund_deal() / deposit()
                          ▼
                     ┌─────────┐
               ┌─────│  Active │──────────┐
@@ -68,7 +68,7 @@ Instance storage is used for global config that rarely changes. Persistent stora
 Each milestone within a deal follows its own state machine:
 
 ```
-Pending ──deposit()──▶ Funded ──release_milestone()──▶ Released
+Pending ──fund_deal()/deposit()──▶ Funded ──release_milestone()──▶ Released
                           │
                      dispute()
                           │
@@ -97,7 +97,8 @@ This ensures:
 | Function | Required Auth | Why |
 |----------|--------------|-----|
 | `create_deal` | Client | Client commits to paying |
-| `deposit` | Client | Client moves their funds |
+| `fund_deal` | Client | Client locks the remaining pending deal balance in one payment |
+| `deposit` | Client | Client moves funds for one milestone; retained for staged funding/backwards compatibility |
 | `release_milestone` | Client | Client approves work delivery |
 | `dispute` | Client OR Provider | Either party can flag issues |
 | `resolve_dispute` | Admin | Neutral third-party resolution |
@@ -111,7 +112,7 @@ The contract emits events for every state change, enabling off-chain indexing:
 | Event | Topics | Data |
 |-------|--------|------|
 | `created` | `(deal_id)` | `total_amount` |
-| `funded` | `(deal_id, milestone_idx)` | `amount` |
+| `funded` | `(deal_id, milestone_idx)` | `amount`; emitted by `deposit` once or by `fund_deal` once per pending milestone |
 | `released` | `(deal_id, milestone_idx)` | `(provider_cut, connector_cut, protocol_cut)` |
 | `dispute` | `(deal_id, milestone_idx)` | `caller_address` |
 | `resolved` | `(deal_id, milestone_idx)` | `(client_refund, provider_amount)` |
@@ -138,7 +139,7 @@ App.tsx (Root)
 └── App Tabs (when connected)
     ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle + milestone-level NEAR funding entry)
+    ├── Deals                  — DealDashboard (split-panel lifecycle + deal-level funding entry + milestone-level release/dispute)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 
@@ -220,7 +221,7 @@ Deal Agreement → Stripe Checkout → Milestone Tracking → Stripe Connect Pay
 
 **Stellar Flow (This Demo)**:
 ```
-Deal Agreement → Soroban deposit() → Milestone Tracking → Soroban release_milestone()
+Deal Agreement → Soroban fund_deal() → Milestone Tracking → Soroban release_milestone()
 ```
 
 The smart contract replaces the payment processor while the marketplace handles everything else (user profiles, deal discovery, communication, content).

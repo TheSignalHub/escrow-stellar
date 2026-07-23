@@ -17,6 +17,7 @@ without overstating demo, testnet, marketplace, or NEAR Intents readiness.
 | 2026-07-21 15:09 BST | Hardened contract release candidate | Deployed and initialized the hardened DealEscrow contract on Stellar Testnet and updated current submission contract references. | Contract `CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ`; CLI smoke passed for create/deposit/release/provider-win/client-refund/partial-settlement; live Coolify redeploy and dashboard/indexer capture remain. |
 | 2026-07-21 15:57 BST | Live RC backend smoke | Confirmed the deployed backend now points at the hardened RC contract and has indexed the RC smoke events. | `BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend` passed public checks; `/health` reports the RC contract; dashboard summary has 17 events including 3 disputes and 3 resolved events. Shadow bindings were seeded/reconciled in the 16:01 BST follow-up. |
 | 2026-07-21 16:01 BST | Live shadow binding smoke | Seeded/reconciled deployed shadow marketplace bindings and reran protected backend smoke. | Live smoke now passes shadow bindings; protected admin smoke found `mb_sig-demo-001`, 5 mapped binding events, and 175 NEAR tokens. Dry quote remains pending. |
+| 2026-07-23 14:50 BST | Full-deal funding RC | Added `fund_deal`, updated frontend checkout to fund the remaining deal balance once, adjusted refund state handling for released + refunded deals, and deployed/initialized the new Stellar Testnet contract. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`; contract `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; CLI live smoke passed create/fund/release/refund/readback. Coolify env switch and live deployed-backend smoke still required. |
 
 ## Submit Status
 
@@ -28,14 +29,14 @@ initialized, and smoke-tested.
 This repo can be submitted as a reusable Stellar escrow rail with:
 
 - deployed Soroban DealEscrow contract on Stellar Testnet
-- React frontend for wallet connection, deal creation, funding, release,
+- React frontend for wallet connection, deal creation, fund-once escrow, release,
   dispute, and reputation lookup
 - seeded Soroswap testnet broker-style route for XLM -> demo test USDC
 - isolated indexer and public reviewer dashboard
 - shadow marketplace binding layer that does not mutate The Signal production
   marketplace database
 - SDK-backed NEAR Intents server adapter and deal-level readiness/dry
-  quote/status UI from pending milestone funding, with approved destination
+  quote/status UI from the deal funding entry, with approved destination
   asset selection and verified quote signatures
 - explicit payment rail boundary documenting that Stripe remains The Signal's
   production marketplace fiat rail and is not implemented in this repo
@@ -47,7 +48,7 @@ Use this wording:
 
 ```text
 The submission demonstrates a complete Stellar Testnet escrow rail for B2B
-marketplace deals: milestone escrow, atomic provider/connector/protocol splits,
+marketplace deals: fund-once milestone escrow, atomic provider/connector/protocol splits,
 dispute and admin resolution paths, on-chain reputation, event indexing, a
 reviewer dashboard, shadow marketplace bindings, and a feature-flagged NEAR
 Intents adapter with SDK-backed quote/status APIs plus frontend readiness and
@@ -72,7 +73,7 @@ binding metadata persistence, approved destination asset selection, server-side
 quote signature verification, and a frontend panel. Live NEAR execution remains
 disabled until JWT provisioning, exact Stellar assetId validation, refund path,
 and tiny live-amount no-testnet evidence are complete. Escrow funding is still
-recognized only after the Stellar DealEscrow `funded` event.
+recognized only after Stellar DealEscrow `funded` events.
 ```
 
 ## Do Not Claim
@@ -112,14 +113,14 @@ These are documented boundaries, not hidden gaps.
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CD6RMOJUTNMHC6D6ODS4IJPCLZNUSH6BE6IRK2CZI47AVOCFJ7QRIRWJ
+Contract explorer:    https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 ```
 
 ## Current Validation
 
 | Area | Command | Result |
 |---|---|---|
-| Contract | `cargo test` in `contracts/deal_escrow/` | Passed: 10 tests, 0 failed. Existing 13 unused-variable warnings in tests. |
+| Contract | `cargo test` in repo root | Passed: 16 tests, 0 failed. |
 | Frontend | `npm run build` in `frontend/` | Passed. Existing Vite warning for chunks larger than 500 kB. |
 | Indexer | `npm run build` in `indexer/` | Passed. TypeScript compile succeeded. |
 | Docs check | `npm run docs:check` at repo root | Not available: root package has no `docs:check` script. Use manual doc consistency scan. |

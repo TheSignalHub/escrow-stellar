@@ -100,6 +100,7 @@ impl DealEscrowContract {
         let mut has_disputed = false;
         let mut has_released_or_resolved = false;
         let mut has_resolved = false;
+        let mut has_refunded = false;
         let mut all_refunded = true;
 
         for i in 0..deal.milestones.len() {
@@ -124,7 +125,9 @@ impl DealEscrowContract {
                         has_resolved = true;
                     }
                 }
-                MilestoneStatus::Refunded => {}
+                MilestoneStatus::Refunded => {
+                    has_refunded = true;
+                }
             }
         }
 
@@ -134,7 +137,7 @@ impl DealEscrowContract {
             DealStatus::Active
         } else if all_refunded {
             DealStatus::Cancelled
-        } else if !has_pending && has_resolved {
+        } else if !has_pending && (has_resolved || has_refunded) {
             DealStatus::Resolved
         } else if !has_pending {
             DealStatus::Completed
@@ -313,6 +316,54 @@ impl DealEscrowContract {
         // Emit event
         env.events()
             .publish((symbol_short!("funded"), deal_id, milestone_idx), milestone.amount);
+
+        Ok(())
+    }
+
+    /// Fund all currently pending milestones in a single client payment.
+    /// Releases, disputes, and refunds still operate per milestone.
+    pub fn fund_deal(env: Env, deal_id: u64) -> Result<(), EscrowError> {
+        let mut deal: Deal = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Deal(deal_id))
+            .ok_or(EscrowError::DealNotFound)?;
+
+        deal.client.require_auth();
+
+        let mut pending_total: i128 = 0;
+        for i in 0..deal.milestones.len() {
+            let milestone = deal.milestones.get(i).unwrap();
+            if milestone.status == MilestoneStatus::Pending {
+                pending_total += milestone.amount;
+            }
+        }
+
+        if pending_total <= 0 {
+            return Err(EscrowError::AlreadyFunded);
+        }
+
+        let token_client = token::Client::new(&env, &deal.token);
+        token_client.transfer(
+            &deal.client,
+            &env.current_contract_address(),
+            &pending_total,
+        );
+
+        for i in 0..deal.milestones.len() {
+            let mut milestone = deal.milestones.get(i).unwrap();
+            if milestone.status == MilestoneStatus::Pending {
+                milestone.status = MilestoneStatus::Funded;
+                deal.milestones.set(i, milestone.clone());
+                env.events()
+                    .publish((symbol_short!("funded"), deal_id, i), milestone.amount);
+            }
+        }
+
+        deal.funded_amount += pending_total;
+        Self::refresh_deal_status(&mut deal);
+
+        env.storage().persistent().set(&DataKey::Deal(deal_id), &deal);
 
         Ok(())
     }
@@ -546,8 +597,8 @@ impl DealEscrowContract {
             }
         }
 
-        deal.status = DealStatus::Cancelled;
         deal.funded_amount -= refunded;
+        Self::refresh_deal_status(&mut deal);
 
         env.storage().persistent().set(&DataKey::Deal(deal_id), &deal);
 
