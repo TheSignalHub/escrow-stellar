@@ -136,9 +136,9 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Payment Routes         — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents panel)
+    ├── Payment Routes         — SoroswapWidget (Friendbot + broker-style testnet route + NEAR Intents preview)
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle)
+    ├── Deals                  — DealDashboard (split-panel lifecycle + milestone-level NEAR funding entry)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 

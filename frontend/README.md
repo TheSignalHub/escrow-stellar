@@ -67,8 +67,9 @@ For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
 NEAR Intents keys and approved settlement asset lists are also backend-only.
 Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
 live execution flags; the frontend uses local `/api/near-intents/*` routes so
-secrets stay on the server. The Payment Routes panel reads the public readiness
-payload to prefill/select approved settlement assets. Refund routing is
+secrets stay on the server. The reusable cross-chain panel reads the public
+readiness payload to prefill/select approved settlement assets from either the
+Deals funding flow or the Payment Routes preview. Refund routing is
 managed through the connected source wallet in production; the backend default
 refund account is only a dry-quote QA fallback.
 
@@ -130,9 +131,9 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 ## Features
 
-- **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones
+- **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and XLM/direct-USDC/source-asset selection
-- **Payment Routes** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and use the NEAR Intents-backed **Pay from another chain** entry for marketplace-bound cross-chain quote/status review
+- **Payment Routes** — request testnet XLM, route XLM into demo test USDC through the seeded Soroswap testnet path, and preview NEAR Intents-backed route availability
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -140,17 +141,18 @@ For the SCF #42 Tranche 2 demo, the Fund/Create Deal flows demonstrate
 Broker-style multi-asset funding: XLM is used as the non-USDC source asset,
 the seeded Soroswap testnet route converts it into the configured demo test
 USDC settlement asset, and the escrow contract settles against that configured
-asset. The Payment Routes tab also includes a NEAR Intents-backed cross-chain
-funding entry for the marketplace-binding adapter. The panel lets the user
-choose a source asset and approved Stellar settlement asset, get a quote, view
-payment instructions/status, and see whether the returned 1Click quote was
-verified. It intentionally hides binding ids, raw asset ids, JWT/readiness
-internals, refund fallback envs, and internal smoke terminology. The demo test
-USDC token is not Circle-issued production USDC, and NEAR/payment status never
-marks escrow funded until the Stellar DealEscrow `funded` event exists. If the
-backend exposes a quote-only demo destination because Stellar-route liquidity
-is unavailable, the panel labels it as quote evidence rather than escrow
-settlement.
+asset. Pending milestones in the Deals tab also expose a NEAR Intents-backed
+cross-chain funding entry. The panel locks to the selected deal/milestone
+amount, lets the user choose a source asset and approved Stellar settlement
+asset, gets a quote, shows payment instructions/status, and reports whether the
+returned 1Click quote was verified. The Payment Routes tab keeps the same
+component available as a standalone route preview. It intentionally hides
+binding ids, raw asset ids, JWT/readiness internals, refund fallback envs, and
+internal smoke terminology. The demo test USDC token is not Circle-issued
+production USDC, and NEAR/payment status never marks escrow funded until the
+Stellar DealEscrow `funded` event exists. If the backend exposes a quote-only
+demo destination because Stellar-route liquidity is unavailable, the panel
+labels it as quote evidence rather than escrow settlement.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.
@@ -175,7 +177,7 @@ frontend/src/
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
-│   ├── NearIntentsPanel.tsx   # Payment Routes cross-chain quote/status panel
+│   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding and route preview
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

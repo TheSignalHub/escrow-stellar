@@ -68,10 +68,10 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 
-### Option C: Pay from Another Chain
+### Option C: Preview Cross-Chain Routes
 
-The Payment Routes tab also includes a cross-chain funding entry backed by the
-NEAR Intents adapter.
+The Payment Routes tab also includes the same cross-chain route component used
+by deal funding. In this tab it behaves as a standalone route preview.
 
 1. Choose **Pay from another chain**.
 2. Select the source asset, such as NEAR, Ethereum USDC, Base USDC, or Stellar
@@ -86,13 +86,14 @@ NEAR Intents adapter.
 7. Click **Refresh Payment Status** to follow the route through source payment,
    NEAR Intents routing, Stellar settlement, and escrow funding.
 
-The public UI intentionally hides binding ids, raw asset ids, refund fallback
-envs, JWT/readiness internals, and internal smoke terminology. The internal
-binding for reviewer QA remains `mb_sig-demo-001`. NEAR Intents status is
+The production-like path starts from a pending milestone in the Deals tab. The
+public UI intentionally hides binding ids, raw asset ids, refund fallback envs,
+JWT/readiness internals, and internal smoke terminology. The internal binding
+for reviewer QA remains server/internal context. NEAR Intents status is
 payment-initiation evidence only. Quote-only demo destinations are forced dry
 previews and do not show executable deposit instructions. The deal is not
-considered escrow-funded until the Stellar DealEscrow contract emits a
-`funded` event and the indexer sees it.
+considered escrow-funded until the Stellar DealEscrow contract emits a `funded`
+event and the indexer sees it.
 
 ---
 
@@ -172,9 +173,13 @@ The segmented filter bar at the top of the deal list:
 
 1. Select a deal from the left panel
 2. Find the first milestone showing **Pending** status
-3. Click **Fund** — the app checks your balance first
-4. Approve the token transfer in your wallet
-5. The milestone transitions to **Funded** and the deal becomes **Active**
+3. Choose a funding path:
+   - **Fund with Stellar Wallet** for direct Stellar settlement-token funding
+   - **Pay from Another Chain** for a NEAR Intents-backed quote using this milestone amount
+   - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
+4. For direct Stellar funding, approve the token transfer in your wallet
+5. For cross-chain funding, review the quote and payment status. Escrow remains pending until Stellar settlement is reconciled and the contract emits `funded`
+6. Once funded on-chain, the milestone transitions to **Funded** and the deal becomes **Active**
 
 **What happens on-chain**: The `deposit` function executes a SAC `transfer()` from your wallet to the contract address. The tokens are held in escrow until released or refunded.
 

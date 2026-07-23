@@ -25,6 +25,11 @@ import { Card, Button, Tag } from './ui/Components';
 
 interface NearIntentsPanelProps {
   walletAddress: string;
+  mode?: 'routePreview' | 'dealFunding';
+  dealId?: number;
+  milestoneIdx?: number;
+  amountDue?: string;
+  onClose?: () => void;
 }
 
 type StepState = 'done' | 'active' | 'pending';
@@ -153,12 +158,19 @@ function PaymentStep({ label, state }: { label: string; state: StepState }) {
   );
 }
 
-export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
+export function NearIntentsPanel({
+  walletAddress,
+  mode = 'routePreview',
+  dealId,
+  milestoneIdx,
+  amountDue,
+  onClose,
+}: NearIntentsPanelProps) {
   const toast = useToast();
   const [readiness, setReadiness] = useState<NearIntentsReadiness | null>(null);
   const [originAsset, setOriginAsset] = useState('nep141:wrap.near');
   const [destinationAsset, setDestinationAsset] = useState('');
-  const [amount, setAmount] = useState('1000000');
+  const [amount, setAmount] = useState(amountDue || '1000000');
   const [quote, setQuote] = useState<NearIntentQuoteResponse | null>(null);
   const [status, setStatus] = useState<NearIntentStatusResponse | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
@@ -170,6 +182,10 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
     const configuredDefault = readiness?.destinationAssets?.default;
     if (configuredDefault && !destinationAsset) setDestinationAsset(configuredDefault);
   }, [destinationAsset, readiness?.destinationAssets?.default]);
+
+  useEffect(() => {
+    if (amountDue) setAmount(amountDue);
+  }, [amountDue]);
 
   const loadReadiness = async () => {
     setLoadingReadiness(true);
@@ -188,6 +204,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   }, []);
 
   const selectedOriginAsset = ORIGIN_ASSETS.find((asset) => asset.assetId === originAsset) || ORIGIN_ASSETS[0];
+  const isDealFundingMode = mode === 'dealFunding';
   const stellarDestinationAllowlist = readiness?.destinationAssets?.allowlist || [];
   const demoDestinationAllowlist = readiness?.destinationAssets?.demoAllowlist || [];
   const destinationAllowlist = uniqueAssets([...stellarDestinationAllowlist, ...demoDestinationAllowlist]);
@@ -236,7 +253,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
   const routingStarted = ['PROCESSING', 'SUCCESS'].includes(providerStatus || '');
   const settlementReported = providerStatus === 'SUCCESS';
   const paymentSteps: Array<{ label: string; state: StepState }> = [
-    { label: 'Payment requested', state: hasQuote ? 'done' : 'active' },
+    { label: hasQuote ? 'Funding route quoted' : 'Choose funding route', state: hasQuote ? 'done' : 'active' },
     { label: 'Waiting for source payment', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
     { label: 'Routing through NEAR Intents', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
     {
@@ -265,7 +282,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
         slippageTolerance: 100,
       });
       setQuote(result);
-      toast('Cross-chain quote ready', 'success');
+      toast(isDealFundingMode ? 'Milestone funding quote ready' : 'Cross-chain quote ready', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
@@ -311,22 +328,35 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300 font-bold text-sm">
-            3
+            {isDealFundingMode && milestoneIdx !== undefined ? milestoneIdx + 1 : 3}
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Pay from another chain</h3>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
+                {isDealFundingMode ? 'Fund milestone from another chain' : 'Pay from another chain'}
+              </h3>
               <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
               <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
-              Start a cross-chain payment and settle into Stellar escrow. The deal is marked funded only after the Stellar contract emits the funded event.
+              {isDealFundingMode
+                ? `Request a cross-chain quote for Deal #${dealId ?? '-'}, Milestone ${
+                    milestoneIdx !== undefined ? milestoneIdx + 1 : '-'
+                  }. The milestone is marked funded only after the Stellar contract emits the funded event.`
+                : 'Start a cross-chain payment and settle into Stellar escrow. The deal is marked funded only after the Stellar contract emits the funded event.'}
             </p>
           </div>
         </div>
-        <Button onClick={loadReadiness} variant="secondary" className="py-3 text-xs" icon={loadingReadiness ? Loader2 : RefreshCw}>
-          Refresh Availability
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {onClose && (
+            <Button onClick={onClose} variant="secondary" className="py-3 text-xs">
+              Close
+            </Button>
+          )}
+          <Button onClick={loadReadiness} variant="secondary" className="py-3 text-xs" icon={loadingReadiness ? Loader2 : RefreshCw}>
+            Refresh Availability
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
@@ -337,8 +367,13 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Amount due</span>
                 <input
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none"
+                  onChange={(event) => {
+                    if (!isDealFundingMode) setAmount(event.target.value);
+                  }}
+                  readOnly={isDealFundingMode}
+                  className={`w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none ${
+                    isDealFundingMode ? 'cursor-not-allowed text-zinc-300' : ''
+                  }`}
                 />
               </label>
               <label className="space-y-2">
@@ -349,7 +384,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
                     onChange={(event) => {
                       const nextDestinationAsset = event.target.value;
                       setDestinationAsset(nextDestinationAsset);
-                      if (nextDestinationAsset === NEAR_QUOTE_DEMO_ASSET_ID && amount === '1000000') {
+                      if (!isDealFundingMode && nextDestinationAsset === NEAR_QUOTE_DEMO_ASSET_ID && amount === '1000000') {
                         setAmount(ONE_NEAR_BASE_UNITS);
                       }
                     }}
@@ -440,7 +475,9 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
 
             {quoteDemoDestination && (
               <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-200">
-                This destination is for signed 1Click quote evidence only. It proves the NEAR Intents route can price successfully; it does not settle into Stellar escrow or mark a deal funded.
+                {isDealFundingMode
+                  ? 'This selected destination is quote evidence only. It proves the route can price successfully, but it will not fund this milestone.'
+                  : 'This destination is for signed 1Click quote evidence only. It proves the NEAR Intents route can price successfully; it does not settle into Stellar escrow or mark a deal funded.'}
               </div>
             )}
 
@@ -469,7 +506,7 @@ export function NearIntentsPanel({ walletAddress }: NearIntentsPanelProps) {
               className="w-full py-4"
               icon={loadingQuote ? Loader2 : ShieldCheck}
             >
-              {loadingQuote ? 'Getting Quote...' : 'Get Quote'}
+              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Milestone Funding Quote' : 'Get Quote'}
             </Button>
           </div>
 

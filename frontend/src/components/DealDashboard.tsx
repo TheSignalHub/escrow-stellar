@@ -7,6 +7,7 @@ import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
 import { Card, Button, Tag } from './ui/Components';
+import { NearIntentsPanel } from './NearIntentsPanel';
 
 /* ============================================
    Constants & Helpers
@@ -129,6 +130,7 @@ export function DealDashboard({
   } | null>(null);
   const [lastTxHash, setLastTxHash] = useState('');
   const [splitView, setSplitView] = useState<{ milestoneIdx: number; txHash: string } | null>(null);
+  const [crossChainMilestoneIdx, setCrossChainMilestoneIdx] = useState<number | null>(null);
 
   const [confirmAction, setConfirmAction] = useState<{
     type: 'release' | 'dispute';
@@ -233,6 +235,10 @@ export function DealDashboard({
   const tokenSymbol = selectedDeal ? getTokenSymbol(selectedDeal.token) : 'TOKEN';
   const selectedStatus = selectedDeal ? getDealStatus(selectedDeal) : '';
   const selectedMeta = selectedDealId !== null ? getDealMetadata(selectedDealId) : null;
+  const crossChainMilestone =
+    selectedDeal && crossChainMilestoneIdx !== null
+      ? selectedDeal.milestones[crossChainMilestoneIdx]
+      : null;
 
   const activityLog = useMemo(() => {
     if (selectedDealId === null || !selectedDeal) return [];
@@ -537,7 +543,15 @@ export function DealDashboard({
                 return (
                   <div
                     key={deal.id}
-                    onClick={() => { setSelectedDealId(deal.id); setMobileShowDetail(true); setSplitView(null); setLastTxHash(''); setError(''); setErrorContext(null); }}
+                    onClick={() => {
+                      setSelectedDealId(deal.id);
+                      setMobileShowDetail(true);
+                      setSplitView(null);
+                      setCrossChainMilestoneIdx(null);
+                      setLastTxHash('');
+                      setError('');
+                      setErrorContext(null);
+                    }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 group ${
                       isSelected 
                         ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
@@ -820,14 +834,21 @@ export function DealDashboard({
                             <div className="pt-3 flex flex-wrap gap-2 justify-end w-full">
                               {status === 'Pending' && isClient && (
                                 <>
-                                  {onNavigateToFund && (
-                                    <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">
-                                      Choose Payment Route
-                                    </Button>
-                                  )}
+                                  <Button
+                                    variant={crossChainMilestoneIdx === i ? 'primary' : 'secondary'}
+                                    onClick={() => setCrossChainMilestoneIdx(crossChainMilestoneIdx === i ? null : i)}
+                                    className="text-xs py-1.5 px-3"
+                                  >
+                                    Pay from Another Chain
+                                  </Button>
                                   <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}`} className="text-xs py-1.5 px-4">
                                     {actionLoading === `deposit-${i}` ? 'Signing...' : 'Fund with Stellar Wallet'}
                                   </Button>
+                                  {onNavigateToFund && (
+                                    <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">
+                                      Prepare Wallet
+                                    </Button>
+                                  )}
                                 </>
                               )}
                               {status === 'Funded' && isClient && (
@@ -895,6 +916,19 @@ export function DealDashboard({
                       )
                     })}
                   </div>
+
+                  {crossChainMilestone && selectedDealId !== null && getMilestoneStatus(crossChainMilestone) === 'Pending' && (
+                    <div className="pt-2 animate-fade-in">
+                      <NearIntentsPanel
+                        walletAddress={walletAddress}
+                        mode="dealFunding"
+                        dealId={selectedDealId}
+                        milestoneIdx={crossChainMilestoneIdx ?? undefined}
+                        amountDue={crossChainMilestone.amount.toString()}
+                        onClose={() => setCrossChainMilestoneIdx(null)}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Sidebar: Signal Data */}
