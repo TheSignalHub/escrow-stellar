@@ -68,6 +68,7 @@ const ORIGIN_ASSETS = [
     description: 'Coming next: connect an Ethereum wallet and pay with USDC.',
     assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
     available: false,
+    unavailableLabel: 'Coming next',
   },
   {
     chain: 'Base',
@@ -76,14 +77,16 @@ const ORIGIN_ASSETS = [
     description: 'Coming next: connect a Base wallet and pay with USDC.',
     assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
     available: false,
+    unavailableLabel: 'Coming next',
   },
   {
     chain: 'Stellar',
     symbol: 'XLM',
     label: 'Stellar XLM',
-    description: 'Use the connected Stellar wallet for direct funding or local conversion.',
+    description: 'Use Fund Deal or Wallet Prep instead; this is not a cross-chain top-up route.',
     assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
-    available: true,
+    available: false,
+    unavailableLabel: 'Use Fund Deal',
   },
 ];
 
@@ -295,23 +298,22 @@ export function NearIntentsPanel({
     dealSettlementKind === 'xlm' ? 'Stellar XLM' : dealSettlementKind === 'usdc' ? 'Stellar USDC' : 'the deal settlement asset';
   const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
-  const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination;
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
   const sourceRefundAddress = selectedOriginAsset.chain === 'Stellar' ? walletAddress : undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
+  const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
 
   const sourceAssetAvailable = selectedOriginAsset.available !== false;
   const canRequestQuote = useMemo(() => {
     return Boolean(
-      readiness?.enabled &&
+        readiness?.enabled &&
         hasValidStellarRecipient &&
         sourceAssetAvailable &&
-        hasSourceRefundRoute &&
         originAsset.trim() &&
         destinationAsset.trim() &&
         amount.trim()
     );
-  }, [amount, destinationAsset, hasSourceRefundRoute, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
+  }, [amount, destinationAsset, hasValidStellarRecipient, originAsset, readiness?.enabled, sourceAssetAvailable]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -511,7 +513,12 @@ export function NearIntentsPanel({
                       key={asset.assetId}
                       type="button"
                       onClick={() => {
-                        if (asset.available !== false) setOriginAsset(asset.assetId);
+                        if (asset.available !== false) {
+                          setOriginAsset(asset.assetId);
+                          setError(null);
+                          setQuote(null);
+                          setStatus(null);
+                        }
                       }}
                       disabled={asset.available === false}
                       className={`text-left rounded-lg border px-3 py-3 transition ${
@@ -531,7 +538,7 @@ export function NearIntentsPanel({
                       <p className="mt-2 text-xs leading-relaxed text-zinc-500">{asset.description}</p>
                       {asset.available === false && (
                         <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-400/80">
-                          Coming next
+                          {asset.unavailableLabel || 'Coming next'}
                         </p>
                       )}
                     </button>
@@ -610,7 +617,7 @@ export function NearIntentsPanel({
 
             {sourceAssetAvailable && !hasSourceRefundRoute && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
-                Connect or create the source-chain wallet before requesting a live top-up quote. Failed routes refund to that source wallet automatically.
+                Quote preview only: live source payment requires the source wallet connection so failed routes can refund there automatically.
               </div>
             )}
 
