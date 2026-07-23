@@ -1,6 +1,6 @@
 # Settlement Asset Policy
 
-Last updated: 2026-07-01 10:16 HKT
+Last updated: 2026-07-23 16:19 BST
 
 Scope: settlement assets used by the DealEscrow contract, frontend, broker
 route, indexer, and marketplace binding layer.
@@ -9,6 +9,7 @@ route, indexer, and marketplace binding layer.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 16:19 BST | Production settlement allowlist | Clarified the product settlement boundary: escrow deals may settle only in approved Stellar USDC or native XLM, while cross-chain source assets remain flexible through supported provider routes. | `npm run build` passed in `frontend/`. |
 | 2026-07-01 10:16 HKT | Settlement asset policy | Added explicit demo/mainnet asset policy, amount precision, minimum amount, trustline, and dust/rounding notes. | `npm run build` passed; mainnet policy-profile build passed. |
 
 ## Current Demo Asset
@@ -29,6 +30,17 @@ testnet.
 
 ## Production Asset Requirements
 
+Production deal settlement is intentionally constrained to two Stellar assets:
+
+- **Stellar USDC** for USD-denominated escrow deals.
+- **Native XLM** for XLM-denominated escrow deals.
+
+Users may still pay from flexible source assets through NEAR Intents or another
+broker/provider route, but the route destination must match the deal's selected
+Stellar settlement asset. A USDC deal must top up Stellar USDC; an XLM deal
+must top up Stellar XLM. The escrow contract should not receive arbitrary
+provider destination assets.
+
 Before a mainnet deployment, each approved settlement asset must have:
 
 - A verified Stellar Asset Contract address.
@@ -36,7 +48,8 @@ Before a mainnet deployment, each approved settlement asset must have:
 - An explicit network profile: `testnet`, `staging`, or `mainnet`.
 - Wallet funding and trustline instructions for clients.
 - A minimum deal amount that prevents unusable dust splits.
-- A broker/liquidity provider path or a direct-funding fallback.
+- A broker/liquidity provider path or a direct-funding fallback for Stellar
+  USDC and/or native XLM.
 - A reconciliation note for the indexer and marketplace binding consumer.
 
 Do not claim production USDC support until the mainnet SAC address, issuer,

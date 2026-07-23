@@ -148,9 +148,9 @@ seeded Soroswap testnet route into the configured demo test USDC settlement
 asset.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
-cross-chain wallet top-up entry. The panel locks to the selected deal and remaining
-pending balance, lets the user choose a source asset and approved Stellar wallet destination
-asset, gets a quote, shows payment instructions/status, and reports whether the
+cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
+pending balance, lets the user choose a supported source asset, locks the destination
+to the deal's Stellar settlement asset, gets a quote, shows payment instructions/status, and reports whether the
 returned 1Click quote was verified. It intentionally hides binding ids, raw
 asset ids, JWT/readiness internals, refund fallback envs, and internal smoke
 terminology. The demo test USDC token is not Circle-issued production USDC, and
@@ -159,9 +159,12 @@ topped up, the user confirms **Fund Deal**, and only Stellar DealEscrow
 `funded` events mark escrow funded. If the backend exposes a quote-only demo destination
 because Stellar-route liquidity is unavailable, the panel labels it as quote
 evidence rather than escrow settlement. For deal-tied top-ups, the amount is
-shown in human Stellar units and the destination route auto-prefers the deal's
-settlement asset when that Stellar asset exists in the backend-approved 1Click
-allowlist.
+shown in human Stellar units and the destination route is constrained to the
+deal's approved Stellar settlement asset: Stellar USDC-compatible settlement
+token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
+user-selectable only where the provider route and wallet/refund handling are
+available; disabled Ethereum/Base cards are labeled as coming-next source-wallet
+work rather than executable routes.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

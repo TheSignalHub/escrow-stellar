@@ -65,7 +65,7 @@ const ORIGIN_ASSETS = [
     chain: 'Ethereum',
     symbol: 'USDC',
     label: 'Ethereum USDC',
-    description: 'Requires source-wallet connection before payment instructions can be created.',
+    description: 'Coming next: connect an Ethereum wallet and pay with USDC.',
     assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
     available: false,
   },
@@ -73,7 +73,7 @@ const ORIGIN_ASSETS = [
     chain: 'Base',
     symbol: 'USDC',
     label: 'Base USDC',
-    description: 'Requires source-wallet connection before payment instructions can be created.',
+    description: 'Coming next: connect a Base wallet and pay with USDC.',
     assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
     available: false,
   },
@@ -81,7 +81,7 @@ const ORIGIN_ASSETS = [
     chain: 'Stellar',
     symbol: 'XLM',
     label: 'Stellar XLM',
-    description: 'Convert Stellar XLM into the configured escrow settlement asset.',
+    description: 'Use the connected Stellar wallet for direct funding or local conversion.',
     assetId: 'nep245:v2_1.omni.hot.tg:1100_111bzQBB5v7AhLyPMDwS8uJgQV24KaAPXtwyVWu2KXbbfQU6NXRCz',
     available: true,
   },
@@ -139,6 +139,11 @@ function getSettlementKindFromToken(tokenAddress?: string): 'xlm' | 'usdc' | 'un
   if (tokenAddress === XLM_SAC_ADDRESS) return 'xlm';
   if (tokenAddress === USDC_TOKEN_ADDRESS) return 'usdc';
   return 'unknown';
+}
+
+function isApprovedTopUpDestination(assetId: string): boolean {
+  const kind = getSettlementKindFromAssetId(assetId);
+  return kind === 'xlm' || kind === 'usdc';
 }
 
 function findPreferredDestinationAsset(assetIds: string[], tokenAddress?: string): string {
@@ -245,25 +250,49 @@ export function NearIntentsPanel({
   const isDealFundingMode = mode === 'dealFunding';
   const stellarDestinationAllowlist = readiness?.destinationAssets?.allowlist || [];
   const demoDestinationAllowlist = readiness?.destinationAssets?.demoAllowlist || [];
-  const destinationAllowlist = uniqueAssets([...stellarDestinationAllowlist, ...demoDestinationAllowlist]);
+  const dealSettlementKind = getSettlementKindFromToken(settlementTokenAddress);
+  const approvedStellarDestinationAllowlist = stellarDestinationAllowlist.filter(isApprovedTopUpDestination);
+  const destinationAllowlist = uniqueAssets(
+    isDealFundingMode
+      ? approvedStellarDestinationAllowlist.filter((asset) => (
+          dealSettlementKind === 'unknown' || getSettlementKindFromAssetId(asset) === dealSettlementKind
+        ))
+      : [...approvedStellarDestinationAllowlist, ...demoDestinationAllowlist]
+  );
   const preferredDestinationAsset = findPreferredDestinationAsset(stellarDestinationAllowlist, settlementTokenAddress);
   const configuredDefaultDestination = readiness?.destinationAssets?.default || '';
 
   useEffect(() => {
-    const nextDestinationAsset = preferredDestinationAsset || configuredDefaultDestination;
+    const nextDestinationAsset =
+      preferredDestinationAsset ||
+      (destinationAllowlist.includes(configuredDefaultDestination) ? configuredDefaultDestination : destinationAllowlist[0] || '');
+
+    if (destinationAsset && !destinationAllowlist.includes(destinationAsset)) {
+      setDestinationAsset(nextDestinationAsset);
+      return;
+    }
     if (nextDestinationAsset && !destinationAsset) setDestinationAsset(nextDestinationAsset);
-  }, [configuredDefaultDestination, destinationAsset, preferredDestinationAsset]);
+  }, [configuredDefaultDestination, destinationAllowlist, destinationAsset, preferredDestinationAsset]);
 
   const quoteDemoDestination = demoDestinationAllowlist.includes(destinationAsset);
-  const settlementLabel = friendlySettlementAsset(destinationAsset || readiness?.destinationAssets?.default);
-  const dealSettlementKind = getSettlementKindFromToken(settlementTokenAddress);
+  const activeDestinationAsset = destinationAsset || (!isDealFundingMode ? readiness?.destinationAssets?.default : undefined);
+  const settlementLabel = friendlySettlementAsset(activeDestinationAsset);
+  const lockedSettlementLabel =
+    destinationAsset
+      ? settlementLabel
+      : dealSettlementKind === 'xlm'
+        ? 'Stellar XLM route unavailable'
+        : dealSettlementKind === 'usdc'
+          ? 'Stellar USDC route unavailable'
+          : 'Settlement route unavailable';
   const selectedDestinationKind = getSettlementKindFromAssetId(destinationAsset);
   const settlementRouteMismatch =
     isDealFundingMode &&
     dealSettlementKind !== 'unknown' &&
-    selectedDestinationKind !== 'unknown' &&
-    selectedDestinationKind !== 'demo' &&
-    selectedDestinationKind !== dealSettlementKind;
+    (selectedDestinationKind === 'unknown' ||
+      (selectedDestinationKind !== 'demo' && selectedDestinationKind !== dealSettlementKind));
+  const expectedSettlementLabel =
+    dealSettlementKind === 'xlm' ? 'Stellar XLM' : dealSettlementKind === 'usdc' ? 'Stellar USDC' : 'the deal settlement asset';
   const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination;
@@ -308,15 +337,15 @@ export function NearIntentsPanel({
   const routingStarted = ['PROCESSING', 'SUCCESS'].includes(providerStatus || '');
   const settlementReported = providerStatus === 'SUCCESS';
   const paymentSteps: Array<{ label: string; state: StepState }> = [
-    { label: hasQuote ? 'Funding route quoted' : 'Choose funding route', state: hasQuote ? 'done' : 'active' },
-    { label: 'Waiting for source payment', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
-    { label: 'Routing through NEAR Intents', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
+    { label: hasQuote ? 'Top-up route quoted by 1Click' : 'Choose top-up source', state: hasQuote ? 'done' : 'active' },
+    { label: 'Source payment pending', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
+    { label: 'NEAR Intents routing', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
     {
       label: quoteDemoDestination ? 'Quote route priced by 1Click' : 'Settling on Stellar',
       state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending',
     },
     {
-      label: quoteDemoDestination ? 'Escrow funding not included in quote demo' : 'Escrow funded after Stellar event',
+      label: quoteDemoDestination ? 'Escrow funding not included in quote demo' : 'Fund Deal after wallet top-up',
       state: quoteDemoDestination ? 'pending' : settlementReported ? 'active' : 'pending',
     },
   ];
@@ -337,7 +366,7 @@ export function NearIntentsPanel({
         slippageTolerance: 100,
       });
       setQuote(result);
-      toast(isDealFundingMode ? 'Milestone funding quote ready' : 'Cross-chain quote ready', 'success');
+      toast(isDealFundingMode ? 'Add Funds quote ready' : 'Cross-chain quote ready', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
@@ -388,17 +417,17 @@ export function NearIntentsPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
-                Top up from another chain
+                Add funds from another chain
               </h3>
               <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
               <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
               {isDealFundingMode
-                ? `Request a cross-chain top-up quote for the remaining balance on Deal #${dealId ?? '-'}, anchored to Milestone ${
+                ? `Use NEAR Intents/1Click to quote a top-up for the remaining balance on Deal #${dealId ?? '-'}, anchored to Milestone ${
                     milestoneIdx !== undefined ? milestoneIdx + 1 : '-'
-                  }. The route tops up the connected Stellar wallet; the deal is funded only after the user confirms Fund Deal from that wallet.`
-                : 'Start a cross-chain top-up into the connected Stellar wallet. Escrow funding still requires a separate Stellar transaction.'}
+                  }. The route prepares the connected Stellar wallet; escrow locks only after the user confirms Fund Deal from that wallet.`
+                : 'Use NEAR Intents/1Click to quote a cross-chain top-up into the connected Stellar wallet. Escrow funding still requires a separate Stellar transaction.'}
             </p>
           </div>
         </div>
@@ -433,7 +462,15 @@ export function NearIntentsPanel({
               </label>
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Settlement asset</span>
-                {destinationAllowlist.length > 0 ? (
+                {isDealFundingMode ? (
+                  <div className={`w-full rounded-lg border px-3 py-2.5 text-sm font-bold ${
+                    destinationAsset
+                      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-100'
+                      : 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+                  }`}>
+                    {lockedSettlementLabel}
+                  </div>
+                ) : destinationAllowlist.length > 0 ? (
                   <select
                     value={destinationAsset}
                     onChange={(event) => {
@@ -462,7 +499,7 @@ export function NearIntentsPanel({
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Source asset</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay from</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ORIGIN_ASSETS.map((asset) => {
                   const selected = asset.assetId === originAsset;
@@ -491,7 +528,7 @@ export function NearIntentsPanel({
                       <p className="mt-2 text-xs leading-relaxed text-zinc-500">{asset.description}</p>
                       {asset.available === false && (
                         <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-400/80">
-                          Source wallet required
+                          Coming next
                         </p>
                       )}
                     </button>
@@ -530,15 +567,15 @@ export function NearIntentsPanel({
 
             {isDealFundingMode && (
               <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
-                Top-up destination auto-matches the deal settlement asset when the configured 1Click routes support it.
-                The source asset is the asset the user chooses to pay from.
+                Top-up destination is locked to the deal settlement asset: Stellar USDC for USDC deals, or Stellar XLM for XLM deals.
+                The source asset is what the user pays from. In this demo, NEAR is wired for 1Click quote evidence; Ethereum/Base source-wallet execution is a next step.
               </div>
             )}
 
             {settlementRouteMismatch && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
-                This deal settles in {settlementTokenSymbol || 'the selected asset'}, but the current cross-chain route is
-                configured for {settlementLabel}. Use direct funding or Wallet Prep for this deal unless a matching route is enabled.
+                This deal settles in {settlementTokenSymbol || 'the selected asset'}, so the cross-chain destination must be {expectedSettlementLabel}.
+                No matching top-up route is configured in the current backend allowlist. Use direct funding or Wallet Prep unless that route is enabled.
               </div>
             )}
 
@@ -564,7 +601,7 @@ export function NearIntentsPanel({
 
             {!sourceAssetAvailable && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
-                This source asset needs its native wallet connected so refunds can return to that source chain.
+                This source will become available after its native wallet connection and refund route are wired.
               </div>
             )}
 
@@ -575,7 +612,7 @@ export function NearIntentsPanel({
               className="w-full py-4"
               icon={loadingQuote ? Loader2 : ShieldCheck}
             >
-              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Top-Up Quote' : 'Get Quote'}
+              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Add Funds Quote' : 'Get Quote'}
             </Button>
           </div>
 
