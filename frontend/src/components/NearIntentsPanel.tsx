@@ -40,6 +40,9 @@ type StepState = 'done' | 'active' | 'pending';
 const REVIEW_BINDING_ID = 'mb_sig-demo-001';
 const NEAR_QUOTE_DEMO_ASSET_ID = 'nep141:usdt.tether-token.near';
 const ONE_NEAR_BASE_UNITS = '1000000000000000000000000';
+const ONE_USDC_BASE_UNITS = '1000000';
+const EVM_DRY_QUOTE_REFUND_ADDRESS = '0x1111111111111111111111111111111111111111';
+const SOLANA_DRY_QUOTE_REFUND_ADDRESS = '11111111111111111111111111111111';
 
 const STATUS_COLORS: Record<string, 'emerald' | 'amber' | 'red' | 'blue' | 'zinc'> = {
   QUOTE_CREATED: 'blue',
@@ -60,24 +63,38 @@ const ORIGIN_ASSETS = [
     label: 'NEAR',
     description: 'Top up the connected Stellar wallet from a NEAR wallet.',
     assetId: 'nep141:wrap.near',
+    previewAmount: ONE_NEAR_BASE_UNITS,
+    previewAmountLabel: '1 NEAR',
   },
   {
     chain: 'Ethereum',
     symbol: 'USDC',
     label: 'Ethereum USDC',
-    description: 'Coming next: connect an Ethereum wallet and pay with USDC.',
+    description: 'Preview the Ethereum USDC route. Live payment requires an Ethereum wallet connection.',
     assetId: 'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
-    available: false,
-    unavailableLabel: 'Coming next',
+    previewAmount: ONE_USDC_BASE_UNITS,
+    previewAmountLabel: '1 USDC',
+    previewRefundAddress: EVM_DRY_QUOTE_REFUND_ADDRESS,
   },
   {
     chain: 'Base',
     symbol: 'USDC',
     label: 'Base USDC',
-    description: 'Coming next: connect a Base wallet and pay with USDC.',
-    assetId: 'nep141:base-0x1c4a802fd6b591bb71daa01d8335e43719048b24.omft.near',
-    available: false,
-    unavailableLabel: 'Coming next',
+    description: 'Preview the Base USDC route. Live payment requires a Base wallet connection.',
+    assetId: 'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near',
+    previewAmount: ONE_USDC_BASE_UNITS,
+    previewAmountLabel: '1 USDC',
+    previewRefundAddress: EVM_DRY_QUOTE_REFUND_ADDRESS,
+  },
+  {
+    chain: 'Solana',
+    symbol: 'USDC',
+    label: 'Solana USDC',
+    description: 'Preview the Solana USDC route. Live payment requires a Solana wallet connection.',
+    assetId: 'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near',
+    previewAmount: ONE_USDC_BASE_UNITS,
+    previewAmountLabel: '1 USDC',
+    previewRefundAddress: SOLANA_DRY_QUOTE_REFUND_ADDRESS,
   },
   {
     chain: 'Stellar',
@@ -139,6 +156,12 @@ function formatNearBaseUnits(value?: string): string {
   } catch {
     return value;
   }
+}
+
+function formatPreviewSourceAmount(asset: typeof ORIGIN_ASSETS[number]): string {
+  if (asset.previewAmountLabel) return asset.previewAmountLabel;
+  if (asset.assetId === 'nep141:wrap.near') return formatNearBaseUnits(asset.previewAmount);
+  return formatBaseAmount(asset.previewAmount);
 }
 
 function getSettlementKindFromAssetId(assetId?: string): 'xlm' | 'usdc' | 'demo' | 'unknown' {
@@ -316,7 +339,8 @@ export function NearIntentsPanel({
   const sourceRefundAddress = selectedOriginAsset.chain === 'Stellar' ? walletAddress : undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
-  const quoteSourceAmount = ONE_NEAR_BASE_UNITS;
+  const quoteSourceAmount = selectedOriginAsset.previewAmount || ONE_NEAR_BASE_UNITS;
+  const quoteRefundAddress = sourceRefundAddress || (paymentPreviewOnly ? selectedOriginAsset.previewRefundAddress : undefined);
   const quoteRequestAmount = isDealFundingMode ? quoteSourceAmount : amount;
 
   const sourceAssetAvailable = selectedOriginAsset.available !== false;
@@ -381,7 +405,7 @@ export function NearIntentsPanel({
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
         amount: quoteRequestAmount.trim(),
-        refundTo: sourceRefundAddress,
+        refundTo: quoteRefundAddress,
         recipient: quoteDemoDestination ? undefined : walletAddress,
         dry: paymentPreviewOnly,
         slippageTolerance: 100,
@@ -601,7 +625,7 @@ export function NearIntentsPanel({
                     </span>
                   </span>
                   <input
-                    value={formatNearBaseUnits(quoteSourceAmount)}
+                    value={formatPreviewSourceAmount(selectedOriginAsset)}
                     readOnly
                     className="w-full bg-[#09090b] border border-blue-500/20 rounded-lg px-3 py-2.5 text-sm text-blue-50 font-mono outline-none cursor-not-allowed"
                     aria-label="Quote source amount"
@@ -616,7 +640,7 @@ export function NearIntentsPanel({
             {isDealFundingMode && (
               <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
                 Top-up destination is locked to the deal settlement asset: Stellar USDC for USDC deals, or Stellar XLM for XLM deals.
-                The source asset is what the user pays from. In this demo, NEAR is wired for 1Click quote evidence; Ethereum/Base source-wallet execution is a next step.
+                The source asset is what the user pays from. Quote previews are wired for supported 1Click routes; live source-wallet execution is a next step.
               </div>
             )}
 
