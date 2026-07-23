@@ -122,7 +122,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states.
 - **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
-- **Cross-Chain Funding Entry** — From a pending milestone, choose a source chain/asset, quote a NEAR Intents route into approved Stellar settlement assets, view payment instructions/status, and keep escrow funding gated on Soroban events.
+- **Cross-Chain Funding Entry** — From a pending milestone, review the wallet's settlement-asset balance, fund directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents route into approved Stellar settlement assets while keeping escrow funding gated on Soroban events.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -224,7 +224,7 @@ npm run dev
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
-6. In **Deals**, open a pending milestone and choose either **Fund with Stellar Wallet** or **Pay from Another Chain**
+6. In **Deals**, open a pending milestone, confirm the settlement-balance row, then choose **Fund with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Pay from Another Chain** when it does not
 7. For the cross-chain path, request a milestone funding quote and confirm that escrow state remains gated on the Stellar `funded` event
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`
@@ -262,7 +262,7 @@ escrow-stellar/
 │           ├── ConnectWallet.tsx   # Multi-wallet connect UI
 │           ├── CreateDeal.tsx      # Deal creation with review + success screens
 │           ├── DealDashboard.tsx   # Full deal lifecycle (split-panel, search, filters)
-│           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker + NEAR panel shell
+│           ├── SoroswapWidget.tsx  # Friendbot + Stellar Broker wallet prep
 │           ├── NearIntentsPanel.tsx # Cross-chain funding quote, instructions, and status UI
 │           └── ReputationBadge.tsx # On-chain reputation with radar animation
 └── docs/

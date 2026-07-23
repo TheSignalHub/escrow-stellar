@@ -511,8 +511,6 @@ export default function App() {
                 <CreateDeal
                   onCreateDeal={escrow.createDeal}
                   onDealCreated={handleDealCreated}
-                  walletAddress={wallet.address}
-                  signTransaction={wallet.signTransaction}
                 />
               )}
 
@@ -524,6 +522,7 @@ export default function App() {
                   onRelease={escrow.releaseMilestone}
                   onDispute={escrow.dispute}
                   walletAddress={wallet.address}
+                  xlmBalance={wallet.xlmBalance}
                   usdcBalance={wallet.usdcBalance}
                   initialDealId={lastCreatedDealId}
                   onNavigateToCreate={() => setActiveTab('create')}

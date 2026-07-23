@@ -10,6 +10,9 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-23 11:30 BST | Create Deal settlement-only flow | Removed the create-time XLM -> configured-settlement-token swap route from Create Deal. Create Deal now only selects the escrow settlement asset; swaps/top-ups/cross-chain payment remain in Wallet Prep or pending milestone funding. | `npm run build` passed in `frontend/`. |
+| 2026-07-23 11:14 BST | Funding-time settlement balance UX | Added a pending-milestone settlement-balance check in Deals for XLM and configured settlement-token deals, disabled direct Stellar funding when the known balance is short, and kept Wallet Prep / Pay from Another Chain as recovery paths. | `npm run build` passed in `frontend/`. |
+| 2026-07-23 10:54 BST | Create Deal settlement asset naming | Renamed the Create Deal financial selector from source-asset language to **Escrow Settlement Asset** language and added an internal code comment clarifying that the existing `sourceAsset` state is a funding/settlement mode selector. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from the wallet-prep tab, kept NEAR Intents inside pending milestone funding, renamed the support tab to **Wallet Prep**, and replaced remaining create-deal deployment copy with deal-language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-23 10:33 BST | Deal-level NEAR funding UX | Reused `NearIntentsPanel` inside pending milestone funding so users start cross-chain payment from a selected deal/milestone with the amount locked, while keeping Wallet Prep as testnet settlement preparation. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-22 18:51 BST | Product flow naming | Renamed the public app flow from **Liquidity / Deploy Contract** to **Payment Routes / Create Deal**, updated pending milestone actions to distinguish payment-route preparation from direct Stellar funding, and forced quote-only NEAR demo destinations to remain preview-only even when live execution is enabled. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
@@ -32,7 +35,7 @@ App.tsx (Root)
 └── App Tabs (when connected)
     ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle + milestone-level NEAR funding entry)
+    ├── Deals                  — DealDashboard (split-panel lifecycle + milestone settlement-balance check + NEAR funding entry)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 
@@ -207,7 +210,7 @@ Two-part support interface (Wallet Prep tab):
 
 Three-step deal creation:
 
-**Step 1 — Configuration**: Provider/Connector address inputs (real-time G-address validation), token selection, total amount, fee percentages, dynamic milestone editor (percentages must sum to 100%), live split preview.
+**Step 1 — Configuration**: Provider/Connector address inputs (real-time G-address validation), escrow settlement-asset selection, total amount, fee percentages, dynamic milestone editor (percentages must sum to 100%), live split preview. Create Deal does not run swaps; payment preparation happens from Wallet Prep or pending milestones.
 
 **Step 2 — Review**: Full deal summary before signing. Transaction progress: Signing → Submitting → Confirming.
 
@@ -226,6 +229,8 @@ Split-panel deal lifecycle management:
 - Segmented filter tabs (`All` / `In Progress` / `Awaiting Funding` / `Completed` / `Disputed` / `Resolved` / `Cancelled`) — pill-track container with color-coded active states and status dots
 - Per-deal cards: title, status tag, total amount, milestone progress, role badge (Client/Provider/Connector)
 - Auto-refresh every 30 seconds via ref-based interval
+
+**Pending milestone funding**: The Deals tab receives the connected wallet's XLM and configured settlement-token balances from `useUnifiedWallet`. For each pending client milestone it shows the required settlement amount, the wallet's matching settlement balance when known, disables direct Stellar funding if the known balance is short, and leaves Wallet Prep / Pay from Another Chain as the recovery paths. Create Deal selects the escrow settlement asset; funding-time UI decides whether the user can fund directly or should prepare/swap/top up first.
 
 **Right panel — Deal Detail**:
 - Empty state: centered Activity icon + "Select a Deal" prompt (uses inner flex wrapper to bypass Card's internal wrapper)

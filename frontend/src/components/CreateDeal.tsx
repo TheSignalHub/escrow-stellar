@@ -11,32 +11,16 @@ import {
   SETTLEMENT_TOKEN_SYMBOL,
   isValidStellarAddress,
   getExplorerTxLink,
-  SOROSWAP_ROUTER_ADDRESS,
-  SOROSWAP_POOL_ADDRESS,
 } from '../lib/stellar';
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
 import { Card, Button } from './ui/Components';
-import { AssetSwapStep } from './AssetSwapStep';
 import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle2, FileText, Check, ShieldCheck, Zap } from 'lucide-react';
 
-// Source asset = what the client pays with.
-// USDC | XLM_DIRECT settle directly in that asset (deal token = asset SAC).
-// XLM_SWAP routes XLM → the configured settlement
-// asset before create_deal (D6 path).
-type SourceAsset = 'USDC' | 'XLM_DIRECT' | 'XLM_SWAP';
-
-interface SwapProof {
-  txHash: string;
-  usdcReceivedUnits: number;
-  sourceAsset: 'XLM';
-  settlementAsset: string;
-  routeProvider: 'Soroswap on-chain AMM';
-  routerContract: string;
-  poolContract: string;
-  path: string;
-  tradeType: string;
-}
+// Create Deal only chooses the token the escrow contract will hold. Funding
+// preparation, swaps, and cross-chain payment happen later from pending
+// milestones in Deals or from Wallet Prep.
+type SettlementAsset = 'USDC' | 'XLM_DIRECT';
 
 interface MilestoneInput {
   name: string;
@@ -92,21 +76,16 @@ interface Props {
     milestoneAmounts: bigint[]
   ) => Promise<{ dealId: number; txHash: string }>;
   onDealCreated?: (dealId: number) => void;
-  /** Required for the multi-asset funding flow (D6). When omitted, swap path is disabled. */
-  walletAddress?: string;
-  signTransaction?: (xdr: string, opts?: unknown) => Promise<string>;
 }
 
-export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTransaction }: Props) {
+export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
   const toast = useToast();
   const [dealTitle, setDealTitle] = useState('');
   const [dealDescription, setDealDescription] = useState('');
   const [provider, setProvider] = useState('');
   const [connector, setConnector] = useState('');
   const [totalAmount, setTotalAmount] = useState(500);
-  // Source asset selector — see SourceAsset type. Default to XLM_DIRECT so a
-  // dry testnet route never blocks the base escrow lifecycle.
-  const [sourceAsset, setSourceAsset] = useState<SourceAsset>('XLM_DIRECT');
+  const [settlementAsset, setSettlementAsset] = useState<SettlementAsset>('XLM_DIRECT');
   const [platformFee, setPlatformFee] = useState(10);
   const [connectorShare, setConnectorShare] = useState(50);
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
@@ -118,20 +97,14 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
   const [txStep, setTxStep] = useState<'signing' | 'submitting' | 'confirming' | null>(null);
   const [result, setResult] = useState<{ dealId: number; txHash: string } | null>(null);
   const [error, setError] = useState('');
-  const [showSwap, setShowSwap] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  // Captured when a swap completes — surfaced in review screen for audit trail
-  const [swapProof, setSwapProof] = useState<SwapProof | null>(null);
 
   // Settlement token = SAC the deal contract will hold:
   //   USDC       → configured settlement token SAC
   //   XLM_DIRECT → XLM SAC  (deal token = XLM, no swap)
-  //   XLM_SWAP   → configured settlement token SAC after Stellar Broker conversion
-  const settlementSymbol: 'XLM' | 'USDC' = sourceAsset === 'XLM_DIRECT' ? 'XLM' : 'USDC';
-  const settlementTokenAddress = sourceAsset === 'XLM_DIRECT' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
+  const settlementSymbol: 'XLM' | 'USDC' = settlementAsset === 'XLM_DIRECT' ? 'XLM' : 'USDC';
+  const settlementTokenAddress = settlementAsset === 'XLM_DIRECT' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
   const tokenSymbol = TOKENS[settlementSymbol].symbol;
-  const needsSwap = sourceAsset === 'XLM_SWAP';
-  const canSwap = Boolean(walletAddress && signTransaction);
 
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
     setDealTitle(scenario.name);
@@ -139,12 +112,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
     setProvider(DEMO_ACCOUNTS.provider);
     setConnector(DEMO_ACCOUNTS.connector);
     setTotalAmount(scenario.totalAmount);
-    setSourceAsset('XLM_DIRECT');
+    setSettlementAsset('XLM_DIRECT');
     setPlatformFee(scenario.platformFee);
     setConnectorShare(scenario.connectorShare);
     setMilestones(scenario.milestones.map((m) => ({ ...m })));
     setError('');
-    setSwapProof(null);
   };
 
   const updateMilestonePercentage = (index: number, value: number) => {
@@ -170,7 +142,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
 
   const totalMilestonePercent = milestones.reduce((a, b) => a + b.percentage, 0);
 
-  // Step 1: Validate → either show swap step or go straight to review
+  // Step 1: Validate deal terms, then show review. Payment preparation happens
+  // after creation from the pending milestone funding step.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -198,52 +171,19 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
 
     if (!settlementTokenAddress) {
       setError(
-        sourceAsset === 'XLM_DIRECT'
+        settlementAsset === 'XLM_DIRECT'
           ? 'XLM SAC address not configured.'
           : 'Settlement token address not configured. Check your .env file (VITE_USDC_TOKEN_ADDRESS).',
       );
       return;
     }
 
-    if (needsSwap) {
-      if (!canSwap) {
-        setError(
-          'Wallet not ready for swap. Reconnect your wallet, then pick a different source asset.',
-        );
-        return;
-      }
-      setShowSwap(true);
-    } else {
-      setShowReview(true);
-    }
-  };
-
-  // Step 1.5 callbacks — wired into <AssetSwapStep />
-  const handleSwapConfirmed = (params: { txHash: string; usdcReceivedUnits: number }) => {
-    setSwapProof({
-      txHash: params.txHash,
-      usdcReceivedUnits: params.usdcReceivedUnits,
-      sourceAsset: 'XLM',
-      settlementAsset: SETTLEMENT_TOKEN_SYMBOL,
-      routeProvider: 'Soroswap on-chain AMM',
-      routerContract: SOROSWAP_ROUTER_ADDRESS,
-      poolContract: SOROSWAP_POOL_ADDRESS,
-      path: `XLM → ${SETTLEMENT_TOKEN_SYMBOL}`,
-      tradeType: `Exact ${SETTLEMENT_TOKEN_SYMBOL} settlement`,
-    });
-    setShowSwap(false);
     setShowReview(true);
-    toast(`Broker swap confirmed — escrow will settle in ${SETTLEMENT_TOKEN_SYMBOL}`, 'success');
   };
 
-  const handleSwapCancel = () => {
-    setShowSwap(false);
-    setError('');
-  };
-
-  // Step 2: Confirm → submit to contract. Token address depends on source:
+  // Step 2: Confirm → submit to contract. Token address depends on settlement:
   //   XLM_DIRECT → XLM SAC
-  //   USDC | XLM_SWAP → configured settlement token SAC (swap path already converted)
+  //   USDC → configured settlement token SAC
   const handleConfirm = async () => {
     const tokenAddress = settlementTokenAddress;
     if (!tokenAddress) return;
@@ -273,18 +213,6 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
         milestoneNames: milestones.map((m) => m.name),
         createdAt: new Date().toISOString(),
         txHash: res.txHash,
-        fundingRoute: swapProof
-          ? {
-              sourceAsset: swapProof.sourceAsset,
-              settlementAsset: swapProof.settlementAsset,
-              routeProvider: swapProof.routeProvider,
-              routerContract: swapProof.routerContract,
-              poolContract: swapProof.poolContract,
-              path: swapProof.path,
-              swapTxHash: swapProof.txHash,
-              usdcReceivedUnits: swapProof.usdcReceivedUnits,
-            }
-          : undefined,
       });
 
       setTxStep('confirming');
@@ -351,32 +279,6 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
             </div>
           </div>
         </Card>
-      </div>
-    );
-  }
-
-  // Step 1.5 — Asset swap (only when sourceAsset = XLM_SWAP)
-  if (showSwap && walletAddress && signTransaction) {
-    return (
-      <div className="w-full max-w-4xl mx-auto animate-fade-in py-4">
-        <div className="mb-6">
-          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">
-            Multi-Asset Funding
-          </h2>
-          <p className="text-zinc-500 font-medium text-sm lg:text-base">
-            Route XLM through Stellar Broker into the configured demo settlement asset before creating the escrow deal.
-          </p>
-        </div>
-        <AssetSwapStep
-          sourceAssetAddress={XLM_SAC_ADDRESS}
-          sourceAssetSymbol="XLM"
-          usdcAddress={USDC_TOKEN_ADDRESS}
-          targetUsdcUnits={totalAmount}
-          walletAddress={walletAddress}
-          signTransaction={signTransaction}
-          onSwapConfirmed={handleSwapConfirmed}
-          onCancel={handleSwapCancel}
-        />
       </div>
     );
   }
@@ -459,50 +361,6 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
                     {totalAmount.toLocaleString()} <span className="text-xl">{tokenSymbol}</span>
                   </span>
                 </div>
-
-                {swapProof && (
-                  <div className="mb-6 p-3 rounded-xl bg-zinc-900/60 border border-emerald-500/20 text-xs">
-                    <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest mb-1.5">
-                      <ShieldCheck size={12} />
-                      Soroswap route proof
-                    </div>
-                    <p className="text-zinc-400 mb-1">
-                      Source XLM was swapped into {SETTLEMENT_TOKEN_SYMBOL} before escrow creation. The escrow contract will receive the configured settlement asset.
-                    </p>
-                    <div className="mt-3 space-y-2 text-[11px]">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500">Provider</span>
-                        <span className="text-white font-bold text-right">{swapProof.routeProvider}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500">Path</span>
-                        <span className="text-white font-bold">{swapProof.path}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500">Received</span>
-                        <span className="text-emerald-400 font-mono">
-                          {swapProof.usdcReceivedUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })} {SETTLEMENT_TOKEN_SYMBOL}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 block mb-1">Router</span>
-                        <span className="text-zinc-300 font-mono break-all">{swapProof.routerContract}</span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 block mb-1">Seeded pool</span>
-                        <span className="text-zinc-300 font-mono break-all">{swapProof.poolContract}</span>
-                      </div>
-                    </div>
-                    <a
-                      href={getExplorerTxLink(swapProof.txHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block mt-3 text-emerald-400 font-mono underline hover:text-emerald-300 break-all"
-                    >
-                      Swap tx: {swapProof.txHash.slice(0, 16)}…
-                    </a>
-                  </div>
-                )}
 
                 <div className="space-y-4 mb-8">
                   <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Split Per Release</h5>
@@ -774,42 +632,31 @@ export function CreateDeal({ onCreateDeal, onDealCreated, walletAddress, signTra
 
                 <div>
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-2">
-                    Source Asset (what you pay with)
+                    Escrow Settlement Asset
                   </label>
                   <select
-                    value={sourceAsset}
+                    value={settlementAsset}
                     onChange={(e) => {
-                      setSourceAsset(e.target.value as SourceAsset);
-                      setSwapProof(null);
+                      setSettlementAsset(e.target.value as SettlementAsset);
                     }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
-                    <option value="XLM_DIRECT">XLM — direct (no swap, settles in XLM)</option>
-                    <option value="USDC">{SETTLEMENT_TOKEN_SYMBOL} — direct settlement asset</option>
-                    <option value="XLM_SWAP" disabled={!canSwap}>
-                      XLM → {SETTLEMENT_TOKEN_SYMBOL} — Stellar Broker {IS_TESTNET ? 'testnet route' : 'route'} (D6 path)
-                    </option>
+                    <option value="XLM_DIRECT">XLM settlement — fund and release in XLM</option>
+                    <option value="USDC">{SETTLEMENT_TOKEN_SYMBOL} settlement — fund directly</option>
                   </select>
-                  {sourceAsset === 'XLM_DIRECT' && (
+                  {settlementAsset === 'XLM_DIRECT' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
                       Deal token = XLM SAC. Fund + release in XLM. No aggregator needed.
                     </p>
                   )}
-                  {sourceAsset === 'USDC' && (
+                  {settlementAsset === 'USDC' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
                       Deal token = configured {IS_TESTNET ? `demo ${SETTLEMENT_TOKEN_SYMBOL}` : SETTLEMENT_TOKEN_SYMBOL} SAC.{IS_TESTNET ? ' This is not production Circle USDC.' : ''}
                     </p>
                   )}
-                  {needsSwap && (
-                    <p className="text-[10px] text-zinc-500 mt-1.5">
-                      A swap step will run before deal creation through the configured Stellar Broker {IS_TESTNET ? 'testnet route' : 'route'}.
-                    </p>
-                  )}
-                  {!canSwap && sourceAsset === 'XLM_SWAP' && (
-                    <p className="text-[10px] text-amber-500 mt-1.5">
-                      Connect a wallet to enable the swap path.
-                    </p>
-                  )}
+                  <p className="text-[10px] text-zinc-500 mt-1.5">
+                    Swaps, top-ups, and cross-chain payments happen later from the pending milestone funding step.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">

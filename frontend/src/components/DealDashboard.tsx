@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
-import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, SETTLEMENT_TOKEN_SYMBOL, USDC_TOKEN_ADDRESS } from '../lib/stellar';
+import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, SETTLEMENT_TOKEN_SYMBOL, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
@@ -96,6 +96,7 @@ interface Props {
   onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   walletAddress: string;
+  xlmBalance: string;
   usdcBalance: string;
   initialDealId?: number | null;
   onNavigateToCreate?: () => void;
@@ -108,7 +109,7 @@ interface Props {
 
 export function DealDashboard({
   getDeal, getDealCount, onDeposit, onRelease, onDispute,
-  walletAddress, usdcBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
+  walletAddress, xlmBalance, usdcBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
 }: Props) {
   const toast = useToast();
 
@@ -255,20 +256,30 @@ export function DealDashboard({
     return { providerCut, connectorCut, protocolCut, total: amount };
   };
 
+  const getWalletSettlementBalance = (deal: DealData) => {
+    if (deal.token === USDC_TOKEN_ADDRESS) {
+      return { label: SETTLEMENT_TOKEN_SYMBOL, available: parseFloat(usdcBalance), known: true };
+    }
+    if (deal.token === XLM_SAC_ADDRESS) {
+      return { label: 'XLM', available: parseFloat(xlmBalance), known: true };
+    }
+    return { label: getTokenSymbol(deal.token), available: null, known: false };
+  };
+
   const handleDeposit = async (milestoneIdx: number) => {
     if (!selectedDeal || selectedDealId === null) return;
     const milestone = selectedDeal.milestones[milestoneIdx];
     if (!milestone) return;
 
     const requiredAmount = Number(milestone.amount) / 1e7;
-    const isConfiguredUsdcDeal = selectedDeal.token === USDC_TOKEN_ADDRESS;
-    const available = isConfiguredUsdcDeal ? parseFloat(usdcBalance) : null;
+    const settlementBalance = getWalletSettlementBalance(selectedDeal);
+    const available = settlementBalance.available;
 
     if (available !== null && available < requiredAmount) {
-      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}, have ${available.toFixed(2)} ${SETTLEMENT_TOKEN_SYMBOL}.`);
+      setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${settlementBalance.label}, have ${available.toFixed(2)} ${settlementBalance.label}.`);
       setErrorContext({
         title: 'Deposit Failed',
-        suggestion: `You are the deal client, but this milestone needs ${SETTLEMENT_TOKEN_SYMBOL}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain on this milestone.`,
+        suggestion: `This milestone needs ${settlementBalance.label}. Use Wallet Prep to prepare the settlement asset, or choose Pay from Another Chain on this milestone.`,
       });
       return;
     }
@@ -811,6 +822,10 @@ export function DealDashboard({
                       const status = getMilestoneStatus(m);
                       const isClient = selectedDeal.client === walletAddress;
                       const isParty = selectedDeal.client === walletAddress || selectedDeal.provider === walletAddress;
+                      const requiredAmount = Number(m.amount) / 1e7;
+                      const settlementBalance = getWalletSettlementBalance(selectedDeal);
+                      const balanceKnown = settlementBalance.known && settlementBalance.available !== null && Number.isFinite(settlementBalance.available);
+                      const hasEnoughSettlement = balanceKnown ? settlementBalance.available! >= requiredAmount : null;
                       
                       return (
                         <div key={i} className={`relative flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-center bg-[#02040a] border ${status === 'Active' || status === 'Funded' ? 'border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-zinc-800/50'} p-4 lg:p-5 rounded-2xl z-10 animate-fade-in`} style={{ animationDelay: `${i*100}ms` }}>
@@ -834,6 +849,23 @@ export function DealDashboard({
                             <div className="pt-3 flex flex-wrap gap-2 justify-end w-full">
                               {status === 'Pending' && isClient && (
                                 <>
+                                  <div className={`w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 rounded-lg border text-[10px] ${
+                                    hasEnoughSettlement === true
+                                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                                      : hasEnoughSettlement === false
+                                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                                        : 'bg-zinc-800/50 border-zinc-700/30 text-zinc-400'
+                                  }`}>
+                                    <span className="font-bold uppercase tracking-wider">
+                                      Settlement balance
+                                    </span>
+                                    <span className="font-mono">
+                                      Need {requiredAmount.toFixed(2)} {settlementBalance.label}
+                                      {balanceKnown
+                                        ? ` · Wallet ${settlementBalance.available!.toFixed(2)} ${settlementBalance.label}`
+                                        : ' · Balance check unavailable for this asset'}
+                                    </span>
+                                  </div>
                                   <Button
                                     variant={crossChainMilestoneIdx === i ? 'primary' : 'secondary'}
                                     onClick={() => setCrossChainMilestoneIdx(crossChainMilestoneIdx === i ? null : i)}
@@ -841,12 +873,12 @@ export function DealDashboard({
                                   >
                                     Pay from Another Chain
                                   </Button>
-                                  <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}`} className="text-xs py-1.5 px-4">
-                                    {actionLoading === `deposit-${i}` ? 'Signing...' : 'Fund with Stellar Wallet'}
+                                  <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}` || hasEnoughSettlement === false} className="text-xs py-1.5 px-4">
+                                    {actionLoading === `deposit-${i}` ? 'Signing...' : `Fund with ${settlementBalance.label}`}
                                   </Button>
                                   {onNavigateToFund && (
                                     <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">
-                                      Prepare Wallet
+                                      {hasEnoughSettlement === false ? `Get ${settlementBalance.label}` : 'Prepare Wallet'}
                                     </Button>
                                   )}
                                 </>
