@@ -164,8 +164,11 @@ evidence rather than escrow settlement. For deal-tied top-ups, the amount is
 shown in human Stellar units and the destination route is constrained to the
 deal's approved Stellar settlement asset: Stellar USDC-compatible settlement
 token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
-user-selectable from supported non-Stellar 1Click routes; live execution still
-requires the native source-wallet signing and refund route to be wired.
+user-selectable from supported non-Stellar 1Click routes; recommended discovered
+routes are ranked first, source amounts are estimated from live token prices
+when available, and successful dry quotes show a quote-evidence checklist. Live
+execution still requires the native source-wallet signing and refund route to
+be wired.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.
