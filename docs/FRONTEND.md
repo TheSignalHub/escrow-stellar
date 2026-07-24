@@ -11,6 +11,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
 | 2026-07-24 15:08 BST | Dispute UI contract alignment | Removed the disputed-milestone client release override from the Deals UI because `release_milestone` only accepts funded milestones. Disputed milestones now point to operator/admin `resolve_dispute` for provider win, client refund, or partial split. | `npm run build` passed in `frontend/`. |
+| 2026-07-24 15:38 BST | Admin dispute operations surface | Added the protected `/admin` console in the indexer service for open dispute evidence, resolution/refund command generation, and manual indexer refresh. The public Deals UI remains user-side only and does not expose admin split controls. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 14:22 BST | EVM source-wallet quote gate | Added a lightweight EIP-1193 source-wallet connector inside the Add Funds panel. Ethereum/Base-style routes can now collect the connected EVM address as the live quote refund route, while unconnected routes remain dry preview-only. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 01:26 BST | Production NEAR swap evidence path | Added an indexer-side live swap smoke command for production-directed NEAR Intents QA. It creates dry quotes by default, requires explicit `--live` for executable deposit instructions, enforces a max USD cap, validates source refund address shape, and supports status polling after manual source-chain payment. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 00:54 BST | Add Funds route-quality UX | Ranked discovered 1Click source assets with recommended routes first, auto-estimated source amounts from live token prices when available, added friendly no-route copy, remembered successful preview routes, and surfaced a quote-evidence checklist after signed dry quotes. | `npm run build` passed in `frontend/`. |
@@ -263,7 +264,7 @@ Split-panel deal lifecycle management:
 **Confirmation modals**:
 - Release: shows exact 3-way split before execution
 - Dispute: freeze warning
-- Resolve: interactive 0-100% slider with real-time client/provider preview
+- Admin resolution: handled in protected `/admin` through indexed dispute evidence and generated `resolve_dispute` commands, not in the public Deals UI
 - All modals: ESC dismiss, backdrop click dismiss, scroll lock
 
 ### ReputationBadge

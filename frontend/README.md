@@ -121,7 +121,8 @@ Disputes follow a two-phase model:
 The admin address is set when the contract is initialized. Only that address
 can call `resolve_dispute`. The client UI surfaces an "Under review" banner
 for disputed milestones. It does **not** expose release or admin split controls
-for disputed funds; those remain an operator/contract path for this demo.
+for disputed funds; those remain in the protected `/admin` dispute-operations
+console and admin-signed contract path.
 
 Final-tranche unhappy-path QA coverage and remaining evidence tasks are tracked
 in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-2026-07-01.md).

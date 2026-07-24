@@ -33,6 +33,7 @@ Scope: turn the current Tranche 2 Stellar escrow demo into a final-tranche, revi
 | 2026-07-14 11:11 HKT | NEAR 1Click quote correctness | Updated Gap 5 implementation to follow current 1Click docs: request-selected origin/destination assets, server destination allowlist/default, explicit refund target, quote signature verification, UI destination selector, and smoke/docs alignment. | `npm run build` passed in `indexer/`; `npm run build` passed in `frontend/`; live non-strict `smoke:backend` passed reachable checks and reported NEAR envs/shadow bindings blocked. Live quote evidence still requires JWT, approved asset IDs, admin auth, and no-testnet tiny-amount QA. |
 | 2026-07-20 23:06 BST | NEAR production UX cleanup | Removed raw refund-address entry from the Liquidity panel, replaced raw source/destination asset fields with source/settlement selectors, and documented the default refund account as dry-QA fallback only. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-13 15:04 HKT | Backend readiness gate | Added `indexer` smoke script so backend readiness can be checked before frontend QA. | `npm run build` passed in `indexer/`; live `npm run smoke:backend` passed in non-strict mode and reported NEAR env/shadow binding blockers. |
+| 2026-07-24 15:38 BST | Gap 7 dispute operations console | Replaced `/admin` placeholder with a protected open-dispute console, indexed dispute/resolution/refund evidence, generated `resolve_dispute` presets, and emergency `refund` command guidance. | `npm run build` passed in `indexer/`. |
 
 ## Product Direction
 
@@ -54,7 +55,7 @@ The final tranche should position this repository as a reusable Stellar escrow r
 | 4 | Broker provider interface | Done | Keep Soroswap testnet adapter, add production-facing broker interface semantics. | `stellarBroker.ts`, broker docs, route QA |
 | 5 | Near Intents integration adapter | Server + UI quote-correctness done; live evidence pending | Add a feature-flagged quote/status/reconcile adapter while keeping Soroban `funded` as escrow source of truth. | `nearIntentsProvider.ts`, protected indexer routes, `NearIntentsPanel.tsx`, `nearIntents.ts`, `docs/NEAR_INTENTS_BOUNDARY.md`, binding types |
 | 6 | UI unhappy-path QA | Done for matrix; evidence pending | Produce evidence plan for dispute, role mismatch, insufficient balance, cancellation, admin resolution. | `docs/scf/unhappy-path-qa-2026-07-01.md`, demo guide corrections |
-| 7 | Admin/security operations | Done for runbook; code hardening pending | Define admin key, dispute resolver, pause/upgrade posture, incident runbook. | `docs/OPERATIONS_SECURITY.md` |
+| 7 | Admin/security operations | Dispute console done; multisig/rotation hardening pending | Define admin key, dispute resolver, pause/upgrade posture, incident runbook. | `docs/OPERATIONS_SECURITY.md`, `indexer/src/adminDashboard.ts` |
 | 8 | Final evidence package | Done for command evidence; screenshots pending | Compile reviewer proof: tests, build, smoke, screenshots, explorer links. | `docs/scf/final-tranche-evidence-2026-07-01.md` |
 | 9 | Payment rail boundary | Done for docs | Keep Stripe in The Signal production marketplace and keep this repo focused on the Stellar escrow rail plus NEAR staged adapter. | `docs/PAYMENT_RAIL_BOUNDARY.md`, README, architecture docs |
 
@@ -422,7 +423,9 @@ Steps:
    done in `docs/OPERATIONS_SECURITY.md`.
 2. Define dispute operator runbook. Status: done.
 3. Define emergency refund criteria. Status: done.
-4. Decide whether code changes are needed for admin rotation/pause. Status:
+4. Add protected dispute queue / command console. Status: done in `/admin`;
+   server still does not hold or use admin signing keys.
+5. Decide whether code changes are needed for admin rotation/pause. Status:
    future contract hardening; not changed in this tranche pass.
 
 Acceptance criteria: final submission has a credible operator story, even if mainnet controls are future work.

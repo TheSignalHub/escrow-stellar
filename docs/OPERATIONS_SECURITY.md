@@ -9,6 +9,7 @@ path toward production-grade administration.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 15:38 BST | Protected dispute operations console | Replaced the `/admin` placeholder with an authenticated dispute queue that reads indexed dispute/resolution/refund evidence and provides admin-ready `resolve_dispute` / emergency `refund` CLI commands without storing signing keys. | `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:31 HKT | Gap 7 admin/security operations | Documented contract admin authority, rotation limitation, dispute operator flow, emergency refund criteria, secrets handling, monitoring, and production hardening gaps. | Static review of `contracts/deal_escrow/src/lib.rs`, admin dashboard routes, deployment docs, and package READMEs. No runtime behavior changed. |
 | 2026-07-21 14:29 BST | Mainnet-candidate dispute operations | Updated dispute operations to reflect explicit provider-win, client-refund, and partial-settlement states in the contract. | `cargo test` passed with 13 tests; docs cross-check performed. |
 
@@ -36,8 +37,27 @@ rotation, pause, or upgrade controls are required.
 
 ## Dispute Operator Flow
 
-Browser users can file disputes, but the current React app does not expose admin
-split controls. Operator/admin resolution is contract-level:
+Browser users can file disputes, but the public React app does not expose admin
+split controls. Operator/admin resolution is contract-level and is supported by
+the protected `/admin` dispute-operations console:
+
+1. Sign in to `/admin` with `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+2. Confirm the open dispute entry, dispute event tx, caller, milestone amount,
+   client, provider, and any marketplace binding metadata.
+3. Choose the refund split shown in the console:
+   - `0`: all disputed funds to provider.
+   - `5000`: 50/50 split.
+   - `10000`: all disputed funds back to client.
+4. Copy the generated `stellar contract invoke ... resolve_dispute` command and
+   run it from the admin-controlled Stellar identity. The server does not hold
+   or use admin signing keys.
+5. Run the indexer from `/admin` and marketplace binding reconciliation when
+   bindings are in scope.
+6. Verify the `resolved` event in `/admin`, `/market_dashboard`, and Stellar
+   Expert.
+7. Record the outcome in the marketplace/support system outside this repo.
+
+Manual fallback if the console is unavailable:
 
 1. Confirm the dispute event in `/market_dashboard`, Stellar Expert, or indexed
    `escrow-transfers`.

@@ -247,7 +247,7 @@ After deployment:
 ```text
 /                         Frontend app
 /market_dashboard         Public read-only reviewer dashboard
-/admin                    Basic-auth internal admin placeholder
+/admin                    Basic-auth dispute operations console
 /health                   Service health JSON
 /api/indexer/run-once     Protected manual indexer run
 /api/marketplace-bindings Protected shadow binding APIs

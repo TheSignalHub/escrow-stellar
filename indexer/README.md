@@ -346,6 +346,8 @@ Routes:
 
 - `GET /health`
 - `POST /api/indexer/run-once` — protected by `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+- `GET /admin` — protected dispute-operations console with open dispute queue, resolution/refund evidence, generated admin CLI commands, and manual indexer control
+- `GET /api/admin/disputes` — protected JSON source for the dispute operations console
 - `GET /api/near-intents/readiness` — public non-secret NEAR Intents feature/config readiness
 - `GET /api/near-intents/tokens` — protected SDK-backed token list for confirming asset IDs
 - `POST /api/marketplace-bindings` — protected shadow binding creation
@@ -385,7 +387,7 @@ The runtime server exposes:
 - `/` — frontend app
 - `/market_dashboard` — read-only Stellar event dashboard for reviewer/demo visibility
 - `/market_dashboard` also shows read-only shadow marketplace bindings when seeded
-- `/admin` — protected internal operations path for future open-deal/dispute/action queues
+- `/admin` — protected dispute operations console for open-deal dispute review, admin-ready `resolve_dispute` / emergency `refund` command generation, indexed evidence, and manual indexer control
 - `/health` — indexer health
 - `/api/indexer/run-once` — protected manual indexer tick
 - `/api/marketplace-bindings*` — protected shadow marketplace binding and reconciliation APIs
@@ -406,7 +408,11 @@ Use `SOROSWAP_API_KEY` for the public aggregator quote check. Do not expose this
 as a `VITE_` variable; Vite variables are bundled into browser JavaScript.
 
 Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the deployed environment before
-using `/admin`. The browser will show a Basic Auth sign-in prompt. The public
+using `/admin`. The browser will show a Basic Auth sign-in prompt. The admin
+console reads indexed dispute, resolved, and refund events; it does not store
+admin signing keys or submit `resolve_dispute` transactions server-side. The
+operator copies the generated Stellar CLI command and signs from the admin
+identity, then runs the indexer from `/admin` to refresh evidence. The public
 `/market_dashboard` route is intentionally read-only and has no buttons that
 can mutate indexer state. Inngest scheduled runs do not depend on the admin
 session.

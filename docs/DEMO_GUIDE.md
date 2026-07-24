@@ -198,20 +198,24 @@ Either the client or provider can dispute a funded milestone:
 
 ### 4d. Resolve a Dispute (Operator / Admin)
 
-The browser demo does not expose an admin refund-slider UI. In the current
-frontend, disputed milestones show an **Under review** banner and explain that
-operator/admin resolution is required before funds can move.
+The public frontend does not expose admin split controls. Disputed milestones
+show an **Under review** banner and explain that operator/admin resolution is
+required before funds can move.
 
-For operator/admin resolution, call the contract's `resolve_dispute` function
-from an admin-controlled tool or future operator console:
+For operator/admin resolution, use the protected `/admin` console:
 
-1. Confirm the connected admin/operator key is the contract admin
-2. Choose the refund split:
+1. Sign in with the configured admin credentials
+2. Review the open dispute row: deal, milestone, caller, amount, event tx, and
+   any shadow marketplace binding
+3. Choose the refund split:
    - 0%: All funds go to provider
    - 50%: Equal split between client and provider
    - 100%: Full refund to client
-3. Submit `resolve_dispute(deal_id, milestone_idx, refund_bps)`
-4. Verify the resulting `resolved` Soroban event in the indexer/dashboard
+4. Copy the generated `resolve_dispute` command and run it from the contract
+   admin Stellar identity
+5. Click **Run Indexer Once** in `/admin`
+6. Verify the resulting `resolved` Soroban event in `/admin`,
+   `/market_dashboard`, and Stellar Expert
 
 **What happens on-chain**: The `resolve_dispute` function (admin-only) transfers the refund portion to the client and the remainder to the provider. A provider win becomes `Released`, a full client refund becomes `Refunded`, and a partial settlement becomes `Resolved`.
 
@@ -271,7 +275,7 @@ After completing the full flow, verify:
 4. Release milestone 1 (normal flow)
 5. Dispute milestone 2
 6. Show the Disputed state and **Under review** banner
-7. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
+7. Open `/admin`, show the open dispute queue, copy/run the 50/50 `resolve_dispute` command from the admin identity, run the indexer, and capture the indexed `resolved` evidence
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 
@@ -318,7 +322,7 @@ Only active when wallet is connected.
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
 | Connector cannot dispute | This is expected. Only the client or provider can dispute funded milestones. |
-| Admin resolution button missing | This is expected in the browser demo. Use the operator/admin contract path for `resolve_dispute` evidence. |
+| Admin resolution button missing in public app | This is expected. Use protected `/admin` for dispute evidence and admin-ready `resolve_dispute` commands. |
 | Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Create Deal. |
 | Soroswap quote fails | The seeded testnet route may lack liquidity for that size, or the optional public aggregator may not discover the route. Use XLM directly as the payment token or seed the testnet pool and retry. |
 | Balance shows 0 after Friendbot | Wait a few seconds for the balance refresh (every 15s), or switch tabs to trigger a refresh. |

@@ -2,6 +2,7 @@ import type { Express, NextFunction, Request, Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import type { IndexerConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
+import type { DecodedEscrowEvent, MarketplaceBinding } from './types.js';
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '')
@@ -55,9 +56,174 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
   next();
 }
 
-function getExplorerTxUrl(txHash?: string): string | undefined {
+function getExplorerTxUrl(txHash?: string, network: IndexerConfig['network'] = 'testnet'): string | undefined {
   if (!txHash) return undefined;
-  return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
+  return `https://stellar.expert/explorer/${network}/tx/${txHash}`;
+}
+
+function eventTime(event: DecodedEscrowEvent): number {
+  return new Date(event.updatedAt || event.createdAt || 0).getTime();
+}
+
+function eventKey(event: Pick<DecodedEscrowEvent, 'sorobanDealId' | 'sorobanMilestoneIdx'>): string {
+  return `${event.sorobanDealId ?? 'unknown'}:${event.sorobanMilestoneIdx ?? 'unknown'}`;
+}
+
+function adminCommand(
+  config: IndexerConfig,
+  action: 'resolve_dispute' | 'refund',
+  dealId: number,
+  milestoneIdx?: number,
+  refundBps?: number
+): string {
+  const base = [
+    'stellar contract invoke',
+    `--id ${config.contractAddress}`,
+    '--source-account <ADMIN_IDENTITY>',
+    `--network ${config.network}`,
+    '--',
+    action,
+    `--deal_id ${dealId}`,
+  ];
+
+  if (action === 'resolve_dispute') {
+    base.push(`--milestone_idx ${milestoneIdx ?? 0}`, `--refund_bps ${refundBps ?? 5000}`);
+  }
+
+  return base.join(' ');
+}
+
+function latestBindingByDeal(bindings: MarketplaceBinding[]): Map<number, MarketplaceBinding> {
+  const byDeal = new Map<number, MarketplaceBinding>();
+  for (const binding of bindings) {
+    const current = byDeal.get(binding.sorobanDealId);
+    if (!current || new Date(binding.updatedAt).getTime() > new Date(current.updatedAt).getTime()) {
+      byDeal.set(binding.sorobanDealId, binding);
+    }
+  }
+  return byDeal;
+}
+
+function buildDisputeOperations(
+  config: IndexerConfig,
+  events: DecodedEscrowEvent[],
+  bindings: MarketplaceBinding[]
+) {
+  const sortedEvents = [...events].sort((a, b) => {
+    if ((a.sorobanLedgerSeq || 0) !== (b.sorobanLedgerSeq || 0)) {
+      return (a.sorobanLedgerSeq || 0) - (b.sorobanLedgerSeq || 0);
+    }
+    return eventTime(a) - eventTime(b);
+  });
+  const bindingByDeal = latestBindingByDeal(bindings);
+  const latestByMilestone = new Map<string, DecodedEscrowEvent>();
+  const fundedAmountByMilestone = new Map<string, number>();
+  const latestRefundByDeal = new Map<number, DecodedEscrowEvent>();
+
+  for (const event of sortedEvents) {
+    if (event.sorobanDealId === undefined || event.sorobanDealId === null) continue;
+
+    if (event.sorobanEventTopic === 'refund') {
+      latestRefundByDeal.set(event.sorobanDealId, event);
+      continue;
+    }
+
+    if (event.sorobanMilestoneIdx === undefined || event.sorobanMilestoneIdx === null) continue;
+
+    const key = eventKey(event);
+    if (event.sorobanEventTopic === 'funded') {
+      fundedAmountByMilestone.set(key, event.amount || 0);
+    }
+    latestByMilestone.set(key, event);
+  }
+
+  const openDisputes = [...latestByMilestone.values()]
+    .filter((event) => {
+      if (event.sorobanEventTopic !== 'dispute') return false;
+      if (event.sorobanDealId === undefined || event.sorobanDealId === null) return false;
+      const refund = latestRefundByDeal.get(event.sorobanDealId);
+      return !refund || (refund.sorobanLedgerSeq || 0) < (event.sorobanLedgerSeq || 0);
+    })
+    .sort((a, b) => (b.sorobanLedgerSeq || 0) - (a.sorobanLedgerSeq || 0))
+    .map((event) => {
+      const key = eventKey(event);
+      const binding = event.sorobanDealId === undefined ? undefined : bindingByDeal.get(event.sorobanDealId);
+      return {
+        dealId: event.sorobanDealId,
+        milestoneIdx: event.sorobanMilestoneIdx,
+        amount: fundedAmountByMilestone.get(key) ?? event.amount ?? 0,
+        caller: event.sorobanEventData?.caller,
+        ledger: event.sorobanLedgerSeq,
+        eventId: event.sorobanEventId,
+        txHash: event.onchainTxHash,
+        explorerTxUrl: getExplorerTxUrl(event.onchainTxHash, config.network),
+        binding: binding
+          ? {
+              bindingId: binding.bindingId,
+              externalDealId: binding.externalDealId,
+              externalMarketplaceId: binding.externalMarketplaceId,
+              status: binding.status,
+              clientWallet: binding.participants.clientWallet,
+              providerWallet: binding.participants.providerWallet,
+              connectorWallet: binding.participants.connectorWallet,
+              settlementSymbol: binding.settlementAsset.symbol,
+              milestone:
+                binding.milestoneMap.find(
+                  (milestone) => milestone.sorobanMilestoneIdx === event.sorobanMilestoneIdx
+                ) ?? null,
+            }
+          : null,
+        commands: {
+          providerWin: adminCommand(
+            config,
+            'resolve_dispute',
+            event.sorobanDealId ?? 0,
+            event.sorobanMilestoneIdx,
+            0
+          ),
+          split50: adminCommand(
+            config,
+            'resolve_dispute',
+            event.sorobanDealId ?? 0,
+            event.sorobanMilestoneIdx,
+            5000
+          ),
+          clientRefund: adminCommand(
+            config,
+            'resolve_dispute',
+            event.sorobanDealId ?? 0,
+            event.sorobanMilestoneIdx,
+            10000
+          ),
+          emergencyRefund: adminCommand(config, 'refund', event.sorobanDealId ?? 0),
+        },
+      };
+    });
+
+  const evidence = sortedEvents
+    .filter((event) => ['dispute', 'resolved', 'refund'].includes(event.sorobanEventTopic))
+    .sort((a, b) => (b.sorobanLedgerSeq || 0) - (a.sorobanLedgerSeq || 0))
+    .slice(0, 25)
+    .map((event) => ({
+      event: event.sorobanEventTopic,
+      dealId: event.sorobanDealId,
+      milestoneIdx: event.sorobanMilestoneIdx,
+      amount: event.amount || 0,
+      data: event.sorobanEventData,
+      ledger: event.sorobanLedgerSeq,
+      eventId: event.sorobanEventId,
+      txHash: event.onchainTxHash,
+      explorerTxUrl: getExplorerTxUrl(event.onchainTxHash, config.network),
+    }));
+
+  return {
+    network: config.network,
+    contractAddress: config.contractAddress,
+    openDisputeCount: openDisputes.length,
+    openDisputes,
+    evidence,
+    generatedAt: new Date(),
+  };
 }
 
 function renderMarketDashboardPage(config: IndexerConfig): string {
@@ -256,7 +422,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
 </html>`;
 }
 
-function renderInternalAdminPlaceholder(): string {
+function renderInternalAdminPage(config: IndexerConfig): string {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -264,27 +430,132 @@ function renderInternalAdminPlaceholder(): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>The Signal Internal Admin</title>
     <style>
-      :root { color-scheme: dark; --bg: #050807; --panel: #0c1110; --line: #22312d; --text: #eef8f3; --muted: #8c9994; --green: #4ac08b; }
+      :root {
+        color-scheme: dark;
+        --bg: #050807;
+        --panel: #0c1110;
+        --panel-2: #111816;
+        --line: #22312d;
+        --text: #eef8f3;
+        --muted: #8c9994;
+        --green: #4ac08b;
+        --blue: #6ba4ff;
+        --red: #f06c6c;
+        --yellow: #f3c76b;
+      }
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-      main { width: min(720px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 28px; }
-      h1 { margin: 0; font-size: 26px; letter-spacing: 0; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+          radial-gradient(circle at 25% 10%, rgba(74,192,139,.12), transparent 32%),
+          var(--bg);
+        background-size: 44px 44px, 44px 44px, auto, auto;
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { max-width: 1180px; margin: 0 auto; padding: 36px 24px 52px; }
+      header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+      h1 { margin: 0; font-size: 30px; letter-spacing: 0; }
+      h2, h3 { margin: 0; letter-spacing: 0; }
       p { color: var(--muted); line-height: 1.6; }
       a { color: var(--green); font-weight: 800; }
-      button { appearance: none; border: 1px solid var(--green); background: var(--green); color: #06110c; min-height: 42px; padding: 0 14px; border-radius: 8px; font-weight: 800; cursor: pointer; }
+      button, a.button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        min-height: 42px;
+        padding: 0 14px;
+        border-radius: 8px;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      button.primary { border-color: var(--green); background: var(--green); color: #06110c; }
+      button.warn { border-color: rgba(243,199,107,.4); color: var(--yellow); }
       pre { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
       code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--text); }
+      .sub { color: var(--muted); margin-top: 8px; max-width: 760px; }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+      .panel {
+        background: rgba(12, 17, 16, .88);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 12px 40px rgba(0,0,0,.22);
+      }
+      .stat { padding: 18px; min-height: 104px; }
+      .section { padding: 18px; margin-top: 16px; }
+      .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 850; }
+      .value { font-size: 25px; font-weight: 850; margin-top: 10px; overflow-wrap: anywhere; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; overflow-wrap: anywhere; }
+      .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; background: #17211f; color: var(--green); font-weight: 850; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+      .pill.dispute, .pill.refund { color: var(--red); }
+      .pill.resolved { color: var(--green); }
+      .pill.review { color: var(--yellow); }
+      .dispute-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); gap: 16px; padding: 16px; border-top: 1px solid var(--line); }
+      .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 14px; }
+      .command { border: 1px solid var(--line); background: #060908; border-radius: 8px; padding: 12px; min-height: 90px; }
+      .preset-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+      .empty { color: var(--muted); padding: 22px 0 4px; border-top: 1px solid var(--line); }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td { padding: 12px 10px; text-align: left; border-top: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+      .footer { margin-top: 18px; color: var(--muted); font-size: 13px; }
+      @media (max-width: 900px) {
+        header { display: block; }
+        .actions { justify-content: flex-start; margin-top: 16px; }
+        .grid { grid-template-columns: 1fr; }
+        .dispute-card { grid-template-columns: 1fr; }
+        .meta, .preset-row { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1>Internal Admin</h1>
-      <p>This path is reserved for future operational workflows such as open deal monitoring, dispute queues, action-required reviews, and refund resolution.</p>
-      <p>The current Tranche 2 read-only event dashboard is available at <a href="/market_dashboard"><code>/market_dashboard</code></a>.</p>
-      <p><button id="run-indexer">Run Indexer Once</button></p>
-      <pre id="result"></pre>
+      <header>
+        <div>
+          <h1>Dispute Operations</h1>
+          <div class="sub">Protected operator view for open DealEscrow disputes, resolution evidence, and admin-ready contract commands. Funds only move after the admin wallet signs on Stellar.</div>
+        </div>
+        <div class="actions">
+          <a class="button" href="/market_dashboard">Market Dashboard</a>
+          <button id="refresh">Refresh</button>
+          <button id="run-indexer" class="primary">Run Indexer Once</button>
+        </div>
+      </header>
+
+      <section class="grid" id="stats"></section>
+
+      <section class="panel section">
+        <h2>Open Disputes</h2>
+        <div id="open-disputes"></div>
+      </section>
+
+      <section class="panel section">
+        <h2>Resolution Evidence</h2>
+        <div id="evidence"></div>
+      </section>
+
+      <section class="panel section">
+        <h2>Indexer Action</h2>
+        <pre id="result">Run the indexer after a dispute or resolution transaction to refresh this console.</pre>
+      </section>
+
+      <div class="footer" id="lastUpdated"></div>
     </main>
     <script>
+      const config = ${JSON.stringify({
+        network: config.network,
+        contractAddress: config.contractAddress,
+      })};
       document.getElementById('run-indexer').addEventListener('click', async () => {
         const result = document.getElementById('result');
         result.textContent = 'Running...';
@@ -295,6 +566,87 @@ function renderInternalAdminPlaceholder(): string {
         } catch (error) {
           result.textContent = error.message;
         }
+      });
+
+      const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 7 });
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      const short = (value) => value ? String(value).slice(0, 10) + '...' : '-';
+
+      function stat(label, value, cls = '') {
+        return '<div class="panel stat"><div class="label">' + label + '</div><div class="value ' + cls + '">' + escapeHtml(value) + '</div></div>';
+      }
+
+      function commandBlock(dispute) {
+        const id = 'cmd-' + dispute.dealId + '-' + dispute.milestoneIdx;
+        return '<div><div class="label">Admin resolution command</div>' +
+          '<div class="preset-row">' +
+          '<button data-label="Provider wins" data-command="' + escapeHtml(dispute.commands.providerWin) + '" data-target="' + id + '">Provider wins</button>' +
+          '<button data-label="50 / 50 split" data-command="' + escapeHtml(dispute.commands.split50) + '" data-target="' + id + '">50 / 50 split</button>' +
+          '<button data-label="Client refund" data-command="' + escapeHtml(dispute.commands.clientRefund) + '" data-target="' + id + '">Client refund</button>' +
+          '</div>' +
+          '<pre class="command mono" id="' + id + '">' + escapeHtml(dispute.commands.split50) + '</pre>' +
+          '<button class="warn" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '">Emergency full refund command</button>' +
+          '</div>';
+      }
+
+      function renderOpenDisputes(disputes) {
+        if (!disputes.length) return '<div class="empty">No open indexed disputes. File a dispute on a funded milestone, then run the indexer.</div>';
+        return disputes.map((dispute) => {
+          const binding = dispute.binding;
+          return '<article class="dispute-card">' +
+            '<div>' +
+              '<span class="pill dispute">Open dispute</span>' +
+              '<h3 style="margin-top:12px">Deal #' + escapeHtml(dispute.dealId) + ' / Milestone ' + escapeHtml(dispute.milestoneIdx) + '</h3>' +
+              '<div class="meta">' +
+                '<div><div class="label">Indexed amount</div><div>' + fmt.format(dispute.amount || 0) + '</div></div>' +
+                '<div><div class="label">Ledger</div><div class="mono">' + escapeHtml(dispute.ledger) + '</div></div>' +
+                '<div><div class="label">Disputed by</div><div class="mono">' + escapeHtml(dispute.caller || '-') + '</div></div>' +
+                '<div><div class="label">Tx</div><div class="mono">' + (dispute.explorerTxUrl ? '<a href="' + escapeHtml(dispute.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(dispute.txHash)) + '</a>' : '-') + '</div></div>' +
+                '<div><div class="label">Marketplace binding</div><div class="mono">' + escapeHtml(binding ? binding.bindingId : 'No shadow binding') + '</div></div>' +
+                '<div><div class="label">External deal</div><div class="mono">' + escapeHtml(binding ? binding.externalDealId : '-') + '</div></div>' +
+                '<div><div class="label">Client</div><div class="mono">' + escapeHtml(binding ? binding.clientWallet : '-') + '</div></div>' +
+                '<div><div class="label">Provider</div><div class="mono">' + escapeHtml(binding ? binding.providerWallet : '-') + '</div></div>' +
+              '</div>' +
+            '</div>' +
+            commandBlock(dispute) +
+          '</article>';
+        }).join('');
+      }
+
+      function renderEvidence(events) {
+        if (!events.length) return '<div class="empty">No dispute, resolved, or refund events indexed yet.</div>';
+        return '<table><thead><tr><th>Event</th><th>Deal</th><th>Milestone</th><th>Amount</th><th>Ledger</th><th>Tx</th></tr></thead><tbody>' +
+          events.map((event) => '<tr><td><span class="pill ' + escapeHtml(event.event) + '">' + escapeHtml(event.event) + '</span></td><td class="mono">#' + escapeHtml(event.dealId ?? '-') + '</td><td>' + escapeHtml(event.milestoneIdx ?? '-') + '</td><td>' + fmt.format(event.amount || 0) + '</td><td class="mono">' + escapeHtml(event.ledger || '-') + '</td><td class="mono">' + (event.explorerTxUrl ? '<a href="' + escapeHtml(event.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(event.txHash)) + '</a>' : '-') + '</td></tr>').join('') +
+          '</tbody></table>';
+      }
+
+      async function loadAdmin() {
+        const response = await fetch('/api/admin/disputes', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load dispute operations');
+        document.getElementById('stats').innerHTML =
+          stat('Open Disputes', data.openDisputeCount || 0, data.openDisputeCount ? 'error' : '') +
+          stat('Network', data.network || config.network) +
+          stat('Contract', data.contractAddress || config.contractAddress);
+        document.getElementById('open-disputes').innerHTML = renderOpenDisputes(data.openDisputes || []);
+        document.getElementById('evidence').innerHTML = renderEvidence(data.evidence || []);
+        document.getElementById('lastUpdated').textContent = 'Last refreshed ' + new Date().toLocaleString();
+      }
+
+      document.getElementById('refresh').addEventListener('click', loadAdmin);
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-command][data-target]');
+        if (!button) return;
+        const target = document.getElementById(button.dataset.target);
+        if (target) target.textContent = button.dataset.command;
+        try {
+          await navigator.clipboard.writeText(button.dataset.command);
+          button.textContent = 'Copied';
+          setTimeout(() => { button.textContent = button.dataset.label || 'Copy command'; }, 1200);
+        } catch (_) {}
+      });
+      loadAdmin().catch((error) => {
+        document.getElementById('stats').innerHTML = stat('Admin Error', error.message, 'error');
       });
     </script>
   </body>
@@ -319,7 +671,26 @@ async function withIndexerDb<T>(
 
 export function registerAdminDashboard(app: Express, config: IndexerConfig): void {
   app.get('/admin', requireAdminAuth, (_req: Request, res: Response) => {
-    res.type('html').send(renderInternalAdminPlaceholder());
+    res.type('html').send(renderInternalAdminPage(config));
+  });
+
+  app.get('/api/admin/disputes', requireAdminAuth, async (_req: Request, res: Response) => {
+    await withIndexerDb(config, res, async (indexerDb) => {
+      const [events, bindings] = await Promise.all([
+        indexerDb.transfers
+          .find({ sorobanContractAddress: config.contractAddress })
+          .sort({ sorobanLedgerSeq: -1, updatedAt: -1 })
+          .limit(500)
+          .toArray(),
+        indexerDb.marketplaceBindings
+          .find({ sorobanContractAddress: config.contractAddress, network: config.network })
+          .sort({ updatedAt: -1 })
+          .limit(100)
+          .toArray(),
+      ]);
+
+      return buildDisputeOperations(config, events, bindings);
+    });
   });
 
   app.get('/market_dashboard', (_req: Request, res: Response) => {
@@ -394,7 +765,7 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
         })),
         recentEvents: recentEvents.map((event) => ({
           ...event,
-          explorerTxUrl: getExplorerTxUrl(event.onchainTxHash),
+          explorerTxUrl: getExplorerTxUrl(event.onchainTxHash, config.network),
         })),
         generatedAt: new Date(),
       };
