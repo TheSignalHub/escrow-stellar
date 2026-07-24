@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import {
   fundTestnetAccount,
-  getExplorerContractLink,
   getExplorerTxLink,
   IS_TESTNET,
   NETWORK_PASSPHRASE,
   SETTLEMENT_TOKEN_SYMBOL,
-  SOROSWAP_POOL_ADDRESS,
-  SOROSWAP_ROUTER_ADDRESS,
   USDC_TOKEN_ADDRESS,
   XLM_SAC_ADDRESS,
 } from '../lib/stellar';
@@ -18,7 +15,7 @@ import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
 import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { WalletPrepOverview } from './WalletPrepOverview';
-import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
+import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
 type SwapMode = 'exact-in' | 'exact-out';
 
@@ -126,12 +123,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const isTokenContractAddress = (value: string) => /^C[A-Z2-7]{55}$/.test(value.trim());
   const routeConfigured = isTokenContractAddress(assetInAddress) && isTokenContractAddress(assetOutAddress);
 
-  const copyRouteValue = async (label: string, value: string) => {
-    if (!value) return;
-    await navigator.clipboard.writeText(value);
-    toast(`${label} copied`, 'success');
-  };
-
   const checkPublicAggregatorRoute = async () => {
     const amount = parseFloat(swapAmount);
     if (!amount || amount <= 0 || !routeConfigured) return;
@@ -182,7 +173,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       if (msg.includes('no path') || msg.includes('no route') || msg.includes('no liquidity')) {
         setPoolEmpty(true);
       } else {
-      setError(err.message || `Failed to fetch a Stellar Broker quote from the configured ${IS_TESTNET ? 'testnet route' : 'route'}.`);
+        setError(err.message || `Failed to fetch a Stellar Broker quote from the configured ${IS_TESTNET ? 'testnet route' : 'route'}.`);
       }
       setQuote(null);
     } finally {
@@ -237,28 +228,21 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} />
       <PrivyFiatTopUpCard />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
-        {/* Section 1: Funding */}
-        <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
-          <div className="flex items-center gap-3 mb-4 lg:mb-6">
-            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
-            <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
-              {IS_TESTNET ? 'Initialize Vault' : 'Settlement Funding'}
-            </h3>
-          </div>
+      <div className={`grid grid-cols-1 gap-4 lg:gap-8 ${IS_TESTNET ? 'md:grid-cols-2' : ''}`}>
+        {IS_TESTNET && (
+          <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
+            <div className="flex items-center gap-3 mb-4 lg:mb-6">
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
+                Initialize Vault
+              </h3>
+            </div>
 
-          {IS_TESTNET ? (
             <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
               Request 10,000 XLM from the Soroban friendbot. Native XLM is required for gas fees and can be used directly as payment in escrow deals.
             </p>
-          ) : (
-            <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
-              Friendbot is disabled outside testnet. Fund the connected wallet through your production treasury, exchange, or supported on-ramp before creating escrow deals.
-            </p>
-          )}
 
-          <div className="space-y-4">
-            {IS_TESTNET ? (
+            <div className="space-y-4">
               <Button
                 onClick={handleFundbot}
                 disabled={fundingLoading}
@@ -268,55 +252,46 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               >
                 Request 10,000 XLM
               </Button>
-            ) : (
-              <Button
-                onClick={onBalanceRefresh}
-                variant="secondary"
-                className="w-full py-4"
-                icon={RefreshCw}
-              >
-                Refresh Balance
-              </Button>
-            )}
 
-            {IS_TESTNET && fundingResult === 'success' && (
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
-                <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
-                  <CheckCircle2 size={16} />
-                  <span>Vault successfully provisioned.</span>
+              {fundingResult === 'success' && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
+                    <CheckCircle2 size={16} />
+                    <span>Vault successfully provisioned.</span>
+                  </div>
+                  {onFundComplete && (
+                    <Button onClick={onFundComplete} variant="secondary" className="w-full py-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20">
+                      Create Deal →
+                    </Button>
+                  )}
                 </div>
-                {onFundComplete && (
-                  <Button onClick={onFundComplete} variant="secondary" className="w-full py-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20">
-                    Create Deal →
-                  </Button>
-                )}
-              </div>
-            )}
-            
-            {IS_TESTNET && fundingResult === 'error' && (
-              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
-                <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm">
-                  <CheckCircle2 size={16} className="text-emerald-500" />
-                  <span>Vault already holds sufficient XLM.</span>
-                </div>
-                {onFundComplete && (
-                  <Button onClick={onFundComplete} variant="secondary" className="w-full py-2">
-                    Create Deal →
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </Card>
+              )}
 
-        {/* Section 2: Stellar-side conversion. This prepares wallet balance; escrow funding happens from Deals via fund_deal. */}
+              {fundingResult === 'error' && (
+                <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm">
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                    <span>Vault already holds sufficient XLM.</span>
+                  </div>
+                  {onFundComplete && (
+                    <Button onClick={onFundComplete} variant="secondary" className="w-full py-2">
+                      Create Deal →
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Stellar-side conversion prepares wallet balance; escrow funding happens from Deals via fund_deal. */}
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">2</div>
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">{IS_TESTNET ? '2' : '1'}</div>
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Convert on Stellar</h3>
             </div>
-            <Tag color="zinc">{stellarBrokerClient.id}</Tag>
+            <Tag color={IS_TESTNET ? 'zinc' : 'blue'}>{IS_TESTNET ? 'Testnet AMM' : 'AMM Route'}</Tag>
           </div>
 
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
@@ -334,43 +309,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 . It prepares your Stellar wallet only; escrow locks later when you return to Deals and click Fund Deal.
               </>
             ) : (
-              <>Convert Stellar wallet balances into the configured settlement asset before funding escrow. Production mode uses the configured broker provider boundary; escrow locks only from Deals via Fund Deal.</>
+              <>Swap supported Stellar assets in the connected wallet. Paste token contract addresses or use presets; escrow locks later from Deals when you click Fund Deal.</>
             )}
           </p>
-          <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
-            {[
-              { label: 'XLM SAC', value: XLM_SAC_ADDRESS },
-              { label: SETTLEMENT_TOKEN_SYMBOL, value: USDC_TOKEN_ADDRESS },
-              { label: 'Router', value: SOROSWAP_ROUTER_ADDRESS },
-              { label: 'Pool', value: SOROSWAP_POOL_ADDRESS },
-            ].map((item) => (
-              <div key={item.label} className="grid grid-cols-[5.75rem_minmax(0,1fr)_auto] items-start gap-3 bg-black/30 border border-zinc-800 rounded-lg px-3 py-2">
-                <span className="uppercase tracking-widest leading-5">{item.label}</span>
-                <span className="text-zinc-300 leading-5 break-all">{item.value || 'not configured'}</span>
-                {item.value && (
-                  <div className="flex items-center gap-1">
-                    <a
-                      href={getExplorerContractLink(item.value)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={`View ${item.label} on Stellar Expert`}
-                      className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
-                    >
-                      <ExternalLink size={12} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => copyRouteValue(item.label, item.value)}
-                      title={`Copy ${item.label}`}
-                      className="w-7 h-7 rounded-md border border-zinc-800 bg-zinc-900/80 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/40 flex items-center justify-center transition-colors"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
 
           {txHash ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 animate-fade-in py-8">
@@ -378,7 +319,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 <CheckCircle2 size={32} className="text-emerald-400" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Testnet Swap Executed</h4>
+                <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Conversion Executed</h4>
                 <p className="text-zinc-400 text-sm font-mono mb-6">
                   {swapMode === 'exact-out'
                     ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} ${inputSymbol} -> ${swapAmount} ${outputSymbol}`
@@ -432,10 +373,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Token route</h4>
                     <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                      Paste Stellar token contract addresses. Presets keep the reviewer demo one click away.
+                      Paste Stellar token contract addresses, or use the presets for XLM and USDC.
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={() => applyRoutePreset('xlm-to-usdc')} variant="secondary" className="py-2 text-[10px]">
                       XLM to {SETTLEMENT_TOKEN_SYMBOL}
                     </Button>
@@ -449,7 +390,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-                  <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
                     <input
                       value={assetInSymbol}
                       onChange={(event) => {
@@ -472,7 +413,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       aria-label="Pay token contract"
                     />
                   </div>
-                  <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
                     <input
                       value={assetOutSymbol}
                       onChange={(event) => {
@@ -499,7 +440,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
                 {!routeConfigured && (
                   <p className="text-xs leading-relaxed text-amber-300">
-                    Use Stellar SAC contract ids beginning with C. The route can quote only when a pool exists for the selected pair.
+                    Use Stellar SAC contract ids beginning with C. Conversion can quote only when the configured broker/AMM route has liquidity for the selected pair.
                   </p>
                 )}
               </div>
@@ -581,25 +522,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Public Soroswap Aggregator API</h4>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Route discovery</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
-                      Checks whether the public aggregator can discover the selected token route. The executable conversion uses the broker adapter above.
+                      Check whether a public route is currently discoverable for the selected pair before calculating the executable broker quote.
                     </p>
                   </div>
-                  <Tag color="zinc">API Check</Tag>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { name: 'Soroswap', status: 'AMM' },
-                    { name: 'Phoenix', status: 'AMM' },
-                    { name: 'Aquarius', status: 'Soon' },
-                  ].map((amm) => (
-                    <div key={amm.name} className="rounded-lg border border-zinc-800 bg-black/30 px-2 py-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300 truncate">{amm.name}</p>
-                      <p className="text-[9px] font-mono text-zinc-600 mt-1">{amm.status}</p>
-                    </div>
-                  ))}
+                  <Tag color="zinc">Optional</Tag>
                 </div>
 
                 <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs font-mono text-zinc-400 space-y-2">
@@ -618,7 +546,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   variant="secondary"
                   className="w-full py-3 text-xs"
                 >
-                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Selected Route'}
+                  {publicQuoteLoading ? 'Checking Route...' : 'Check Selected Route'}
                 </Button>
 
                 {publicQuote && (
@@ -655,7 +583,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       <p className="text-zinc-400 text-xs leading-relaxed">
                         {IS_TESTNET
                           ? `The selected ${inputSymbol} -> ${outputSymbol} route has no usable liquidity. Use the seeded XLM -> ${SETTLEMENT_TOKEN_SYMBOL} preset for the testnet demo route, or seed the selected pool and retry.`
-                          : `The selected ${inputSymbol} -> ${outputSymbol} route has no usable liquidity. Check the configured provider route, then retry the quote.`}
+                          : `The selected ${inputSymbol} -> ${outputSymbol} route has no usable liquidity through the configured AMM route. Try another pair or amount, then retry the quote.`}
                       </p>
                     </div>
                   </div>
