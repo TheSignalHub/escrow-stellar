@@ -6,20 +6,21 @@ Scope: controlled mainnet deployment and tiny real-deal smoke for the DealEscrow
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 00:15 BST | Mainnet deploy and initialize | Deployed the audited DealEscrow artifact to Stellar Mainnet and initialized it with the pilot admin/protocol wallet. | Upload tx `65aff746032114848d36826c86a996d333e346183897a72a512b70ea16fecd9e`; deploy tx `33499eb6ee1587355c2326e5f905790cf69206779dcb254f0b03a8724c54345b`; contract `CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4`; initialize tx `435a334a4837e67e108f0edc002617a117b1b6946cd137be5ca390b5b6fe775a`. Tiny mainnet smoke still required. |
 | 2026-07-24 19:07 BST | Mainnet deployment runbook | Added operator checklist for production admin/protocol wallet selection, mainnet env configuration, deployment, initialization, tiny real-deal smoke, and evidence capture. | Documentation gate only. Depends on audit artifact hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`; no mainnet transaction executed yet. |
 
 ## Deployment Status
 
-Status: **not executed yet**.
+Status: **deployed and initialized; tiny mainnet smoke pending**.
 
 Mainnet deployment must not start until these values are confirmed:
 
 ```text
-Production admin wallet:      TBD
-Production protocol wallet:   TBD
-Mainnet RPC provider:         TBD
-Mainnet DealEscrow contract:  TBD after deploy
-Production USDC SAC/address:  TBD before USDC deal smoke
+Production admin wallet:      GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+Production protocol wallet:   GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+Mainnet RPC provider:         https://soroban-rpc.mainnet.stellar.gateway.fm
+Mainnet DealEscrow contract:  CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
+Production USDC SAC/address:  CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
 ```
 
 ## Non-Negotiable Gate
@@ -115,9 +116,10 @@ stellar contract deploy \
 Capture:
 
 ```text
-Mainnet contract ID:
-Deploy tx hash:
-Explorer link:
+Mainnet contract ID: CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
+WASM upload tx hash: 65aff746032114848d36826c86a996d333e346183897a72a512b70ea16fecd9e
+Deploy tx hash: 33499eb6ee1587355c2326e5f905790cf69206779dcb254f0b03a8724c54345b
+Explorer link: https://stellar.expert/explorer/public/contract/CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
 ```
 
 ## Initialize Immediately
@@ -137,10 +139,10 @@ stellar contract invoke \
 Capture:
 
 ```text
-Initialize tx hash:
-Admin wallet:
-Protocol wallet:
-Explorer link:
+Initialize tx hash: 435a334a4837e67e108f0edc002617a117b1b6946cd137be5ca390b5b6fe775a
+Admin wallet: GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+Protocol wallet: GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+Explorer link: https://stellar.expert/explorer/public/tx/435a334a4837e67e108f0edc002617a117b1b6946cd137be5ca390b5b6fe775a
 ```
 
 ## Production Env

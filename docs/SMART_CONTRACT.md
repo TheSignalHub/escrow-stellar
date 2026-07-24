@@ -6,12 +6,15 @@ The `DealEscrowContract` is a Soroban smart contract that implements milestone-b
 
 **Contract ID (Testnet release candidate)**: `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`
 
+**Contract ID (Mainnet pilot)**: `CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4`
+
 **Source**: [`contracts/deal_escrow/src/lib.rs`](../contracts/deal_escrow/src/lib.rs)
 
 ## Feature Log
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 00:15 BST | Mainnet pilot deployment | Deployed the audited `fund_deal` DealEscrow release candidate to Stellar Mainnet and initialized it with the pilot admin/protocol wallet. | Contract `CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4`; WASM hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`; upload tx `65aff746032114848d36826c86a996d333e346183897a72a512b70ea16fecd9e`; deploy tx `33499eb6ee1587355c2326e5f905790cf69206779dcb254f0b03a8724c54345b`; initialize tx `435a334a4837e67e108f0edc002617a117b1b6946cd137be5ca390b5b6fe775a`; mainnet tiny-deal smoke still required. |
 | 2026-07-23 14:50 BST | Testnet full-deal-funding deployment | Deployed and initialized the `fund_deal` DealEscrow release candidate on Stellar Testnet. | Contract `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; WASM hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`; deploy tx `3ea3d66a11a71012f6e796bf1a6439d0130024cd9a74b340f303ce3c2c70bed7`; initialize tx `53291c5a093f27c025b81515b517a93e94ff8f1811364d5ee92401e6b3e62775`; live smoke passed create `d62e7cdfc0fad5c98c7f13b50a7a42cbbb6bf71bd6b68ad5b54990969bc9ca6b`, fund `f0b75e1fa4fbf795ca581e4e3c7fde75b165ee2968a305c02b71e2a361e2e4b5`, release `713e92998b74e14ccd4144518848341164e15d6fcaf2fecd4fdfbc2031148129`, refund `1f9d4137f670115f24a382fdbe8a8fba8fe3a7564d28a3cfa5e72f03a61cd6c1`, readback `Resolved` with `funded_amount=0`. |
 | 2026-07-23 14:43 BST | Full-deal funding and remaining-funds refund | Added `fund_deal(deal_id)` to lock all pending milestones in one client payment, kept milestone-level release/dispute, and updated refund status handling so a partially released deal with refunded remaining milestones ends as `Resolved` rather than `Cancelled`. | `cargo test` passed with 16 tests; `npm run build` passed in `frontend/`. |
 | 2026-07-21 14:29 BST | Mainnet-candidate contract hardening | Added explicit `Resolved` deal/milestone states for partial dispute settlements, reduced `funded_amount` whenever escrowed funds leave the contract, capped deals at 20 milestones, and expanded dispute outcome tests. | `cargo test` passed with 13 tests; frontend and indexer builds passed. |

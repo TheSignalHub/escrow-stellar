@@ -8,6 +8,8 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 
 **Contract on Testnet**: [`CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`](https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP)
 
+**Contract on Mainnet**: [`CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4`](https://stellar.expert/explorer/public/contract/CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4)
+
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
 ## SCF #42 Tranche 2 Testnet Notes
@@ -27,6 +29,7 @@ Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
 Contract explorer:    https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
+Mainnet contract:     https://stellar.expert/explorer/public/contract/CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
 ```
 
 Coolify deployment env and operations are documented in
@@ -59,6 +62,15 @@ test USDC:         CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 XLM SAC:           CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 Soroswap router:   CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
 Seeded pool:       CA4ASYDOCOJXZFB3H7O6QJ5PTDAMXORCRZN5HNE3KI7TBGS5PGR53XZ5
+```
+
+Current mainnet pilot configuration:
+
+```text
+DealEscrow:        CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
+Admin wallet:      GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+Protocol wallet:   GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG
+USDC SAC:          CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
 ```
 
 The test USDC token is a demo-only SEP-41 testnet token, not Circle-issued
