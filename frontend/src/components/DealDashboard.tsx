@@ -1144,6 +1144,10 @@ export function DealDashboard({
               settlementTokenAddress={selectedDeal.token}
               settlementTokenSymbol={getTokenSymbol(selectedDeal.token)}
               onClose={() => setCrossChainMilestoneIdx(null)}
+              onNavigateToFiatTopUp={onNavigateToFund ? () => {
+                setCrossChainMilestoneIdx(null);
+                onNavigateToFund();
+              } : undefined}
             />
           </div>
         </div>

@@ -49,6 +49,18 @@ To connect:
 Navigate to the **Wallet Prep** tab (`Alt+1`) only if you need testnet XLM or
 the demo settlement asset before funding a milestone.
 
+### Option 0: Fiat Top-Up via Privy
+
+1. Click **Buy USDC** in the **Buy USDC with Fiat** card
+2. If the user does not already have a Privy/EVM wallet, the app creates one on demand
+3. Complete Privy's onramp modal
+4. Purchased USDC lands in the configured Base/EVM destination wallet
+5. Use **Add Funds from Another Chain** from a pending deal if that USDC needs to be routed into Stellar before funding escrow
+
+This is a wallet top-up path, not a direct escrow payment. The deal remains
+awaiting funding until the Stellar wallet confirms **Fund Deal** and the
+DealEscrow contract emits `funded` events.
+
 ### Option A: Friendbot (Free 10,000 XLM)
 
 1. Click **Get 10,000 XLM from Friendbot**
@@ -160,6 +172,7 @@ The segmented filter bar at the top of the deal list:
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet
 5. For cross-chain top-up, a focused modal opens for the selected deal. Review the quote and payment status there. Escrow remains pending after the top-up until the connected Stellar wallet confirms **Fund Deal** and the contract emits `funded` events
+   - If you choose an EVM USDC source route and need source funds, use the modal's **Buy USDC** CTA to jump to Wallet Prep's Privy fiat onramp
 6. Once funded on-chain, all pending milestones transition to **Funded** and the deal becomes **Active**
 
 The public UI intentionally hides binding ids, raw asset ids, refund fallback

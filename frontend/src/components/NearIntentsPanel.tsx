@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  CreditCard,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -35,6 +36,7 @@ interface NearIntentsPanelProps {
   settlementTokenAddress?: string;
   settlementTokenSymbol?: string;
   onClose?: () => void;
+  onNavigateToFiatTopUp?: () => void;
 }
 
 type StepState = 'done' | 'active' | 'pending';
@@ -337,6 +339,7 @@ export function NearIntentsPanel({
   settlementTokenAddress,
   settlementTokenSymbol,
   onClose,
+  onNavigateToFiatTopUp,
 }: NearIntentsPanelProps) {
   const toast = useToast();
   const evmSourceWallet = useEvmSourceWallet();
@@ -509,6 +512,12 @@ export function NearIntentsPanel({
   const suggestedSourceAmount = estimateSourceAmount(amount, destinationToken, selectedOriginAsset);
   const selectedRouteRecommended = isRecommendedSourceToken(selectedOriginAsset);
   const selectedRouteRecentlyQuoted = Boolean(selectedOriginAsset && recentlyQuotedAssetIds.includes(selectedOriginAsset.assetId));
+  const canFiatTopUpSelectedSource = Boolean(
+    onNavigateToFiatTopUp &&
+    selectedOriginAsset &&
+    EVM_CHAINS.has(selectedOriginAsset.blockchain) &&
+    selectedOriginAsset.symbol.toUpperCase() === 'USDC'
+  );
 
   useEffect(() => {
     if (!selectedOriginAsset || sourceAmountTouched) return;
@@ -961,6 +970,27 @@ export function NearIntentsPanel({
                     Live quote refunds will return to this source wallet. Before manually sending payment, switch the wallet to {chainLabel(selectedOriginAsset?.blockchain)} if needed.
                   </p>
                 )}
+              </div>
+            )}
+
+            {canFiatTopUpSelectedSource && (
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-blue-200">Need source funds?</p>
+                    <p className="mt-1 text-xs leading-relaxed text-blue-100/75">
+                      Buy USDC with fiat in Wallet Prep, then return here to route it into Stellar with NEAR Intents.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={onNavigateToFiatTopUp}
+                    variant="secondary"
+                    className="py-3 text-xs border-blue-500/30 text-blue-200 hover:border-blue-400/60"
+                    icon={CreditCard}
+                  >
+                    Buy USDC
+                  </Button>
+                </div>
               </div>
             )}
 

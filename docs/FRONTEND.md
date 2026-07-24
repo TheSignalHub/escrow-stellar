@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 19:32 BST | Privy fiat top-up rail | Added a Wallet Prep fiat onramp card using Privy's `useFiatOnramp`, upgraded Privy React SDK for Stripe-onramp support, configured fiat purchases as Base USDC source-wallet top-ups rather than direct Stellar escrow funding, and linked EVM USDC Add Funds routes back to the fiat top-up card. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 18:54 BST | Create Deal settlement labels | Aligned Create Deal settlement choices to production-directed Stellar XLM and Stellar USDC labels while retaining testnet demo USDC-compatible asset disclosures in docs/env policy. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:08 BST | Dispute UI contract alignment | Removed the disputed-milestone client release override from the Deals UI because `release_milestone` only accepts funded milestones. Disputed milestones now point to operator/admin `resolve_dispute` for provider win, client refund, or partial split. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:38 BST | Admin dispute operations surface | Added the protected `/admin` console in the indexer service for open dispute evidence, resolution/refund command generation, and manual indexer refresh. The public Deals UI remains user-side only and does not expose admin split controls. | `npm run build` passed in `indexer/`. |
@@ -213,6 +214,22 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 **File**: `src/components/ConnectWallet.tsx`
 
 Wallet connection button displayed in the header when disconnected. Opens the unified connect modal with Privy as the primary path and extension wallets as fallback.
+
+### PrivyFiatTopUpCard
+
+**File**: `src/components/PrivyFiatTopUpCard.tsx`
+
+Wallet Prep includes a fiat-to-crypto top-up card powered by Privy's
+`useFiatOnramp` hook. The default configuration buys USDC on Base into a
+Privy/EVM wallet. This is intentionally not an escrow funding transaction:
+after fiat settlement, the user still routes/top-ups into Stellar when needed
+and confirms **Fund Deal** from the connected Stellar wallet.
+
+Why Base/EVM first: Privy's current React onramp API expects a destination
+chain/asset/address shape for supported onramp providers. This build does not
+claim direct Stellar onramp delivery unless Privy exposes Stellar as a supported
+destination. The Stellar DealEscrow source of truth remains Soroban `funded`
+events.
 
 ### SoroswapWidget
 

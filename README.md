@@ -116,10 +116,12 @@ Stellar escrow funding. Live NEAR execution still needs source-wallet execution
 and tiny-amount no-testnet evidence. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
-Stripe Connect remains The Signal production marketplace's fiat payment rail
-and is not implemented inside this repository. This repo owns the Stellar
-escrow rail and marketplace-compatible binding model; adding Stripe here would
-mix production marketplace payments with the grant demo service. See
+Stripe Connect remains The Signal production marketplace's direct fiat payment
+rail and is not implemented inside this repository. This repo now supports
+Privy fiat onramp as a wallet top-up path: fiat buys crypto into a supported
+source wallet, then escrow funding still happens on-chain through Stellar
+`fund_deal`. This keeps Stripe checkout/webhooks out of the grant repo while
+supporting a fiat-to-crypto user entry. See
 [`docs/PAYMENT_RAIL_BOUNDARY.md`](docs/PAYMENT_RAIL_BOUNDARY.md).
 
 ## Key Features
@@ -129,6 +131,7 @@ mix production marketplace payments with the grant demo service. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
 - **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
+- **Fiat Top-Up via Privy** — Buy USDC with card/bank through Privy-supported onramp providers into a Base/EVM wallet, then route/top up into Stellar before calling Fund Deal.
 - **Cross-Chain Add Funds Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents/1Click top-up into the connected Stellar wallet before confirming Fund Deal. Deal-tied top-ups show human Stellar units, lock the destination to the deal's approved Stellar settlement asset, rank recommended 1Click routes first, and show signed quote evidence for route previews. EVM source routes can connect a browser wallet so live quote refunds return to the source wallet; NEAR/Solana source wallets remain preview-only until their native connectors are wired.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded escrow events into an isolated MongoDB read model and exposes `/market_dashboard`.

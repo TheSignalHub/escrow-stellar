@@ -61,6 +61,16 @@ VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS=3600
 
 # Soroswap router used by the Broker-style testnet route
 VITE_SOROSWAP_ROUTER_ADDRESS=
+
+# Optional Privy fiat onramp top-up. Defaults buy Base USDC into a Privy/EVM
+# wallet; Stellar escrow is funded later from the Stellar wallet after routing.
+VITE_PRIVY_FIAT_ONRAMP_ENABLED=true
+VITE_PRIVY_FIAT_ONRAMP_ENVIRONMENT=sandbox
+VITE_PRIVY_FIAT_ONRAMP_DESTINATION_CHAIN=eip155:8453
+VITE_PRIVY_FIAT_ONRAMP_DESTINATION_ASSET=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+VITE_PRIVY_FIAT_ONRAMP_DEFAULT_AMOUNT=50
+VITE_PRIVY_FIAT_ONRAMP_SOURCE_ASSETS=usd,eur,gbp
+VITE_PRIVY_FIAT_ONRAMP_DEFAULT_SOURCE_ASSET=usd
 ```
 
 The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
@@ -135,7 +145,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection
-- **Wallet Prep** — request testnet XLM and route XLM into demo test USDC through the seeded Soroswap testnet path before funding the deal
+- **Wallet Prep** — request testnet XLM, buy USDC with fiat through Privy-supported onramps, and route XLM into demo test USDC through the seeded Soroswap testnet path before funding the deal
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -148,6 +158,12 @@ funding is disabled and the UI keeps **Wallet Prep** and **Pay from Another
 Chain** available as recovery paths. Wallet Prep can route XLM through the
 seeded Soroswap testnet route into the configured demo test USDC settlement
 asset.
+
+Wallet Prep also exposes a **Buy USDC with Fiat** card when Privy onramps are
+enabled. This starts Privy's fiat-to-crypto modal and sends purchased USDC to a
+Base/EVM wallet. It is a top-up path only: the deal is not escrow-funded until
+the user routes assets into Stellar when needed and confirms **Fund Deal** from
+the Stellar wallet.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
 cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
@@ -191,12 +207,14 @@ frontend/src/
 ├── lib/
 │   ├── stellar.ts             # RPC URLs, Stellar SDK helpers
 │   ├── stellarBroker.ts       # Broker-facing adapter for the testnet route
+│   ├── privyOnramp.ts         # Privy fiat top-up env/config helpers
 │   ├── nearIntents.ts         # Browser client for local NEAR Intents adapter APIs
 │   ├── soroswapOnchain.ts     # Direct seeded Soroswap router path
 │   ├── privy-stellar.ts       # Signing bridge: XDR ↔ Privy raw hash
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
+│   ├── PrivyFiatTopUpCard.tsx # Fiat-to-Base-USDC wallet top-up via Privy onramp
 │   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard

@@ -37,6 +37,7 @@ Scope: turn the current Tranche 2 Stellar escrow demo into a final-tranche, revi
 | 2026-07-24 19:02 BST | Mainnet contract audit gate | Added focused pre-mainnet DealEscrow audit gate with artifact hash, auth/state/accounting review, residual risks, and deployment blockers. | `cargo test` passed with 16 tests; `stellar contract build` passed; optimized WASM hash `0095d331033b2f380b9cf1dda46dff098aa722774a0041da1cb18159e9f20382`. |
 | 2026-07-24 19:07 BST | Mainnet deployment runbook | Added controlled mainnet deployment and tiny real-deal smoke checklist with stop conditions, env profile, deploy/init commands, and evidence capture fields. | Documentation gate only; no mainnet transaction executed. |
 | 2026-07-24 19:12 BST | NEAR source-wallet production flow | Documented the intended production top-up flow where the user keeps the Stellar app wallet connected, connects a selected source-chain wallet only inside Add Funds from Another Chain, and funds escrow only after the Stellar wallet receives settlement assets. | Documentation/spec gate. Existing build supports discovery/quote evidence; live source-wallet execution remains next build. |
+| 2026-07-24 19:32 BST | Privy fiat top-up rail | Added Privy fiat-to-crypto onramp in Wallet Prep as a Base USDC source-wallet top-up path, avoiding direct Stripe checkout/webhooks while preserving Soroban `fund_deal` as escrow funding. | `npm run build` passed in `frontend/`. |
 
 ## Product Direction
 
@@ -352,15 +353,15 @@ Acceptance criteria: the reviewer can see an SDK-backed NEAR readiness and dry
 quote path with persisted metadata, clear failure/refund states, and no
 overclaim that NEAR status alone funds escrow.
 
-## Gap 5B - Payment Rail Boundary / Stripe
+## Gap 5B - Payment Rail Boundary / Fiat Onramp
 
 Goal: avoid polluting the Stellar grant repo with production fiat payments
-while still explaining the gap clearly.
+while still supporting a fiat-to-crypto user entry.
 
-Decision: Stripe Connect is not a missing implementation inside
-`escrow-stellar`. It remains The Signal production marketplace's fiat payment
-rail. This repo owns the Stellar/Soroban escrow rail and the marketplace binding
-contract.
+Decision: direct Stripe checkout/Connect is not a missing implementation inside
+`escrow-stellar`. It remains The Signal production marketplace's direct fiat
+payment rail. This repo can use Privy fiat onramp because it only tops up a
+crypto wallet; escrow funding still happens through Stellar `fund_deal`.
 
 Steps:
 
@@ -369,14 +370,17 @@ Steps:
 2. Link the boundary from README and architecture docs. Status: done.
 3. Do not add Stripe secrets, webhooks, Connect account flows, or refund logic
    to this repository. Status: standing constraint.
-4. If a future product requires Stripe-to-Stellar coordination, build it as a
+4. Add Privy fiat onramp as a wallet top-up path into Base USDC, then route
+   through NEAR Intents/Stellar funding as needed. Status: first pass done in
+   `PrivyFiatTopUpCard.tsx`.
+5. If a future product requires Stripe-to-Stellar coordination, build it as a
    separate marketplace adapter/API contract outside the escrow rail, with
    explicit idempotency and reconciliation semantics. Status: future product
    work.
 
-Acceptance criteria: final submission is honest that Stripe is not integrated
-here, while proving the reusable Stellar escrow rail that a Stripe-backed
-marketplace can plug into.
+Acceptance criteria: final submission is honest that direct Stripe checkout is
+not integrated here, while proving a fiat onramp can top up a source wallet and
+the reusable Stellar escrow rail can still fund deals from on-chain assets.
 
 ## Gap 6 - UI Unhappy-Path QA
 

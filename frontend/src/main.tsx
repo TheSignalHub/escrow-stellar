@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
           // Email + social logins — no external EVM wallets needed
           loginMethods: ['email', 'google', 'twitter', 'discord'],
           embeddedWallets: {
-            // Disable auto-creation of EVM wallets — Stellar is created on demand
+            // Keep EVM wallet creation manual: fiat onramp creates/uses it only when the user chooses Buy USDC.
             ethereum: { createOnLogin: 'off' },
           },
         }}

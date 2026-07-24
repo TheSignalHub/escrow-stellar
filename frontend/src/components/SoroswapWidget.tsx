@@ -16,6 +16,7 @@ import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
+import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
 
 type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
@@ -193,6 +194,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
         )}
       </div>
+
+      <PrivyFiatTopUpCard />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
         {/* Section 1: Funding */}
