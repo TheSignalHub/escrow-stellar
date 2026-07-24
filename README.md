@@ -389,6 +389,9 @@ liquidity is empty.
 - [Payment Rail Boundary](docs/PAYMENT_RAIL_BOUNDARY.md) — Stripe, Stellar escrow, NEAR Intents, and marketplace ownership boundaries
 - [Settlement Asset Policy](docs/SETTLEMENT_ASSET_POLICY.md) — Demo/mainnet asset policy, precision, minimums, and trustline notes
 - [Operations and Security](docs/OPERATIONS_SECURITY.md) — Admin authority, dispute operations, secrets, monitoring, and production hardening gaps
+- [Mainnet Contract Audit Gate](docs/scf/mainnet-contract-audit-2026-07-24.md) — Focused pre-mainnet contract review, artifact hash, residual risks, and deployment blockers
+- [Mainnet Deployment Runbook](docs/scf/mainnet-deployment-runbook-2026-07-24.md) — Production wallet decisions, deploy/init commands, mainnet env, tiny real-deal smoke, and evidence capture
+- [NEAR Intents Source Wallet Flow](docs/scf/near-intents-source-wallet-flow-2026-07-24.md) — Production dual-wallet top-up flow, live execution gates, and remaining source-wallet connector checklist
 - [UI Unhappy-Path QA](docs/scf/unhappy-path-qa-2026-07-01.md) — Dispute, role, wallet failure, and operator-resolution evidence plan
 - [Submission Readiness](docs/scf/submission-readiness-2026-07-02.md) — Upload order, safe claims, final smoke checks, and remaining evidence gate
 - [Final Tranche Evidence](docs/scf/final-tranche-evidence-2026-07-01.md) — Current test/build results, reviewer links, boundaries, and remaining capture tasks
