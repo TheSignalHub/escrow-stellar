@@ -39,12 +39,13 @@ export interface SwapQuote {
   priceImpact: string;
   route: string[];
   rawQuote: {
-    path: string[];
+    path: any[];
     tradeType: 'EXACT_IN' | 'EXACT_OUT';
     /** the fixed side amount in stroops (amount_out for EXACT_OUT, amount_in for EXACT_IN) */
     amount: string;
     /** liquidity sources used — read by swapRoute.extractRouteProtocols for the UI badges */
     protocols: string[];
+    [key: string]: any;
   };
 }
 

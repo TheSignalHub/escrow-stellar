@@ -17,7 +17,9 @@ import {
   STELLAR_BROKER_PROVIDER,
   STELLAR_BROKER_QUOTE_TTL_SECONDS,
   STELLAR_BROKER_SLIPPAGE_BPS,
+  STELLAR_NETWORK,
 } from './stellar';
+import { stellarDexClient } from './stellarDex';
 
 export interface BrokerQuote extends SwapQuote {
   providerId: string;
@@ -38,10 +40,12 @@ export interface StellarBrokerProvider {
   sendTransaction(signedXdr: string): Promise<{ txHash: string }>;
 }
 
-function withProviderMetadata(quote: SwapQuote): BrokerQuote {
+let lastBuiltSubmitter: 'stellar-dex' | 'soroswap' = 'soroswap';
+
+function withProviderMetadata(quote: SwapQuote, providerId = STELLAR_BROKER_PROVIDER): BrokerQuote {
   return {
     ...quote,
-    providerId: STELLAR_BROKER_PROVIDER,
+    providerId,
     quoteExpiresAt: Date.now() + STELLAR_BROKER_QUOTE_TTL_SECONDS * 1000,
     slippageBps: STELLAR_BROKER_SLIPPAGE_BPS,
   };
@@ -50,6 +54,11 @@ function withProviderMetadata(quote: SwapQuote): BrokerQuote {
 export const stellarBrokerClient: StellarBrokerProvider = {
   id: STELLAR_BROKER_PROVIDER,
   async getQuote(assetIn, assetOut, amount, tradeType, sourceAddress) {
+    if (STELLAR_NETWORK === 'mainnet' && stellarDexClient.canHandle(assetIn, assetOut)) {
+      const quote = await stellarDexClient.getQuote(assetIn, assetOut, amount, tradeType);
+      return withProviderMetadata(quote, 'stellar-dex-mainnet');
+    }
+
     const quote = await soroswapOnchainClient.getQuote(
       assetIn,
       assetOut,
@@ -59,6 +68,18 @@ export const stellarBrokerClient: StellarBrokerProvider = {
     );
     return withProviderMetadata(quote);
   },
-  buildTransaction: soroswapOnchainClient.buildTransaction.bind(soroswapOnchainClient),
-  sendTransaction: soroswapOnchainClient.sendTransaction.bind(soroswapOnchainClient),
+  buildTransaction(quote, fromAddress) {
+    if ((quote.rawQuote as any)?.kind === 'stellar-dex-path') {
+      lastBuiltSubmitter = 'stellar-dex';
+      return stellarDexClient.buildTransaction(quote, fromAddress);
+    }
+    lastBuiltSubmitter = 'soroswap';
+    return soroswapOnchainClient.buildTransaction(quote, fromAddress);
+  },
+  sendTransaction(signedXdr) {
+    if (lastBuiltSubmitter === 'stellar-dex') {
+      return stellarDexClient.sendTransaction(signedXdr);
+    }
+    return soroswapOnchainClient.sendTransaction(signedXdr);
+  },
 };
