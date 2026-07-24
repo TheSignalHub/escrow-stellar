@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 01:26 BST | Production NEAR swap evidence path | Added an indexer-side live swap smoke command for production-directed NEAR Intents QA. It creates dry quotes by default, requires explicit `--live` for executable deposit instructions, enforces a max USD cap, validates source refund address shape, and supports status polling after manual source-chain payment. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 00:54 BST | Add Funds route-quality UX | Ranked discovered 1Click source assets with recommended routes first, auto-estimated source amounts from live token prices when available, added friendly no-route copy, remembered successful preview routes, and surfaced a quote-evidence checklist after signed dry quotes. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 21:07 BST | Add Funds quote amount display | Formatted 1Click destination quote amounts in human Stellar units for XLM/USDC instead of showing raw base-unit labels in the quote summary. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 17:39 BST | 1Click source token discovery | Replaced hardcoded Add Funds source-token cards with live 1Click token discovery. Users now choose source chain, source asset, and source amount from supported non-Stellar routes while the destination remains locked to the deal settlement asset. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |

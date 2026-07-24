@@ -220,6 +220,59 @@ NEAR_SMOKE_AMOUNT=<base-units-amount> \
 npm run smoke:backend -- --quote
 ```
 
+## NEAR Intents Production Swap Evidence
+
+Use `smoke:near-live` for the final production-directed NEAR Intents proof.
+This command calls the same server-side 1Click SDK adapter used by the backend,
+but it does not send funds. It creates a dry quote by default, can request live
+deposit instructions only with `--live`, enforces a tiny-amount USD cap, and can
+poll 1Click status after the tester manually sends the source-chain payment.
+
+Required env:
+
+```env
+NEAR_INTENTS_ENABLED=true
+NEAR_INTENTS_ALLOW_LIVE=false
+NEAR_INTENTS_JWT=<server-only-jwt>
+NEAR_INTENTS_STELLAR_DESTINATION_ASSET_ALLOWLIST=<stellar-xlm-or-usdc-asset-id>
+NEAR_INTENTS_DEFAULT_STELLAR_DESTINATION_ASSET=<stellar-xlm-or-usdc-asset-id>
+NEAR_LIVE_ORIGIN_ASSET=<1click-source-asset-id>
+NEAR_LIVE_DESTINATION_ASSET=<approved-stellar-destination-asset-id>
+NEAR_LIVE_AMOUNT=<source-asset-base-units>
+NEAR_LIVE_RECIPIENT=<stellar-mainnet-g-address-you-control>
+NEAR_LIVE_REFUND_TO=<source-chain-wallet-or-account-you-control>
+NEAR_LIVE_MAX_USD=5
+```
+
+Dry quote proof:
+
+```bash
+npm run smoke:near-live
+```
+
+Executable quote proof:
+
+```bash
+NEAR_INTENTS_ALLOW_LIVE=true npm run smoke:near-live -- --live
+```
+
+The live command returns a `depositAddress` and optional `depositMemo`. Send only
+the exact tiny source amount manually from the source wallet before the quote
+expires. Then poll status:
+
+```bash
+npm run smoke:near-live -- --status=<deposit-address> --memo=<deposit-memo-if-any>
+```
+
+Pass evidence:
+
+- dry quote JSON with `signatureVerified: true`
+- live executable quote JSON with deposit instructions
+- source-chain transaction hash after manual tiny payment
+- status JSON reaching `SUCCESS`, `REFUNDED`, or `FAILED`
+- Stellar wallet balance update, followed by a separate DealEscrow `fund_deal`
+  transaction and indexed `funded` event
+
 The dry quote path calls
 `POST /api/marketplace-bindings/:bindingId/near-intents/quote` with
 `dry: true`. It still requires server-side `NEAR_INTENTS_ENABLED=true`,
