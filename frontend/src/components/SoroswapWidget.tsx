@@ -20,7 +20,7 @@ import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { WalletPrepOverview } from './WalletPrepOverview';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Copy } from 'lucide-react';
 
-type SwapMode = 'buy-exact-in' | 'buy-exact-out' | 'sell-exact-in';
+type SwapMode = 'exact-in' | 'exact-out';
 
 interface Props {
   walletAddress: string;
@@ -38,15 +38,18 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [fundingResult, setFundingResult] = useState<'success' | 'error' | null>(null);
 
   // Stellar Broker section
-  const [swapMode, setSwapMode] = useState<SwapMode>('buy-exact-in');
+  const [swapMode, setSwapMode] = useState<SwapMode>('exact-in');
   const [swapAmount, setSwapAmount] = useState('2260');
+  const [assetInAddress, setAssetInAddress] = useState(XLM_SAC_ADDRESS);
+  const [assetOutAddress, setAssetOutAddress] = useState(USDC_TOKEN_ADDRESS);
+  const [assetInSymbol, setAssetInSymbol] = useState('XLM');
+  const [assetOutSymbol, setAssetOutSymbol] = useState(SETTLEMENT_TOKEN_SYMBOL);
   const [quote, setQuote] = useState<BrokerQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
   const [error, setError] = useState('');
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
-  const [publicTargetToken, setPublicTargetToken] = useState(USDC_TOKEN_ADDRESS);
   const [publicQuote, setPublicQuote] = useState<PublicAggregatorQuote | null>(null);
   const [publicQuoteLoading, setPublicQuoteLoading] = useState(false);
   const [publicQuoteError, setPublicQuoteError] = useState('');
@@ -74,20 +77,54 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
   const handleModeChange = (mode: SwapMode) => {
     setSwapMode(mode);
-    setSwapAmount(mode === 'buy-exact-in' ? '2260' : mode === 'buy-exact-out' ? '500' : '100');
+    setSwapAmount(mode === 'exact-in' ? '2260' : '500');
     setTxHash('');
     resetQuoteState();
   };
 
-  const inputSymbol = swapMode === 'buy-exact-in' ? 'XLM' : SETTLEMENT_TOKEN_SYMBOL;
-  const outputSymbol = swapMode === 'sell-exact-in' || swapMode === 'buy-exact-out' ? 'XLM' : SETTLEMENT_TOKEN_SYMBOL;
-  const inputLabel = swapMode === 'buy-exact-out' ? 'Target Receive' : 'Pay Amount';
-  const outputLabel = swapMode === 'buy-exact-out' ? 'Pay Estimate' : 'Receive Estimate';
+  const applyRoutePreset = (preset: 'xlm-to-usdc' | 'usdc-to-xlm') => {
+    if (preset === 'xlm-to-usdc') {
+      setAssetInAddress(XLM_SAC_ADDRESS);
+      setAssetOutAddress(USDC_TOKEN_ADDRESS);
+      setAssetInSymbol('XLM');
+      setAssetOutSymbol(SETTLEMENT_TOKEN_SYMBOL);
+      setSwapAmount('2260');
+    } else {
+      setAssetInAddress(USDC_TOKEN_ADDRESS);
+      setAssetOutAddress(XLM_SAC_ADDRESS);
+      setAssetInSymbol(SETTLEMENT_TOKEN_SYMBOL);
+      setAssetOutSymbol('XLM');
+      setSwapAmount('100');
+    }
+    setSwapMode('exact-in');
+    setTxHash('');
+    setPublicQuote(null);
+    setPublicQuoteError('');
+    resetQuoteState();
+  };
+
+  const flipRoute = () => {
+    setAssetInAddress(assetOutAddress);
+    setAssetOutAddress(assetInAddress);
+    setAssetInSymbol(assetOutSymbol);
+    setAssetOutSymbol(assetInSymbol);
+    setTxHash('');
+    setPublicQuote(null);
+    setPublicQuoteError('');
+    resetQuoteState();
+  };
+
+  const inputSymbol = assetInSymbol || 'Token in';
+  const outputSymbol = assetOutSymbol || 'Token out';
+  const inputLabel = swapMode === 'exact-out' ? 'Target Receive Amount' : 'Pay Amount';
+  const outputLabel = swapMode === 'exact-out' ? 'Pay Estimate' : 'Receive Estimate';
   const outputAmount = quote
-    ? swapMode === 'buy-exact-out'
+    ? swapMode === 'exact-out'
       ? quote.amountIn
       : quote.amountOut
     : '';
+  const isTokenContractAddress = (value: string) => /^C[A-Z2-7]{55}$/.test(value.trim());
+  const routeConfigured = isTokenContractAddress(assetInAddress) && isTokenContractAddress(assetOutAddress);
 
   const copyRouteValue = async (label: string, value: string) => {
     if (!value) return;
@@ -97,8 +134,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
   const checkPublicAggregatorRoute = async () => {
     const amount = parseFloat(swapAmount);
-    const targetToken = publicTargetToken.trim();
-    if (!amount || amount <= 0 || !targetToken) return;
+    if (!amount || amount <= 0 || !routeConfigured) return;
 
     setPublicQuoteLoading(true);
     setPublicQuote(null);
@@ -106,14 +142,14 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
       const result = await soroswapClient.getQuote(
-        XLM_SAC_ADDRESS,
-        targetToken,
+        assetInAddress.trim(),
+        assetOutAddress.trim(),
         stroops,
-        'EXACT_IN'
+        swapMode === 'exact-out' ? 'EXACT_OUT' : 'EXACT_IN'
       );
       setPublicQuote(result);
     } catch (err: any) {
-      setPublicQuoteError(err.message || 'No public aggregator route found for this target token.');
+      setPublicQuoteError(err.message || 'No public aggregator route found for this token pair.');
     } finally {
       setPublicQuoteLoading(false);
     }
@@ -122,18 +158,20 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const fetchQuote = async () => {
     const amount = parseFloat(swapAmount);
     if (!amount || amount <= 0) return;
+    if (!routeConfigured) {
+      setError('Enter valid Stellar token contract addresses for both sides of the swap.');
+      return;
+    }
 
     setQuoteLoading(true);
     setError('');
     setPoolEmpty(false);
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
-      const assetIn = swapMode === 'sell-exact-in' ? USDC_TOKEN_ADDRESS : XLM_SAC_ADDRESS;
-      const assetOut = swapMode === 'sell-exact-in' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
-      const tradeType = swapMode === 'buy-exact-out' ? 'EXACT_OUT' : 'EXACT_IN';
+      const tradeType = swapMode === 'exact-out' ? 'EXACT_OUT' : 'EXACT_IN';
       const q = await stellarBrokerClient.getQuote(
-        assetIn,
-        assetOut,
+        assetInAddress.trim(),
+        assetOutAddress.trim(),
         stroops,
         tradeType,
         walletAddress
@@ -166,7 +204,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       const result = await stellarBrokerClient.sendTransaction(signedXdr);
       setTxHash(result.txHash);
       toast('Swap completed!', 'success');
-      if (onSwapComplete && swapMode !== 'sell-exact-in' && quote.amountOut) {
+      if (onSwapComplete) {
         onSwapComplete(quote.amountOut);
       }
     } catch (err: any) {
@@ -342,8 +380,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div>
                 <h4 className="text-xl font-bold text-white mb-2 tracking-tight">Testnet Swap Executed</h4>
                 <p className="text-zinc-400 text-sm font-mono mb-6">
-                  {swapMode === 'buy-exact-out'
-                    ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} XLM -> ${swapAmount} ${SETTLEMENT_TOKEN_SYMBOL}`
+                  {swapMode === 'exact-out'
+                    ? `${quote ? (parseFloat(quote.amountIn) / 1e7).toFixed(2) : '?'} ${inputSymbol} -> ${swapAmount} ${outputSymbol}`
                     : `${swapAmount} ${inputSymbol} -> ${quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} ${outputSymbol}`}
                 </p>
                 <div className="flex flex-col gap-3">
@@ -359,7 +397,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     View TX on Explorer <ExternalLink size={14} />
                   </a>
                   <Button
-                    onClick={() => { setTxHash(''); resetQuoteState(); setSwapAmount(swapMode === 'buy-exact-in' ? '2260' : swapMode === 'buy-exact-out' ? '500' : '100'); }}
+                    onClick={() => { setTxHash(''); resetQuoteState(); setSwapAmount(swapMode === 'exact-in' ? '2260' : '500'); }}
                     variant="secondary"
                   >
                     Convert Another Amount
@@ -369,11 +407,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
             </div>
           ) : (
             <div className="flex-1 flex flex-col space-y-6">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { mode: 'buy-exact-in' as const, label: 'Pay XLM' },
-                  { mode: 'buy-exact-out' as const, label: `Target ${SETTLEMENT_TOKEN_SYMBOL}` },
-                  { mode: 'sell-exact-in' as const, label: `Sell ${SETTLEMENT_TOKEN_SYMBOL}` },
+                  { mode: 'exact-in' as const, label: 'Exact pay' },
+                  { mode: 'exact-out' as const, label: 'Exact receive' },
                 ].map((option) => (
                   <button
                     key={option.mode}
@@ -388,6 +425,83 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     {option.label}
                   </button>
                 ))}
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Token route</h4>
+                    <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                      Paste Stellar token contract addresses. Presets keep the reviewer demo one click away.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => applyRoutePreset('xlm-to-usdc')} variant="secondary" className="py-2 text-[10px]">
+                      XLM to {SETTLEMENT_TOKEN_SYMBOL}
+                    </Button>
+                    <Button onClick={() => applyRoutePreset('usdc-to-xlm')} variant="secondary" className="py-2 text-[10px]">
+                      {SETTLEMENT_TOKEN_SYMBOL} to XLM
+                    </Button>
+                    <Button onClick={flipRoute} variant="secondary" className="py-2 text-[10px]">
+                      Flip
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                    <input
+                      value={assetInSymbol}
+                      onChange={(event) => {
+                        setAssetInSymbol(event.target.value.toUpperCase().slice(0, 12));
+                        resetQuoteState();
+                      }}
+                      className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
+                      aria-label="Pay token symbol"
+                    />
+                    <input
+                      value={assetInAddress}
+                      onChange={(event) => {
+                        setAssetInAddress(event.target.value.trim());
+                        setPublicQuote(null);
+                        setPublicQuoteError('');
+                        resetQuoteState();
+                      }}
+                      spellCheck={false}
+                      className={`bg-[#09090b] border ${assetInAddress && !isTokenContractAddress(assetInAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
+                      aria-label="Pay token contract"
+                    />
+                  </div>
+                  <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                    <input
+                      value={assetOutSymbol}
+                      onChange={(event) => {
+                        setAssetOutSymbol(event.target.value.toUpperCase().slice(0, 12));
+                        resetQuoteState();
+                      }}
+                      className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
+                      aria-label="Receive token symbol"
+                    />
+                    <input
+                      value={assetOutAddress}
+                      onChange={(event) => {
+                        setAssetOutAddress(event.target.value.trim());
+                        setPublicQuote(null);
+                        setPublicQuoteError('');
+                        resetQuoteState();
+                      }}
+                      spellCheck={false}
+                      className={`bg-[#09090b] border ${assetOutAddress && !isTokenContractAddress(assetOutAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
+                      aria-label="Receive token contract"
+                    />
+                  </div>
+                </div>
+
+                {!routeConfigured && (
+                  <p className="text-xs leading-relaxed text-amber-300">
+                    Use Stellar SAC contract ids beginning with C. The route can quote only when a pool exists for the selected pair.
+                  </p>
+                )}
               </div>
 
               {/* Swap Inputs */}
@@ -454,9 +568,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                    <div className="flex justify-between">
                      <span>Exchange Rate</span>
                      <span className="text-white">
-                       {swapMode === 'sell-exact-in'
-                         ? `1 ${SETTLEMENT_TOKEN_SYMBOL} = ${(parseFloat(quote.amountOut) / 1e7 / parseFloat(swapAmount)).toFixed(4)} XLM`
-                         : `1 XLM = ${(parseFloat(quote.amountOut) / 1e7 / (parseFloat(quote.amountIn) / 1e7)).toFixed(4)} ${SETTLEMENT_TOKEN_SYMBOL}`}
+                       {`1 ${inputSymbol} = ${(parseFloat(quote.amountOut) / 1e7 / (parseFloat(quote.amountIn) / 1e7)).toFixed(4)} ${outputSymbol}`}
                      </span>
                    </div>
                    <div className="flex justify-between">
@@ -471,7 +583,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Public Soroswap Aggregator API</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
-                      Checks whether the public aggregator can discover a route from XLM into a target SAC. The executable demo route uses the seeded router path above.
+                      Checks whether the public aggregator can discover the selected token route. The executable conversion uses the broker adapter above.
                     </p>
                   </div>
                   <Tag color="zinc">API Check</Tag>
@@ -490,38 +602,34 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   ))}
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Route check: XLM → target SAC</label>
-                  <textarea
-                    value={publicTargetToken}
-                    onChange={(event) => {
-                      setPublicTargetToken(event.target.value);
-                      setPublicQuote(null);
-                      setPublicQuoteError('');
-                    }}
-                    rows={2}
-                    spellCheck={false}
-                    className="w-full resize-none bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none break-all"
-                  />
+                <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs font-mono text-zinc-400 space-y-2">
+                  <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-2">
+                    <span className="text-zinc-600 uppercase tracking-widest">From</span>
+                    <span className="break-all">{assetInAddress || 'not configured'}</span>
+                  </div>
+                  <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-2">
+                    <span className="text-zinc-600 uppercase tracking-widest">To</span>
+                    <span className="break-all">{assetOutAddress || 'not configured'}</span>
+                  </div>
                 </div>
                 <Button
                   onClick={checkPublicAggregatorRoute}
-                  disabled={publicQuoteLoading || !publicTargetToken.trim() || !swapAmount || parseFloat(swapAmount) <= 0}
+                  disabled={publicQuoteLoading || !routeConfigured || !swapAmount || parseFloat(swapAmount) <= 0}
                   variant="secondary"
                   className="w-full py-3 text-xs"
                 >
-                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check XLM → Target Route'}
+                  {publicQuoteLoading ? 'Checking Aggregator...' : 'Check Selected Route'}
                 </Button>
 
                 {publicQuote && (
                   <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-mono text-zinc-300 space-y-2">
                     <div className="flex justify-between gap-3">
                       <span className="text-zinc-500">Amount in</span>
-                      <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} XLM</span>
+                      <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} {inputSymbol}</span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span className="text-zinc-500">Amount out</span>
-                      <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })}</span>
+                      <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} {outputSymbol}</span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span className="text-zinc-500">Route legs</span>
@@ -546,8 +654,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       <p className="text-amber-400 font-bold text-sm mb-1">Broker Route Not Found</p>
                       <p className="text-zinc-400 text-xs leading-relaxed">
                         {IS_TESTNET
-                          ? `The configured demo XLM -> ${SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Seed the Soroswap testnet pool by CLI, then retry the quote.`
-                          : `The configured XLM -> ${SETTLEMENT_TOKEN_SYMBOL} broker route has no usable liquidity. Check the configured provider route, then retry the quote.`}
+                          ? `The selected ${inputSymbol} -> ${outputSymbol} route has no usable liquidity. Use the seeded XLM -> ${SETTLEMENT_TOKEN_SYMBOL} preset for the testnet demo route, or seed the selected pool and retry.`
+                          : `The selected ${inputSymbol} -> ${outputSymbol} route has no usable liquidity. Check the configured provider route, then retry the quote.`}
                       </p>
                     </div>
                   </div>

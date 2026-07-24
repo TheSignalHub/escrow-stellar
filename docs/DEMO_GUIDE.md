@@ -72,15 +72,18 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 ### Option B: Convert on Stellar
 
-1. Enter the XLM amount to swap (for the 500 test USDC demo, use about `2260`)
-2. Click **Calculate Route** to fetch a broker quote
-3. Review the rate and slippage tolerance (1%)
-4. Click **Convert Balance**
-5. Approve the transaction in Privy or your wallet
-6. On success, see the test USDC amount received with an Explorer link
-7. Return to **Deals** and click **Fund Deal** when the settlement balance is sufficient
+1. Use the default **XLM -> USDC** preset, or paste Stellar token contract addresses for the pay and receive assets
+2. Choose **Exact pay** or **Exact receive**
+3. Enter the amount (for the 500 test USDC demo, use about `2260` XLM with the preset)
+4. Click **Calculate Route** to fetch a broker quote
+5. Review the rate and slippage tolerance (1%)
+6. Click **Convert Balance**
+7. Approve the transaction in Privy or your wallet
+8. On success, see the test USDC amount received with an Explorer link
+9. Return to **Deals** and click **Fund Deal** when the settlement balance is sufficient
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
+> Custom token pairs can be entered, but they only quote and execute when the configured broker/Soroswap route has liquidity for that pair.
 
 Cross-chain funding is not started from Wallet Prep. It starts from a pending
 milestone in the Deals tab so the quote is tied to a real deal and amount due.

@@ -158,7 +158,10 @@ funding is disabled and the UI keeps **Wallet Prep** and **Pay from Another
 Chain** available as recovery paths. Wallet Prep can route XLM through the
 seeded Soroswap testnet route into the configured demo test USDC settlement
 asset. This is shown as **Convert on Stellar** because it prepares wallet
-balance only; escrow locks later from Deals via **Fund Deal**.
+balance only; escrow locks later from Deals via **Fund Deal**. The conversion
+form accepts custom Stellar token contract addresses for pay/receive assets,
+with XLM/USDC presets kept for the reproducible testnet route. Custom pairs
+quote and execute only when the configured broker route has liquidity.
 
 Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
 card when Privy onramps are enabled. The wallet overview separates the Stellar
