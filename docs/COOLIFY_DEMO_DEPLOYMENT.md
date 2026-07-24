@@ -18,6 +18,7 @@ shape without committing live secrets.
 | 2026-07-01 15:57 HKT | Coolify pasted-env capture | Converted the exact demo env shape into a redacted reviewer-safe Coolify checklist with public values preserved and server secrets replaced by placeholders. | Static documentation update. No runtime behavior changed. Secrets pasted outside Coolify should be rotated. |
 | 2026-07-21 15:09 BST | Hardened contract release candidate | Updated Coolify env examples to point at the hardened testnet release-candidate contract. | Release-candidate contract deployed and CLI smoke passed for create/deposit/release/provider-win/client-refund/partial-settlement. Coolify redeploy still required. |
 | 2026-07-23 14:50 BST | Full-deal funding contract RC | Updated Coolify env examples to point at the `fund_deal` testnet release-candidate contract. | Contract deployed/initialized as `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; CLI live smoke passed create/fund/release/refund/readback; Coolify env switch and redeploy still required. |
+| 2026-07-25 00:36 BST | Mainnet frontend build args | Added all public `VITE_*` network, settlement, broker, and Privy onramp variables to the Docker frontend build stage so Coolify mainnet env is baked into the Vite bundle during rebuild. | Dockerfile patch; frontend build validation required before deploy. |
 
 ## Security Note
 
@@ -39,6 +40,11 @@ rotate them before treating the deployment as production-grade:
 
 The `VITE_*` values are compiled into the frontend bundle and should be treated
 as public configuration, not as secrets.
+
+Because Vite reads `VITE_*` variables at build time, changing Coolify runtime
+env alone is not enough. After changing `VITE_STELLAR_NETWORK`,
+`VITE_DEAL_ESCROW_CONTRACT`, settlement asset, or Privy onramp values, trigger a
+fresh image rebuild so the browser bundle is rebuilt with those values.
 
 ## Coolify Build Settings
 
