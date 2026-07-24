@@ -70,19 +70,21 @@ DealEscrow contract emits `funded` events.
 
 If your wallet was already funded, you'll see an info message instead: "Wallet already funded! You're ready to go."
 
-### Option B: Stellar Broker Funding Route
+### Option B: Convert on Stellar
 
 1. Enter the XLM amount to swap (for the 500 test USDC demo, use about `2260`)
 2. Click **Calculate Route** to fetch a broker quote
 3. Review the rate and slippage tolerance (1%)
-4. Click **Execute Swap**
+4. Click **Convert Balance**
 5. Approve the transaction in Privy or your wallet
 6. On success, see the test USDC amount received with an Explorer link
+7. Return to **Deals** and click **Fund Deal** when the settlement balance is sufficient
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 
 Cross-chain funding is not started from Wallet Prep. It starts from a pending
 milestone in the Deals tab so the quote is tied to a real deal and amount due.
+The Stellar conversion path is also wallet preparation, not escrow funding.
 
 ---
 

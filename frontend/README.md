@@ -145,7 +145,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection
-- **Wallet Prep** — request testnet XLM, buy USDC with fiat through Privy-supported onramps, and route XLM into demo test USDC through the seeded Soroswap testnet path before funding the deal
+- **Wallet Prep** — request testnet XLM, buy USDC with fiat through Privy-supported onramps, and convert XLM into demo test USDC through the seeded Soroswap testnet path before funding the deal
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -157,7 +157,8 @@ the configured demo test USDC asset. If the wallet is short, direct Stellar
 funding is disabled and the UI keeps **Wallet Prep** and **Pay from Another
 Chain** available as recovery paths. Wallet Prep can route XLM through the
 seeded Soroswap testnet route into the configured demo test USDC settlement
-asset.
+asset. This is shown as **Convert on Stellar** because it prepares wallet
+balance only; escrow locks later from Deals via **Fund Deal**.
 
 Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
 card when Privy onramps are enabled. The wallet overview separates the Stellar

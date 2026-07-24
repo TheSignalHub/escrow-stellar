@@ -271,12 +271,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
         </Card>
 
-        {/* Section 2: Stellar Broker swap */}
+        {/* Section 2: Stellar-side conversion. This prepares wallet balance; escrow funding happens from Deals via fund_deal. */}
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">2</div>
-              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Stellar Broker Funding</h3>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Convert on Stellar</h3>
             </div>
             <Tag color="zinc">{stellarBrokerClient.id}</Tag>
           </div>
@@ -284,7 +284,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           <p className="text-zinc-500 text-xs mb-6 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
             {IS_TESTNET ? (
               <>
-                Demo-only Stellar Broker route: swap XLM into the configured {SETTLEMENT_TOKEN_SYMBOL} settlement asset by calling the seeded{' '}
+                Convert XLM into {SETTLEMENT_TOKEN_SYMBOL} before funding an escrow deal. This wallet-prep route calls the seeded{' '}
                 <a
                   href={`https://testnet.soroswap.finance/#/liquidity/add/${XLM_SAC_ADDRESS}/${USDC_TOKEN_ADDRESS}`}
                   target="_blank"
@@ -293,10 +293,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 >
                   Soroswap testnet router path
                 </a>
-                . This is a demo settlement token for testnet liquidity, and it may not appear in Soroswap&apos;s public token picker.
+                . It prepares your Stellar wallet only; escrow locks later when you return to Deals and click Fund Deal.
               </>
             ) : (
-              <>Production mode uses the configured settlement asset and broker provider boundary. Seeded Soroswap testnet liquidity and Friendbot funding are disabled outside testnet.</>
+              <>Convert Stellar wallet balances into the configured settlement asset before funding escrow. Production mode uses the configured broker provider boundary; escrow locks only from Deals via Fund Deal.</>
             )}
           </p>
           <div className="mb-6 grid grid-cols-1 gap-2 text-[10px] font-mono text-zinc-500">
@@ -347,6 +347,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     : `${swapAmount} ${inputSymbol} -> ${quote ? (parseFloat(quote.amountOut) / 1e7).toFixed(2) : '?'} ${outputSymbol}`}
                 </p>
                 <div className="flex flex-col gap-3">
+                  <p className="text-xs leading-relaxed text-zinc-500">
+                    Wallet balance prepared. Go to Deals and use Fund Deal when the settlement balance is sufficient.
+                  </p>
                   <a
                     href={getExplorerTxLink(txHash)}
                     target="_blank"
@@ -359,7 +362,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     onClick={() => { setTxHash(''); resetQuoteState(); setSwapAmount(swapMode === 'buy-exact-in' ? '2260' : swapMode === 'buy-exact-out' ? '500' : '100'); }}
                     variant="secondary"
                   >
-                    Initialize New Swap
+                    Convert Another Amount
                   </Button>
                 </div>
               </div>
@@ -594,7 +597,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   variant={quote ? "primary" : "secondary"}
                   className="py-4"
                 >
-                  Execute Swap
+                  Convert Balance
                 </Button>
               </div>
             </div>
