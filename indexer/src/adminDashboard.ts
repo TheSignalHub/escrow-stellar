@@ -173,6 +173,7 @@ function buildDisputeOperations(
                 ) ?? null,
             }
           : null,
+        settlementSymbol: binding?.settlementAsset.symbol ?? null,
         commands: {
           providerWin: adminCommand(
             config,
@@ -503,6 +504,8 @@ function renderInternalAdminPage(config: IndexerConfig): string {
       .dispute-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); gap: 16px; padding: 16px; border-top: 1px solid var(--line); }
       .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 14px; }
       .command { border: 1px solid var(--line); background: #060908; border-radius: 8px; padding: 12px; min-height: 90px; }
+      .command-note { color: var(--muted); font-size: 13px; margin: 10px 0; }
+      .notice { margin-top: 12px; color: var(--yellow); border: 1px solid rgba(243,199,107,.28); background: rgba(243,199,107,.08); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
       .preset-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
       .empty { color: var(--muted); padding: 22px 0 4px; border-top: 1px solid var(--line); }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -578,14 +581,16 @@ function renderInternalAdminPage(config: IndexerConfig): string {
 
       function commandBlock(dispute) {
         const id = 'cmd-' + dispute.dealId + '-' + dispute.milestoneIdx;
+        const statusId = 'cmd-status-' + dispute.dealId + '-' + dispute.milestoneIdx;
         return '<div><div class="label">Admin resolution command</div>' +
+          '<div class="command-note" id="' + statusId + '">Selected: 50 / 50 split. Click another preset to update and copy the command.</div>' +
           '<div class="preset-row">' +
-          '<button data-label="Provider wins" data-command="' + escapeHtml(dispute.commands.providerWin) + '" data-target="' + id + '">Provider wins</button>' +
-          '<button data-label="50 / 50 split" data-command="' + escapeHtml(dispute.commands.split50) + '" data-target="' + id + '">50 / 50 split</button>' +
-          '<button data-label="Client refund" data-command="' + escapeHtml(dispute.commands.clientRefund) + '" data-target="' + id + '">Client refund</button>' +
+          '<button data-label="Provider wins" data-command="' + escapeHtml(dispute.commands.providerWin) + '" data-target="' + id + '" data-status="' + statusId + '">Provider wins</button>' +
+          '<button data-label="50 / 50 split" data-command="' + escapeHtml(dispute.commands.split50) + '" data-target="' + id + '" data-status="' + statusId + '">50 / 50 split</button>' +
+          '<button data-label="Client refund" data-command="' + escapeHtml(dispute.commands.clientRefund) + '" data-target="' + id + '" data-status="' + statusId + '">Client refund</button>' +
           '</div>' +
           '<pre class="command mono" id="' + id + '">' + escapeHtml(dispute.commands.split50) + '</pre>' +
-          '<button class="warn" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '">Emergency full refund command</button>' +
+          '<button class="warn" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '" data-status="' + statusId + '">Emergency full refund command</button>' +
           '</div>';
       }
 
@@ -599,6 +604,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
               '<h3 style="margin-top:12px">Deal #' + escapeHtml(dispute.dealId) + ' / Milestone ' + escapeHtml(dispute.milestoneIdx) + '</h3>' +
               '<div class="meta">' +
                 '<div><div class="label">Indexed amount</div><div>' + fmt.format(dispute.amount || 0) + '</div></div>' +
+                '<div><div class="label">Settlement asset</div><div>' + escapeHtml(dispute.settlementSymbol || 'Unknown') + '</div></div>' +
                 '<div><div class="label">Ledger</div><div class="mono">' + escapeHtml(dispute.ledger) + '</div></div>' +
                 '<div><div class="label">Disputed by</div><div class="mono">' + escapeHtml(dispute.caller || '-') + '</div></div>' +
                 '<div><div class="label">Tx</div><div class="mono">' + (dispute.explorerTxUrl ? '<a href="' + escapeHtml(dispute.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(dispute.txHash)) + '</a>' : '-') + '</div></div>' +
@@ -607,6 +613,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
                 '<div><div class="label">Client</div><div class="mono">' + escapeHtml(binding ? binding.clientWallet : '-') + '</div></div>' +
                 '<div><div class="label">Provider</div><div class="mono">' + escapeHtml(binding ? binding.providerWallet : '-') + '</div></div>' +
               '</div>' +
+              (!binding ? '<div class="notice">Settlement asset and party wallets are not present in raw dispute events. For direct app-created deals, confirm the asset and parties in the Deals tab or add a shadow marketplace binding before final evidence capture.</div>' : '') +
             '</div>' +
             commandBlock(dispute) +
           '</article>';
@@ -639,6 +646,8 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         if (!button) return;
         const target = document.getElementById(button.dataset.target);
         if (target) target.textContent = button.dataset.command;
+        const status = document.getElementById(button.dataset.status);
+        if (status) status.textContent = 'Selected: ' + (button.dataset.label || 'command') + '. Command copied; replace <ADMIN_IDENTITY> before running.';
         try {
           await navigator.clipboard.writeText(button.dataset.command);
           button.textContent = 'Copied';

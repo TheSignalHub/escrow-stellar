@@ -9,6 +9,7 @@ path toward production-grade administration.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 16:45 BST | Admin dispute command clarity | Added visible preset/copy feedback and explicit unknown-settlement guidance for direct app-created disputes that do not have shadow binding metadata. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 15:38 BST | Protected dispute operations console | Replaced the `/admin` placeholder with an authenticated dispute queue that reads indexed dispute/resolution/refund evidence and provides admin-ready `resolve_dispute` / emergency `refund` CLI commands without storing signing keys. | `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:31 HKT | Gap 7 admin/security operations | Documented contract admin authority, rotation limitation, dispute operator flow, emergency refund criteria, secrets handling, monitoring, and production hardening gaps. | Static review of `contracts/deal_escrow/src/lib.rs`, admin dashboard routes, deployment docs, and package READMEs. No runtime behavior changed. |
 | 2026-07-21 14:29 BST | Mainnet-candidate dispute operations | Updated dispute operations to reflect explicit provider-win, client-refund, and partial-settlement states in the contract. | `cargo test` passed with 13 tests; docs cross-check performed. |
