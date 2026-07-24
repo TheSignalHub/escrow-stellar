@@ -116,13 +116,12 @@ Disputes follow a two-phase model:
 | Actor | Action |
 | --- | --- |
 | Client or Provider | Flag dispute → milestone frozen |
-| Client (optional) | Accept & Release to Provider (override the dispute) |
 | Contract admin / operator | Call `resolve_dispute` on-chain with refund split |
 
 The admin address is set when the contract is initialized. Only that address
 can call `resolve_dispute`. The client UI surfaces an "Under review" banner
-and an optional release override. It does **not** expose the admin split
-controls; those remain an operator/contract path for this demo.
+for disputed milestones. It does **not** expose release or admin split controls
+for disputed funds; those remain an operator/contract path for this demo.
 
 Final-tranche unhappy-path QA coverage and remaining evidence tasks are tracked
 in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-2026-07-01.md).

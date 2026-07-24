@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
+  ShieldCheck, AlertCircle, AlertTriangle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
 import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, SETTLEMENT_TOKEN_SYMBOL, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
 import { useToast } from '../App';
@@ -971,14 +971,13 @@ export function DealDashboard({
                               {status === 'Disputed' && (
                                 <div className="w-full space-y-2">
                                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px]">
-                                    <span className="shrink-0">⚖</span>
-                                    <span>Under review — The Signal team handles resolution</span>
+                                    <AlertTriangle size={12} className="shrink-0" />
+                                    <span>Under review — operator resolution is required before funds can move.</span>
                                   </div>
-                                  {isClient && (
-                                    <Button variant="secondary" onClick={() => setConfirmAction({ type: 'release', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 w-full">
-                                      {actionLoading === `release-${i}` ? 'Signing...' : 'Accept & Release to Provider'}
-                                    </Button>
-                                  )}
+                                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-[10px]">
+                                    <Clock size={12} className="shrink-0 text-zinc-500" />
+                                    <span>Admin can resolve provider win, client refund, or partial split with resolve_dispute.</span>
+                                  </div>
                                 </div>
                               )}
                               {/* Role-aware informational hints */}

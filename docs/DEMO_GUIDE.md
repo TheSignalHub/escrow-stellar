@@ -199,8 +199,8 @@ Either the client or provider can dispute a funded milestone:
 ### 4d. Resolve a Dispute (Operator / Admin)
 
 The browser demo does not expose an admin refund-slider UI. In the current
-frontend, disputed milestones show an **Under review** banner, and the client
-can optionally choose **Accept & Release to Provider** as a settlement override.
+frontend, disputed milestones show an **Under review** banner and explain that
+operator/admin resolution is required before funds can move.
 
 For operator/admin resolution, call the contract's `resolve_dispute` function
 from an admin-controlled tool or future operator console:
@@ -271,8 +271,7 @@ After completing the full flow, verify:
 4. Release milestone 1 (normal flow)
 5. Dispute milestone 2
 6. Show the Disputed state and **Under review** banner
-7. Optionally reconnect as client and use **Accept & Release to Provider**
-8. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
+7. For admin split resolution evidence, run an operator/admin `resolve_dispute` smoke outside the browser UI
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 

@@ -10,6 +10,7 @@ resolution.
 |---|---|---|---|
 | 2026-07-01 10:29 HKT | Gap 6 unhappy-path QA | Added UI unhappy-path QA matrix and corrected demo expectations for dispute resolution. | Static review of `DealDashboard.tsx`, `useDealEscrow.ts`, `frontend/README.md`, and `docs/DEMO_GUIDE.md`. Browser evidence still required for final package. |
 | 2026-07-01 13:39 HKT | NEAR Intents unhappy paths | Added NEAR readiness, auth, disabled feature, provider failure/refund, and provider/Soroban mismatch scenarios to the QA matrix. | Static review of `NearIntentsPanel.tsx`, `nearIntents.ts`, server routes, and NEAR boundary docs. Live provider evidence still required. |
+| 2026-07-24 15:08 BST | Dispute UI contract alignment | Removed stale client release-override expectations for disputed milestones. Disputed funds require admin/operator `resolve_dispute`, matching the contract state machine. | `npm run build` passed in `frontend/`. |
 
 ## Current UI Coverage
 
@@ -21,7 +22,7 @@ resolution.
 | Client opens pending milestone | Shows `Fund Escrow Node`. | `DealDashboard.tsx` pending/client branch |
 | Client opens funded milestone | Shows dispute confirmation and release confirmation paths. | `DealDashboard.tsx` funded/client branch |
 | Client or provider disputes | Confirmation modal explains funds freeze, then calls on-chain `dispute`. | `DealDashboard.tsx`, `useDealEscrow.ts` |
-| Disputed milestone renders | Shows `Under review` banner. Client can choose `Accept & Release to Provider`. | `DealDashboard.tsx` disputed branch |
+| Disputed milestone renders | Shows `Under review` banner and operator-resolution copy. No release button is shown because `release_milestone` only accepts funded milestones. | `DealDashboard.tsx` disputed branch |
 | Insufficient settlement balance | Error card shows contextual failure and `Fund Wallet` recovery button. | `DealDashboard.tsx`, `useDealEscrow.ts` |
 | Wallet rejects signing | Error mapping surfaces cancellation/retry path from wallet/provider failure. | `useDealEscrow.ts`, `docs/DEMO_GUIDE.md` troubleshooting |
 | Transaction timeout | Shows timeout text and Explorer check guidance. | `useDealEscrow.ts` polling guard |
@@ -64,7 +65,6 @@ resolution.
 | Nonparticipant is read-only | Screenshot of read-only banner and no actions. | Pending browser capture |
 | Insufficient balance recovery | Screenshot of error card with `Fund Wallet` path. | Pending browser capture |
 | Signing cancellation | Screenshot/toast or QA note after rejecting wallet prompt. | Pending browser capture |
-| Client release override on disputed milestone | Screenshot/video of `Accept & Release to Provider` path. | Pending browser capture |
 | Admin dispute resolution | Contract/CLI/API evidence for `resolve_dispute` with refund split. | Pending operator smoke |
 | Indexer reflects dispute/resolution | `/market_dashboard` or binding event evidence for `dispute` and `resolved`. | Pending indexed event smoke |
 | NEAR disabled/auth/config errors | Screenshot/API proof that disabled and unauthenticated states are recoverable and not overstated. | Pending browser/API capture |
@@ -77,8 +77,7 @@ resolution.
 3. Connect as provider and confirm only `Flag Dispute` is available on funded
    milestone 1.
 4. File dispute as provider and capture the Disputed state.
-5. Reconnect as client and capture `Under review` plus `Accept & Release to
-   Provider`.
+5. Reconnect as client and capture `Under review` plus operator-resolution copy.
 6. Connect as connector and capture read-only connector state.
 7. Connect with an unrelated wallet and capture nonparticipant read-only state.
 8. Trigger an insufficient-balance deposit on a fresh wallet and capture the
@@ -92,6 +91,6 @@ resolution.
 
 For this tranche, it is acceptable that admin dispute split resolution is not a
 browser flow if the submission is explicit: the contract and hook support
-`resolve_dispute`, while the current frontend exposes user dispute filing,
-client release override, and operator-handled resolution messaging. Do not claim
-an admin refund-slider UI until it exists.
+`resolve_dispute`, while the current frontend exposes user dispute filing and
+operator-handled resolution messaging. Do not claim an admin refund-slider UI or
+client disputed-release override until it exists.
