@@ -1,0 +1,112 @@
+import { Copy, ShieldCheck, Wallet } from 'lucide-react';
+import { useMemo } from 'react';
+import { useWallets } from '@privy-io/react-auth';
+import { useToast } from '../App';
+import {
+  PRIVY_FIAT_ONRAMP_DESTINATION_CHAIN,
+  findEmbeddedEvmWallet,
+  onrampChainLabel,
+  shortOnrampAddress,
+} from '../lib/privyOnramp';
+import { SETTLEMENT_TOKEN_SYMBOL } from '../lib/stellar';
+import { Card, Tag } from './ui/Components';
+
+interface WalletPrepOverviewProps {
+  stellarAddress: string;
+  xlmBalance?: string;
+}
+
+function truncateStellar(address: string): string {
+  return `${address.slice(0, 6)}...${address.slice(-6)}`;
+}
+
+export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOverviewProps) {
+  const toast = useToast();
+  const { wallets } = useWallets();
+  const evmWallet = useMemo(
+    () => findEmbeddedEvmWallet(wallets as Array<{ address: string; walletClientType?: string }>),
+    [wallets]
+  );
+  const destinationLabel = onrampChainLabel(PRIVY_FIAT_ONRAMP_DESTINATION_CHAIN);
+
+  const copyAddress = async (label: string, address?: string) => {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    toast(`${label} copied`, 'success');
+  };
+
+  return (
+    <Card className="p-4 sm:p-6 bg-[#02040a]">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black text-white tracking-tight">Your Wallets</h3>
+            <p className="mt-1 text-xs text-zinc-500">The app keeps escrow signing and fiat/source funding separated.</p>
+          </div>
+          <Tag color="emerald">Non-custodial flow</Tag>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-lg border border-emerald-500/30 bg-black/30 flex items-center justify-center text-emerald-300 shrink-0">
+                  <ShieldCheck size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-emerald-100">Stellar escrow wallet</p>
+                  <p className="mt-1 font-mono text-sm text-emerald-300 truncate">{truncateStellar(stellarAddress)}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-emerald-100/70">
+                    Used for Fund Deal, releases, disputes, and receiving Stellar settlement assets.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyAddress('Stellar wallet', stellarAddress)}
+                className="h-8 w-8 rounded-lg border border-emerald-500/20 bg-black/30 text-emerald-300 hover:border-emerald-400/50 flex items-center justify-center shrink-0"
+                title="Copy Stellar wallet"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <div className="mt-3 rounded-lg border border-emerald-500/10 bg-black/20 px-3 py-2 text-xs font-mono text-emerald-100/80">
+              {xlmBalance ? `${parseFloat(xlmBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM` : 'Balance loading'}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-lg border border-blue-500/30 bg-black/30 flex items-center justify-center text-blue-300 shrink-0">
+                  <Wallet size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-blue-100">{destinationLabel} funding wallet</p>
+                  <p className="mt-1 font-mono text-sm text-blue-300 truncate">
+                    {evmWallet?.address ? shortOnrampAddress(evmWallet.address) : 'Created when needed'}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-blue-100/70">
+                    Used for fiat USDC top-up and as a source wallet for NEAR Intents routes.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyAddress(`${destinationLabel} wallet`, evmWallet?.address)}
+                disabled={!evmWallet?.address}
+                className="h-8 w-8 rounded-lg border border-blue-500/20 bg-black/30 text-blue-300 hover:border-blue-400/50 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={`Copy ${destinationLabel} wallet`}
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <div className="mt-3 rounded-lg border border-blue-500/10 bg-black/20 px-3 py-2 text-xs font-mono text-blue-100/80">
+              Receives USDC on {destinationLabel}; then route to Stellar {SETTLEMENT_TOKEN_SYMBOL}/XLM before escrow funding.
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}

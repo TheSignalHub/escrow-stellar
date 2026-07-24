@@ -159,11 +159,12 @@ Chain** available as recovery paths. Wallet Prep can route XLM through the
 seeded Soroswap testnet route into the configured demo test USDC settlement
 asset.
 
-Wallet Prep also exposes a **Buy USDC with Fiat** card when Privy onramps are
-enabled. This starts Privy's fiat-to-crypto modal and sends purchased USDC to a
-Base/EVM wallet. It is a top-up path only: the deal is not escrow-funded until
-the user routes assets into Stellar when needed and confirms **Fund Deal** from
-the Stellar wallet.
+Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
+card when Privy onramps are enabled. The wallet overview separates the Stellar
+escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's
+fiat-to-crypto modal and sends purchased USDC to the Base/EVM wallet. It is a
+top-up path only: the deal is not escrow-funded until the user routes assets
+into Stellar when needed and confirms **Fund Deal** from the Stellar wallet.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
 cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
@@ -214,6 +215,7 @@ frontend/src/
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
+│   ├── WalletPrepOverview.tsx # Stellar escrow wallet + Base/EVM funding wallet overview
 │   ├── PrivyFiatTopUpCard.tsx # Fiat-to-Base-USDC wallet top-up via Privy onramp
 │   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding
 │   ├── DealDashboard.tsx      # Split-panel deal management UI

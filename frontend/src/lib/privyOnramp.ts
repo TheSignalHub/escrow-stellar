@@ -37,3 +37,11 @@ export function onrampChainLabel(chain: string): string {
   if (chain === 'solana:mainnet') return 'Solana';
   return chain;
 }
+
+export function shortOnrampAddress(address: string): string {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export function findEmbeddedEvmWallet(wallets: Array<{ address: string; walletClientType?: string }>): { address: string } | null {
+  return wallets.find((wallet) => wallet.walletClientType === 'privy') ?? wallets[0] ?? null;
+}

@@ -11,17 +11,11 @@ import {
   PRIVY_FIAT_ONRAMP_ENABLED,
   PRIVY_FIAT_ONRAMP_ENVIRONMENT,
   PRIVY_FIAT_ONRAMP_SOURCE_ASSETS,
+  findEmbeddedEvmWallet,
   onrampChainLabel,
+  shortOnrampAddress,
 } from '../lib/privyOnramp';
 import { Button, Card, Tag } from './ui/Components';
-
-function shortAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function findEmbeddedEvmWallet(wallets: Array<{ address: string; walletClientType?: string }>): { address: string } | null {
-  return wallets.find((wallet) => wallet.walletClientType === 'privy') ?? wallets[0] ?? null;
-}
 
 export function PrivyFiatTopUpCard() {
   const toast = useToast();
@@ -121,7 +115,7 @@ export function PrivyFiatTopUpCard() {
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Destination</p>
               <p className="mt-1 truncate font-mono text-sm font-bold text-emerald-300">
-                {destinationWallet?.address ? shortAddress(destinationWallet.address) : 'Privy EVM wallet'}
+                {destinationWallet?.address ? shortOnrampAddress(destinationWallet.address) : 'Privy EVM wallet'}
               </p>
             </div>
           </div>
