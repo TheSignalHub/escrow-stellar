@@ -23,6 +23,7 @@ import {
   type NearIntentsToken,
 } from '../lib/nearIntents';
 import { SETTLEMENT_TOKEN_DECIMALS, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
+import { useEvmSourceWallet } from '../hooks/useEvmSourceWallet';
 import { Card, Button, Tag } from './ui/Components';
 
 interface NearIntentsPanelProps {
@@ -174,6 +175,21 @@ function tokenLabel(token?: NearIntentsToken): string {
   return `${token.symbol} on ${chainLabel(token.blockchain)}`;
 }
 
+function chainIdLabel(chainId?: string): string {
+  const labels: Record<string, string> = {
+    '0x1': 'Ethereum',
+    '0x2105': 'Base',
+    '0xa': 'Optimism',
+    '0xa4b1': 'Arbitrum',
+    '0x89': 'Polygon',
+    '0xa86a': 'Avalanche',
+    '0x38': 'BNB Chain',
+    '0x64': 'Gnosis',
+  };
+  if (!chainId) return 'Network unknown';
+  return labels[chainId.toLowerCase()] || chainId;
+}
+
 function isQuotePreviewSourceToken(token: NearIntentsToken): boolean {
   return (
     Boolean(token.assetId && token.symbol) &&
@@ -323,6 +339,7 @@ export function NearIntentsPanel({
   onClose,
 }: NearIntentsPanelProps) {
   const toast = useToast();
+  const evmSourceWallet = useEvmSourceWallet();
   const [readiness, setReadiness] = useState<NearIntentsReadiness | null>(null);
   const [allTokens, setAllTokens] = useState<NearIntentsToken[]>([]);
   const [sourceTokens, setSourceTokens] = useState<NearIntentsToken[]>([]);
@@ -481,7 +498,9 @@ export function NearIntentsPanel({
   const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
-  const sourceRefundAddress: string | undefined = undefined;
+  const sourceUsesEvmWallet = Boolean(selectedOriginAsset && EVM_CHAINS.has(selectedOriginAsset.blockchain));
+  const sourceRefundAddress: string | undefined =
+    sourceUsesEvmWallet && evmSourceWallet.address ? evmSourceWallet.address : undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
   const quoteSourceAmount = selectedOriginAsset ? decimalToBaseUnits(sourceAmount, selectedOriginAsset.decimals) : '';
@@ -905,6 +924,43 @@ export function NearIntentsPanel({
             {sourceAssetAvailable && !hasSourceRefundRoute && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 Quote preview only: live source payment requires the source wallet connection so failed routes can refund there automatically.
+              </div>
+            )}
+
+            {sourceUsesEvmWallet && (
+              <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Source wallet</p>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      {evmSourceWallet.isConnected
+                        ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
+                        : `Connect an EVM wallet before requesting a live ${chainLabel(selectedOriginAsset?.blockchain)} quote.`}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={evmSourceWallet.isConnected ? evmSourceWallet.disconnect : evmSourceWallet.connect}
+                    variant={evmSourceWallet.isConnected ? 'secondary' : 'primary'}
+                    className="py-3 text-xs"
+                    icon={evmSourceWallet.isConnecting ? Loader2 : Wallet}
+                  >
+                    {evmSourceWallet.isConnecting
+                      ? 'Connecting...'
+                      : evmSourceWallet.isConnected
+                        ? 'Disconnect Source'
+                        : evmSourceWallet.isAvailable
+                          ? 'Connect EVM Wallet'
+                          : 'Install EVM Wallet'}
+                  </Button>
+                </div>
+                {evmSourceWallet.error && (
+                  <p className="text-xs leading-relaxed text-red-300">{evmSourceWallet.error}</p>
+                )}
+                {evmSourceWallet.isConnected && (
+                  <p className="text-xs leading-relaxed text-emerald-200/80">
+                    Live quote refunds will return to this source wallet. Before manually sending payment, switch the wallet to {chainLabel(selectedOriginAsset?.blockchain)} if needed.
+                  </p>
+                )}
               </div>
             )}
 

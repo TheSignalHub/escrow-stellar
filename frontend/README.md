@@ -167,8 +167,10 @@ token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
 user-selectable from supported non-Stellar 1Click routes; recommended discovered
 routes are ranked first, source amounts are estimated from live token prices
 when available, and successful dry quotes show a quote-evidence checklist. Live
-execution still requires the native source-wallet signing and refund route to
-be wired.
+execution requires a connected source wallet so refunds return to the wallet
+that pays. EVM source routes now support a lightweight browser-wallet connector
+for Ethereum/Base-style live quote readiness; NEAR and Solana source routes
+remain preview-only until their native connectors are wired.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.
