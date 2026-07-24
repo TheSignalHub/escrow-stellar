@@ -9,6 +9,7 @@ import {
   XLM_SAC_ADDRESS,
 } from '../lib/stellar';
 import { stellarBrokerClient } from '../lib/stellarBroker';
+import { stellarDexClient } from '../lib/stellarDex';
 import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/soroswap';
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
@@ -132,6 +133,17 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setPublicQuoteError('');
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
+      if (!IS_TESTNET && stellarDexClient.canHandle(assetInAddress.trim(), assetOutAddress.trim())) {
+        const result = await stellarDexClient.getQuote(
+          assetInAddress.trim(),
+          assetOutAddress.trim(),
+          stroops,
+          swapMode === 'exact-out' ? 'EXACT_OUT' : 'EXACT_IN'
+        );
+        setPublicQuote(result);
+        return;
+      }
+
       const result = await soroswapClient.getQuote(
         assetInAddress.trim(),
         assetOutAddress.trim(),
