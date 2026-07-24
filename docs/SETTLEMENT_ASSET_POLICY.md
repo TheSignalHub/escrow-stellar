@@ -1,6 +1,6 @@
 # Settlement Asset Policy
 
-Last updated: 2026-07-23 16:19 BST
+Last updated: 2026-07-24 18:54 BST
 
 Scope: settlement assets used by the DealEscrow contract, frontend, broker
 route, indexer, and marketplace binding layer.
@@ -9,6 +9,7 @@ route, indexer, and marketplace binding layer.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 18:54 BST | Stellar USDC presentation alignment | Updated frontend/default env labels to present the configured USDC-compatible settlement rail as Stellar USDC while preserving the testnet demo-asset disclosure. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 16:19 BST | Production settlement allowlist | Clarified the product settlement boundary: escrow deals may settle only in approved Stellar USDC or native XLM, while cross-chain source assets remain flexible through supported provider routes. | `npm run build` passed in `frontend/`. |
 | 2026-07-01 10:16 HKT | Settlement asset policy | Added explicit demo/mainnet asset policy, amount precision, minimum amount, trustline, and dust/rounding notes. | `npm run build` passed; mainnet policy-profile build passed. |
 
@@ -17,16 +18,17 @@ route, indexer, and marketplace binding layer.
 The SCF demo uses a testnet SEP-41 token as the configured settlement asset:
 
 ```text
-Symbol:          tUSDC
-Name:            Demo Test USD
+Display symbol:  USDC
+Display name:    Stellar USDC
 Decimals:        7
 SAC address:     CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 Policy profile:  demo-testnet
 ```
 
-This is not production Circle-issued USDC. It exists so reviewers can reproduce
-the escrow lifecycle and the XLM-to-settlement-asset funding route on Stellar
-testnet.
+This testnet SAC is a USDC-compatible demo asset, not production Circle-issued
+USDC. The product-facing label is Stellar USDC so the checkout shape matches
+the intended mainnet rail, while the policy profile and docs keep the testnet
+asset boundary explicit.
 
 ## Production Asset Requirements
 
@@ -59,8 +61,8 @@ trustline flow, and liquidity route have been verified for the deployed network.
 
 ```env
 VITE_USDC_TOKEN_ADDRESS=<settlement-sac-address>
-VITE_SETTLEMENT_TOKEN_SYMBOL=tUSDC
-VITE_SETTLEMENT_TOKEN_NAME=Demo Test USD
+VITE_SETTLEMENT_TOKEN_SYMBOL=USDC
+VITE_SETTLEMENT_TOKEN_NAME=Stellar USDC
 VITE_SETTLEMENT_TOKEN_DECIMALS=7
 VITE_SETTLEMENT_MIN_UNITS=1
 VITE_SETTLEMENT_ASSET_POLICY=demo-testnet

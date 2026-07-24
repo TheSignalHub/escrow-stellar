@@ -47,10 +47,11 @@ VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_STELLAR_EXPLORER_URL=https://stellar.expert/explorer/testnet
 VITE_FRIENDBOT_URL=https://friendbot.stellar.org
 
-# Demo testnet USDC-compatible token address (SAC)
+# Stellar USDC-compatible token address (SAC). Testnet may point to the demo
+# USDC-compatible asset; mainnet should point to the approved Stellar USDC SAC.
 VITE_USDC_TOKEN_ADDRESS=
-VITE_SETTLEMENT_TOKEN_SYMBOL=tUSDC
-VITE_SETTLEMENT_TOKEN_NAME=Demo Test USD
+VITE_SETTLEMENT_TOKEN_SYMBOL=USDC
+VITE_SETTLEMENT_TOKEN_NAME=Stellar USDC
 VITE_SETTLEMENT_TOKEN_DECIMALS=7
 VITE_SETTLEMENT_MIN_UNITS=1
 VITE_SETTLEMENT_ASSET_POLICY=demo-testnet

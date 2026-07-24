@@ -231,7 +231,7 @@ npm run dev
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
-6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/tUSDC** when the wallet has enough balance or use **Prepare Wallet** / **Top Up from Another Chain** when it does not
+6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/USDC** when the wallet has enough balance or use **Prepare Wallet** / **Top Up from Another Chain** when it does not
 7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`

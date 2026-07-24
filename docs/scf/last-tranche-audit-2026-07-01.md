@@ -88,7 +88,7 @@ The largest remaining gap is not basic escrow functionality. It is productizatio
    evidence and a stable external API contract if another marketplace plugs in.
 
 2. Mainnet/payment asset readiness is incomplete.
-   `frontend/src/lib/stellar.ts` now supports env-driven network RPC, Horizon, explorer, and Friendbot configuration with testnet defaults. The remaining gap is production asset policy: the settlement token defaults to demo `tUSDC`, and docs correctly warn it is not Circle-issued USDC. Final tranche still needs production USDC/asset configuration, allowlists, and trustline/dust policy.
+   `frontend/src/lib/stellar.ts` now supports env-driven network RPC, Horizon, explorer, Friendbot configuration, and a production-directed Stellar USDC display label with testnet defaults. The remaining gap is production asset policy: the current testnet USDC-compatible SAC is still a demo asset and docs correctly warn it is not Circle-issued USDC. Final tranche still needs production USDC/asset configuration, allowlists, and trustline/dust policy.
 
 3. Stellar Broker is represented by an adapter, not a production broker integration.
    The current `stellarBrokerClient` delegates to `soroswapOnchainClient`. This proves the flow, but final tranche needs the real broker/aggregator contract or API contract, route failure handling, quote expiry semantics, asset allowlists, and production liquidity assumptions.

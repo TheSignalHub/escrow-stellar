@@ -8,7 +8,6 @@ import {
   IS_TESTNET,
   SETTLEMENT_ASSET_POLICY,
   SETTLEMENT_MIN_UNITS,
-  SETTLEMENT_TOKEN_SYMBOL,
   isValidStellarAddress,
   getExplorerTxLink,
 } from '../lib/stellar';
@@ -641,8 +640,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
                     }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
-                    <option value="XLM_DIRECT">XLM settlement — fund and release in XLM</option>
-                    <option value="USDC">{SETTLEMENT_TOKEN_SYMBOL} settlement — fund directly</option>
+                    <option value="XLM_DIRECT">Stellar XLM — fund and release in XLM</option>
+                    <option value="USDC">Stellar USDC — fund and release in USDC</option>
                   </select>
                   {settlementAsset === 'XLM_DIRECT' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
@@ -651,7 +650,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
                   )}
                   {settlementAsset === 'USDC' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = configured {IS_TESTNET ? `demo ${SETTLEMENT_TOKEN_SYMBOL}` : SETTLEMENT_TOKEN_SYMBOL} SAC.{IS_TESTNET ? ' This is not production Circle USDC.' : ''}
+                      Deal token = configured Stellar USDC SAC.{IS_TESTNET ? ' Testnet uses the configured demo USDC-compatible asset until mainnet Circle USDC is enabled.' : ''}
                     </p>
                   )}
                   <p className="text-[10px] text-zinc-500 mt-1.5">

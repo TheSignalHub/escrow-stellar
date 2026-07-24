@@ -94,7 +94,7 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 
 1. **Provider Address**: Paste the Stellar public key (G...) of the service provider
 2. **Connector Address**: Paste the BD referrer's address
-3. **Escrow Settlement Asset**: Select XLM settlement or test USDC settlement
+3. **Escrow Settlement Asset**: Select Stellar XLM or Stellar USDC settlement
 4. **Total Amount**: Enter the deal total in the selected token
 5. **Platform Fee**: Set the total platform fee percentage (e.g., 10%)
 6. **Connector Share**: Set the connector's share of the platform fee (e.g., 40%)
@@ -155,7 +155,7 @@ The segmented filter bar at the top of the deal list:
 1. Select a deal from the left panel
 2. Find the first milestone showing **Pending** status
 3. Choose a funding path:
-   - **Fund Deal with XLM/tUSDC** when the deal-funding balance row shows enough wallet balance
+   - **Fund Deal with XLM/USDC** when the deal-funding balance row shows enough wallet balance
    - **Top Up from Another Chain** for a NEAR Intents-backed wallet top-up quote using the remaining pending deal amount
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet

@@ -235,7 +235,7 @@ Steps:
 3. Hide Friendbot and demo-only pool language outside testnet mode. Status: done for Liquidity and create/swap copy.
 4. Update README and `.env.example` with testnet/staging/mainnet profiles. Status: done for testnet and mainnet notes.
 
-Acceptance criteria: no production-facing docs imply Friendbot, demo tUSDC, or seeded testnet liquidity are mainnet-ready.
+Acceptance criteria: no production-facing docs imply Friendbot, the demo USDC-compatible testnet SAC, or seeded testnet liquidity are mainnet-ready.
 
 ## Gap 3 - Settlement Asset Policy
 
@@ -243,7 +243,7 @@ Goal: define which assets a marketplace can safely use.
 
 Steps:
 
-1. Document supported settlement assets: demo tUSDC for testnet, production USDC or approved stable assets for mainnet. Status: done as policy boundary; exact mainnet asset address still must be verified before claiming production USDC.
+1. Document supported settlement assets: demo USDC-compatible SAC for testnet, production Stellar USDC or native XLM for mainnet. Status: done as policy boundary; exact mainnet asset address still must be verified before claiming production USDC.
 2. Define min amount, decimal handling, dust/rounding behavior, and trustline expectations. Status: done.
 3. Add UI copy for unsupported asset/trustline states. Status: partially done; create flow now shows min amount/policy label, trustline-specific runtime detection remains future work.
 
