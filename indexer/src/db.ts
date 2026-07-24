@@ -1,6 +1,7 @@
 import { MongoClient, type Collection, type Db } from 'mongodb';
 import type {
   DecodedEscrowEvent,
+  DisputeNote,
   IndexerState,
   MarketplaceBinding,
   MarketplaceBindingEvent,
@@ -13,6 +14,7 @@ export interface IndexerDb {
   transfers: Collection<DecodedEscrowEvent>;
   marketplaceBindings: Collection<MarketplaceBinding>;
   marketplaceBindingEvents: Collection<MarketplaceBindingEvent>;
+  disputeNotes: Collection<DisputeNote>;
 }
 
 export async function connectIndexerDb(databaseUri: string): Promise<IndexerDb> {
@@ -23,6 +25,7 @@ export async function connectIndexerDb(databaseUri: string): Promise<IndexerDb> 
   const transfers = db.collection<DecodedEscrowEvent>('escrow-transfers');
   const marketplaceBindings = db.collection<MarketplaceBinding>('marketplace-bindings');
   const marketplaceBindingEvents = db.collection<MarketplaceBindingEvent>('marketplace-binding-events');
+  const disputeNotes = db.collection<DisputeNote>('dispute-notes');
 
   await Promise.all([
     state.createIndex({ contractAddress: 1, network: 1 }, { unique: true }),
@@ -54,9 +57,19 @@ export async function connectIndexerDb(databaseUri: string): Promise<IndexerDb> 
       sorobanDealId: 1,
       sorobanMilestoneIdx: 1,
     }),
+    disputeNotes.createIndex({ dealId: 1, milestoneIdx: 1, updatedAt: -1 }),
+    disputeNotes.createIndex({ txHash: 1 }),
   ]);
 
-  return { client, db, state, transfers, marketplaceBindings, marketplaceBindingEvents };
+  return {
+    client,
+    db,
+    state,
+    transfers,
+    marketplaceBindings,
+    marketplaceBindingEvents,
+    disputeNotes,
+  };
 }
 
 export async function closeIndexerDb(indexerDb: IndexerDb): Promise<void> {

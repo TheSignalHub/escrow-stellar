@@ -9,6 +9,7 @@ path toward production-grade administration.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-24 16:51 BST | Dispute note capture and gated admin execution | Added off-chain dispute notes for admin review and optional protected server-side `resolve_dispute` / `refund` execution when explicit admin signer envs are configured. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-24 16:45 BST | Admin dispute command clarity | Added visible preset/copy feedback and explicit unknown-settlement guidance for direct app-created disputes that do not have shadow binding metadata. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 15:38 BST | Protected dispute operations console | Replaced the `/admin` placeholder with an authenticated dispute queue that reads indexed dispute/resolution/refund evidence and provides admin-ready `resolve_dispute` / emergency `refund` CLI commands without storing signing keys. | `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:31 HKT | Gap 7 admin/security operations | Documented contract admin authority, rotation limitation, dispute operator flow, emergency refund criteria, secrets handling, monitoring, and production hardening gaps. | Static review of `contracts/deal_escrow/src/lib.rs`, admin dashboard routes, deployment docs, and package READMEs. No runtime behavior changed. |
@@ -49,9 +50,14 @@ the protected `/admin` dispute-operations console:
    - `0`: all disputed funds to provider.
    - `5000`: 50/50 split.
    - `10000`: all disputed funds back to client.
-4. Copy the generated `stellar contract invoke ... resolve_dispute` command and
-   run it from the admin-controlled Stellar identity. The server does not hold
-   or use admin signing keys.
+4. Resolve the dispute:
+   - Default/safest path: copy the generated `stellar contract invoke ...
+     resolve_dispute` command and run it from the admin-controlled Stellar
+     identity.
+   - Optional operator path: when `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and
+     `ADMIN_STELLAR_SECRET_KEY` are configured, click the protected `/admin`
+     execution button. Mainnet server execution remains blocked unless
+     `ADMIN_RESOLUTION_ALLOW_MAINNET=true`.
 5. Run the indexer from `/admin` and marketplace binding reconciliation when
    bindings are in scope.
 6. Verify the `resolved` event in `/admin`, `/market_dashboard`, and Stellar
@@ -110,10 +116,15 @@ Keep these values only in Coolify or a secrets manager:
 - `PAYLOAD_SECRET`
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
+- `ADMIN_STELLAR_SECRET_KEY` if optional server-side admin execution is enabled
 
 Rotate them if they appear in chat, screenshots, issue trackers, logs, or shared
 documents. `VITE_*` values are public browser configuration and should not be
 used for secrets.
+
+Do not enable server-side admin execution with a production hot key unless the
+deployment is explicitly operating with that risk profile. Prefer multisig,
+policy-controlled signing, or CLI/hardware signing for mainnet.
 
 ## Monitoring Checklist
 

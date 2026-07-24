@@ -137,6 +137,7 @@ export function DealDashboard({
     type: 'release' | 'dispute';
     milestoneIdx: number;
   } | null>(null);
+  const [disputeReason, setDisputeReason] = useState('');
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -382,8 +383,13 @@ export function DealDashboard({
     }
   };
 
-  const handleDispute = async (milestoneIdx: number) => {
+  const handleDispute = async (milestoneIdx: number, reason: string) => {
     if (selectedDealId === null) return;
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 5) {
+      toast('Add a short dispute reason for admin review.', 'error');
+      return;
+    }
     setActionLoading(`dispute-${milestoneIdx}`);
     setError('');
     setErrorContext(null);
@@ -391,7 +397,32 @@ export function DealDashboard({
     try {
       const res = await onDispute(selectedDealId, milestoneIdx);
       setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'disputed', timestamp: new Date().toISOString(), txHash: res.txHash });
+      recordMilestoneEvent(selectedDealId, milestoneIdx, {
+        action: 'disputed',
+        timestamp: new Date().toISOString(),
+        txHash: res.txHash,
+      });
+      try {
+        const noteResponse = await fetch('/api/dispute-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dealId: selectedDealId,
+            milestoneIdx,
+            walletAddress,
+            txHash: res.txHash,
+            reason: trimmedReason,
+          }),
+        });
+        if (!noteResponse.ok) {
+          console.warn('Dispute note was not saved for admin review', await noteResponse.text());
+          toast('Dispute filed, but the admin note did not save. Tell ops before resolution.', 'error');
+        }
+      } catch (noteError) {
+        console.warn('Dispute note was not saved for admin review', noteError);
+        toast('Dispute filed, but the admin note did not save. Tell ops before resolution.', 'error');
+      }
+      setDisputeReason('');
       toast('Dispute filed on-chain', 'info');
       await fetchAllDeals();
     } catch (err: any) {
@@ -1164,13 +1195,25 @@ export function DealDashboard({
             {confirmAction.type === 'dispute' && (
               <div className="space-y-6 text-center">
                 <div className="mx-auto w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                    <AlertCircle className="text-red-400" size={24} />
+                  <AlertCircle className="text-red-400" size={24} />
                 </div>
                 <h3 className="text-xl font-bold text-zinc-100">Initiate Arbitration</h3>
-                <p className="text-sm text-zinc-400">Disputing will freeze the funds. The protocol oracle will step in to arbitrate. Await network resolution.</p>
+                <p className="text-sm text-zinc-400">Disputing will freeze this milestone. Add a short note for admin review before signing.</p>
+                <textarea
+                  value={disputeReason}
+                  onChange={(event) => setDisputeReason(event.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  placeholder="Briefly explain what went wrong, what evidence exists, or what outcome you are requesting."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50 resize-none text-left"
+                />
+                <div className="text-right text-[10px] text-zinc-500">{disputeReason.trim().length}/1000</div>
                 <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setConfirmAction(null)}>Cancel</Button>
-                  <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] border-transparent" onClick={() => handleDispute(confirmAction.milestoneIdx)}>Confirm Dispute</Button>
+                  <Button variant="secondary" className="flex-1" onClick={() => {
+                    setConfirmAction(null);
+                    setDisputeReason('');
+                  }}>Cancel</Button>
+                  <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] border-transparent" onClick={() => handleDispute(confirmAction.milestoneIdx, disputeReason)}>Confirm Dispute</Button>
                 </div>
               </div>
             )}

@@ -115,14 +115,15 @@ Disputes follow a two-phase model:
 
 | Actor | Action |
 | --- | --- |
-| Client or Provider | Flag dispute → milestone frozen |
-| Contract admin / operator | Call `resolve_dispute` on-chain with refund split |
+| Client or Provider | Flag dispute with reason note → milestone frozen |
+| Contract admin / operator | Review note and call `resolve_dispute` on-chain with refund split |
 
 The admin address is set when the contract is initialized. Only that address
 can call `resolve_dispute`. The client UI surfaces an "Under review" banner
 for disputed milestones. It does **not** expose release or admin split controls
 for disputed funds; those remain in the protected `/admin` dispute-operations
-console and admin-signed contract path.
+console and admin-signed contract path. Dispute reasons are stored off-chain in
+the indexer/support database, not in public Soroban events.
 
 Final-tranche unhappy-path QA coverage and remaining evidence tasks are tracked
 in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-2026-07-01.md).

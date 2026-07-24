@@ -190,11 +190,12 @@ not considered escrow-funded until the Stellar DealEscrow contract emits a
 Either the client or provider can dispute a funded milestone:
 
 1. Click **Dispute** on a **Funded** milestone
-2. Confirm in the modal: "Disputing will freeze this milestone"
-3. The milestone transitions to **Disputed** and the deal becomes **Disputed**
-4. A toast notification confirms: "Dispute filed on-chain"
+2. Add a short dispute reason for admin review
+3. Confirm in the modal: "Disputing will freeze this milestone"
+4. The milestone transitions to **Disputed** and the deal becomes **Disputed**
+5. A toast notification confirms: "Dispute filed on-chain"
 
-**What happens on-chain**: The `dispute` function requires `caller.require_auth()` and checks that the caller is either the client or provider. The milestone is frozen — no releases or further deposits possible.
+**What happens on-chain**: The `dispute` function requires `caller.require_auth()` and checks that the caller is either the client or provider. The milestone is frozen — no releases or further deposits possible. The reason note is stored off-chain in the indexer/support database for admin review; it is not written to the public contract event.
 
 ### 4d. Resolve a Dispute (Operator / Admin)
 
@@ -211,9 +212,14 @@ For operator/admin resolution, use the protected `/admin` console:
    - 0%: All funds go to provider
    - 50%: Equal split between client and provider
    - 100%: Full refund to client
-4. Copy the generated `resolve_dispute` command and run it from the contract
-   admin Stellar identity
-5. Click **Run Indexer Once** in `/admin`
+4. Resolve the dispute:
+   - If server execution is disabled, copy the generated `resolve_dispute`
+     command and run it from the contract admin Stellar identity
+   - If `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and
+     `ADMIN_STELLAR_SECRET_KEY` are configured, click **Execute selected
+     resolution** in `/admin`
+5. Click **Run Indexer Once** in `/admin` if the execution path did not already
+   refresh the indexer
 6. Verify the resulting `resolved` Soroban event in `/admin`,
    `/market_dashboard`, and Stellar Expert
 
@@ -275,7 +281,7 @@ After completing the full flow, verify:
 4. Release milestone 1 (normal flow)
 5. Dispute milestone 2
 6. Show the Disputed state and **Under review** banner
-7. Open `/admin`, show the open dispute queue, copy/run the 50/50 `resolve_dispute` command from the admin identity, run the indexer, and capture the indexed `resolved` evidence
+7. Open `/admin`, show the open dispute queue and reason note, resolve 50/50 through the enabled admin path, run or confirm indexer refresh, and capture the indexed `resolved` evidence
 
 ### Scenario 2b: Cross-Chain Funding Unhappy Path (2 minutes)
 

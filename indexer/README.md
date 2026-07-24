@@ -30,6 +30,7 @@ The indexer writes two Mongo collections:
 
 - `stellar-indexer-state` — control/checkpoint state
 - `escrow-transfers` — decoded event rows
+- `dispute-notes` — off-chain dispute reasons submitted by client/provider after a signed on-chain dispute tx
 
 Rows are intentionally isolated:
 
@@ -87,6 +88,9 @@ Minimum env:
 DATABASE_URI=mongodb://127.0.0.1:27017/escrow-stellar-demo
 ADMIN_USERNAME=reviewer
 ADMIN_PASSWORD=<strong-password>
+ADMIN_RESOLUTION_EXECUTION_ENABLED=false
+ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
+ADMIN_RESOLUTION_ALLOW_MAINNET=false
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
@@ -346,8 +350,11 @@ Routes:
 
 - `GET /health`
 - `POST /api/indexer/run-once` — protected by `ADMIN_USERNAME` / `ADMIN_PASSWORD`
-- `GET /admin` — protected dispute-operations console with open dispute queue, resolution/refund evidence, generated admin CLI commands, and manual indexer control
+- `POST /api/dispute-notes` — public dispute-note intake after a signed on-chain dispute transaction
+- `GET /admin` — protected dispute-operations console with open dispute queue, off-chain notes, resolution/refund evidence, generated admin CLI commands, optional gated execution, and manual indexer control
 - `GET /api/admin/disputes` — protected JSON source for the dispute operations console
+- `POST /api/admin/disputes/resolve` — protected optional server-side `resolve_dispute` execution, disabled unless `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and `ADMIN_STELLAR_SECRET_KEY` are configured
+- `POST /api/admin/disputes/refund` — protected optional server-side emergency `refund` execution, disabled unless the same admin execution envs are configured
 - `GET /api/near-intents/readiness` — public non-secret NEAR Intents feature/config readiness
 - `GET /api/near-intents/tokens` — protected SDK-backed token list for confirming asset IDs
 - `POST /api/marketplace-bindings` — protected shadow binding creation
@@ -387,7 +394,7 @@ The runtime server exposes:
 - `/` — frontend app
 - `/market_dashboard` — read-only Stellar event dashboard for reviewer/demo visibility
 - `/market_dashboard` also shows read-only shadow marketplace bindings when seeded
-- `/admin` — protected dispute operations console for open-deal dispute review, admin-ready `resolve_dispute` / emergency `refund` command generation, indexed evidence, and manual indexer control
+- `/admin` — protected dispute operations console for open-deal dispute review, off-chain dispute notes, admin-ready `resolve_dispute` / emergency `refund` command generation, optional gated execution, indexed evidence, and manual indexer control
 - `/health` — indexer health
 - `/api/indexer/run-once` — protected manual indexer tick
 - `/api/marketplace-bindings*` — protected shadow marketplace binding and reconciliation APIs
@@ -409,13 +416,24 @@ as a `VITE_` variable; Vite variables are bundled into browser JavaScript.
 
 Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the deployed environment before
 using `/admin`. The browser will show a Basic Auth sign-in prompt. The admin
-console reads indexed dispute, resolved, and refund events; it does not store
-admin signing keys or submit `resolve_dispute` transactions server-side. The
-operator copies the generated Stellar CLI command and signs from the admin
-identity, then runs the indexer from `/admin` to refresh evidence. The public
-`/market_dashboard` route is intentionally read-only and has no buttons that
-can mutate indexer state. Inngest scheduled runs do not depend on the admin
-session.
+console reads indexed dispute, resolved, and refund events plus off-chain
+dispute notes. By default, the operator copies the generated Stellar CLI
+command and signs from the admin identity, then runs the indexer from `/admin`
+to refresh evidence.
+
+Optional click-to-resolve execution is available only when all relevant envs are
+set:
+
+```env
+ADMIN_RESOLUTION_EXECUTION_ENABLED=true
+ADMIN_STELLAR_SECRET_KEY=<contract-admin-secret-key>
+ADMIN_RESOLUTION_ALLOW_MAINNET=false
+```
+
+Keep `ADMIN_RESOLUTION_ALLOW_MAINNET=false` unless the deployment has explicitly
+accepted a server-side production hot-key risk. The public `/market_dashboard`
+route is intentionally read-only and has no buttons that can mutate indexer
+state. Inngest scheduled runs do not depend on the admin session.
 
 ## Review Positioning
 

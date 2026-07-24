@@ -21,6 +21,11 @@ export interface IndexerConfig {
     quoteTtlSeconds: number;
     pollIntervalSeconds: number;
   };
+  adminResolution: {
+    executionEnabled: boolean;
+    secretKey?: string;
+    allowMainnet: boolean;
+  };
   enabled: boolean;
   overlapLedgers: number;
   startLedger?: number;
@@ -94,6 +99,11 @@ export function getConfig(): IndexerConfig {
       defaultRefundAccount: process.env.NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT,
       quoteTtlSeconds: readOptionalInt('NEAR_INTENTS_QUOTE_TTL_SECONDS') ?? 300,
       pollIntervalSeconds: readOptionalInt('NEAR_INTENTS_POLL_INTERVAL_SECONDS') ?? 15,
+    },
+    adminResolution: {
+      executionEnabled: process.env.ADMIN_RESOLUTION_EXECUTION_ENABLED === 'true',
+      secretKey: process.env.ADMIN_STELLAR_SECRET_KEY,
+      allowMainnet: process.env.ADMIN_RESOLUTION_ALLOW_MAINNET === 'true',
     },
     enabled: process.env.INDEXER_ENABLED !== 'false',
     overlapLedgers: readOptionalInt('INDEXER_OVERLAP_LEDGERS') ?? 5,

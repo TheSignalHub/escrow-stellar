@@ -1,8 +1,13 @@
 import type { Express, NextFunction, Request, Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
+import * as StellarSdk from '@stellar/stellar-sdk';
 import type { IndexerConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
-import type { DecodedEscrowEvent, MarketplaceBinding } from './types.js';
+import { runStellarIndexerOnce } from './runStellarIndexerOnce.js';
+import type { DecodedEscrowEvent, DisputeNote, MarketplaceBinding } from './types.js';
+
+const rpc = StellarSdk.rpc;
+const MAX_ADMIN_TX_POLL_RETRIES = 30;
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '')
@@ -93,6 +98,91 @@ function adminCommand(
   return base.join(' ');
 }
 
+function networkPassphrase(config: IndexerConfig): string {
+  return config.network === 'mainnet' ? StellarSdk.Networks.PUBLIC : StellarSdk.Networks.TESTNET;
+}
+
+async function submitAdminContractCall(
+  config: IndexerConfig,
+  operation: StellarSdk.xdr.Operation
+): Promise<{ txHash: string; status: string }> {
+  if (!config.adminResolution.executionEnabled) {
+    throw new Error('Admin execution is disabled. Set ADMIN_RESOLUTION_EXECUTION_ENABLED=true.');
+  }
+  if (!config.adminResolution.secretKey) {
+    throw new Error('ADMIN_STELLAR_SECRET_KEY is required for server-side admin execution.');
+  }
+  if (config.network === 'mainnet' && !config.adminResolution.allowMainnet) {
+    throw new Error('Mainnet admin execution is blocked unless ADMIN_RESOLUTION_ALLOW_MAINNET=true.');
+  }
+
+  const keypair = StellarSdk.Keypair.fromSecret(config.adminResolution.secretKey);
+  const server = new rpc.Server(config.rpcUrl);
+  const account = await server.getAccount(keypair.publicKey());
+  const tx = new StellarSdk.TransactionBuilder(account, {
+    fee: StellarSdk.BASE_FEE,
+    networkPassphrase: networkPassphrase(config),
+  })
+    .addOperation(operation)
+    .setTimeout(120)
+    .build();
+
+  const simResult = await server.simulateTransaction(tx);
+  if (!rpc.Api.isSimulationSuccess(simResult)) {
+    throw new Error(`Admin transaction simulation failed: ${JSON.stringify(simResult)}`);
+  }
+
+  const assembledTx = rpc.assembleTransaction(tx, simResult).build();
+  assembledTx.sign(keypair);
+  const sendResult = await server.sendTransaction(assembledTx);
+
+  if (sendResult.status === 'ERROR') {
+    throw new Error('Admin transaction submission failed.');
+  }
+
+  let getResult: Awaited<ReturnType<typeof server.getTransaction>>;
+  let retries = 0;
+  do {
+    if (retries >= MAX_ADMIN_TX_POLL_RETRIES) {
+      return { txHash: sendResult.hash, status: 'PENDING_TIMEOUT' };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    getResult = await server.getTransaction(sendResult.hash);
+    retries += 1;
+  } while (getResult.status === rpc.Api.GetTransactionStatus.NOT_FOUND);
+
+  if (getResult.status === rpc.Api.GetTransactionStatus.FAILED) {
+    throw new Error('Admin transaction was rejected by the contract.');
+  }
+
+  return { txHash: sendResult.hash, status: String(getResult.status) };
+}
+
+async function resolveDisputeOnChain(
+  config: IndexerConfig,
+  dealId: number,
+  milestoneIdx: number,
+  refundBps: number
+): Promise<{ txHash: string; status: string }> {
+  const contract = new StellarSdk.Contract(config.contractAddress);
+  const operation = contract.call(
+    'resolve_dispute',
+    StellarSdk.nativeToScVal(dealId, { type: 'u64' }),
+    StellarSdk.nativeToScVal(milestoneIdx, { type: 'u32' }),
+    StellarSdk.nativeToScVal(refundBps, { type: 'u32' })
+  );
+  return submitAdminContractCall(config, operation);
+}
+
+async function refundDealOnChain(
+  config: IndexerConfig,
+  dealId: number
+): Promise<{ txHash: string; status: string }> {
+  const contract = new StellarSdk.Contract(config.contractAddress);
+  const operation = contract.call('refund', StellarSdk.nativeToScVal(dealId, { type: 'u64' }));
+  return submitAdminContractCall(config, operation);
+}
+
 function latestBindingByDeal(bindings: MarketplaceBinding[]): Map<number, MarketplaceBinding> {
   const byDeal = new Map<number, MarketplaceBinding>();
   for (const binding of bindings) {
@@ -107,7 +197,8 @@ function latestBindingByDeal(bindings: MarketplaceBinding[]): Map<number, Market
 function buildDisputeOperations(
   config: IndexerConfig,
   events: DecodedEscrowEvent[],
-  bindings: MarketplaceBinding[]
+  bindings: MarketplaceBinding[],
+  disputeNotes: DisputeNote[]
 ) {
   const sortedEvents = [...events].sort((a, b) => {
     if ((a.sorobanLedgerSeq || 0) !== (b.sorobanLedgerSeq || 0)) {
@@ -119,6 +210,14 @@ function buildDisputeOperations(
   const latestByMilestone = new Map<string, DecodedEscrowEvent>();
   const fundedAmountByMilestone = new Map<string, number>();
   const latestRefundByDeal = new Map<number, DecodedEscrowEvent>();
+  const notesByMilestone = new Map<string, DisputeNote[]>();
+
+  for (const note of disputeNotes) {
+    const key = `${note.dealId}:${note.milestoneIdx}`;
+    const notes = notesByMilestone.get(key) ?? [];
+    notes.push(note);
+    notesByMilestone.set(key, notes);
+  }
 
   for (const event of sortedEvents) {
     if (event.sorobanDealId === undefined || event.sorobanDealId === null) continue;
@@ -174,6 +273,15 @@ function buildDisputeOperations(
             }
           : null,
         settlementSymbol: binding?.settlementAsset.symbol ?? null,
+        notes: (notesByMilestone.get(key) ?? [])
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          .slice(0, 5)
+          .map((note) => ({
+            walletAddress: note.walletAddress,
+            txHash: note.txHash,
+            reason: note.reason,
+            createdAt: note.createdAt,
+          })),
         commands: {
           providerWin: adminCommand(
             config,
@@ -223,6 +331,11 @@ function buildDisputeOperations(
     openDisputeCount: openDisputes.length,
     openDisputes,
     evidence,
+    adminExecution: {
+      enabled: config.adminResolution.executionEnabled,
+      configured: Boolean(config.adminResolution.secretKey),
+      mainnetAllowed: config.adminResolution.allowMainnet,
+    },
     generatedAt: new Date(),
   };
 }
@@ -507,6 +620,9 @@ function renderInternalAdminPage(config: IndexerConfig): string {
       .command-note { color: var(--muted); font-size: 13px; margin: 10px 0; }
       .notice { margin-top: 12px; color: var(--yellow); border: 1px solid rgba(243,199,107,.28); background: rgba(243,199,107,.08); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
       .preset-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+      .execute-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+      .note-list { margin-top: 14px; display: grid; gap: 8px; }
+      .note-card { border: 1px solid var(--line); background: rgba(17,24,22,.76); border-radius: 8px; padding: 10px 12px; }
       .empty { color: var(--muted); padding: 22px 0 4px; border-top: 1px solid var(--line); }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }
       th, td { padding: 12px 10px; text-align: left; border-top: 1px solid var(--line); vertical-align: top; }
@@ -582,16 +698,32 @@ function renderInternalAdminPage(config: IndexerConfig): string {
       function commandBlock(dispute) {
         const id = 'cmd-' + dispute.dealId + '-' + dispute.milestoneIdx;
         const statusId = 'cmd-status-' + dispute.dealId + '-' + dispute.milestoneIdx;
+        const executeId = 'execute-status-' + dispute.dealId + '-' + dispute.milestoneIdx;
         return '<div><div class="label">Admin resolution command</div>' +
           '<div class="command-note" id="' + statusId + '">Selected: 50 / 50 split. Click another preset to update and copy the command.</div>' +
           '<div class="preset-row">' +
-          '<button data-label="Provider wins" data-command="' + escapeHtml(dispute.commands.providerWin) + '" data-target="' + id + '" data-status="' + statusId + '">Provider wins</button>' +
-          '<button data-label="50 / 50 split" data-command="' + escapeHtml(dispute.commands.split50) + '" data-target="' + id + '" data-status="' + statusId + '">50 / 50 split</button>' +
-          '<button data-label="Client refund" data-command="' + escapeHtml(dispute.commands.clientRefund) + '" data-target="' + id + '" data-status="' + statusId + '">Client refund</button>' +
+          '<button data-refund-bps="0" data-label="Provider wins" data-command="' + escapeHtml(dispute.commands.providerWin) + '" data-target="' + id + '" data-status="' + statusId + '">Provider wins</button>' +
+          '<button data-refund-bps="5000" data-label="50 / 50 split" data-command="' + escapeHtml(dispute.commands.split50) + '" data-target="' + id + '" data-status="' + statusId + '">50 / 50 split</button>' +
+          '<button data-refund-bps="10000" data-label="Client refund" data-command="' + escapeHtml(dispute.commands.clientRefund) + '" data-target="' + id + '" data-status="' + statusId + '">Client refund</button>' +
           '</div>' +
           '<pre class="command mono" id="' + id + '">' + escapeHtml(dispute.commands.split50) + '</pre>' +
-          '<button class="warn" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '" data-status="' + statusId + '">Emergency full refund command</button>' +
+          '<div class="execute-row">' +
+            '<button class="primary" data-execute-resolution data-deal-id="' + escapeHtml(dispute.dealId) + '" data-milestone-idx="' + escapeHtml(dispute.milestoneIdx) + '" data-refund-bps="5000" data-status="' + executeId + '">Execute selected resolution</button>' +
+            '<button class="warn" data-execute-refund data-deal-id="' + escapeHtml(dispute.dealId) + '" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '" data-status="' + statusId + '" data-execute-status="' + executeId + '">Emergency full refund</button>' +
+          '</div>' +
+          '<div class="command-note" id="' + executeId + '">Server execution requires ADMIN_RESOLUTION_EXECUTION_ENABLED and ADMIN_STELLAR_SECRET_KEY.</div>' +
           '</div>';
+      }
+
+      function renderNotes(notes) {
+        if (!notes || !notes.length) return '<div class="notice">No dispute note was submitted for this milestone.</div>';
+        return '<div class="note-list">' + notes.map((note) =>
+          '<div class="note-card">' +
+            '<div class="label">Dispute note</div>' +
+            '<p>' + escapeHtml(note.reason) + '</p>' +
+            '<div class="mono" style="color:var(--muted);font-size:12px">' + escapeHtml(note.walletAddress) + ' · ' + escapeHtml(note.createdAt ? new Date(note.createdAt).toLocaleString() : '-') + '</div>' +
+          '</div>'
+        ).join('') + '</div>';
       }
 
       function renderOpenDisputes(disputes) {
@@ -613,6 +745,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
                 '<div><div class="label">Client</div><div class="mono">' + escapeHtml(binding ? binding.clientWallet : '-') + '</div></div>' +
                 '<div><div class="label">Provider</div><div class="mono">' + escapeHtml(binding ? binding.providerWallet : '-') + '</div></div>' +
               '</div>' +
+              renderNotes(dispute.notes) +
               (!binding ? '<div class="notice">Settlement asset and party wallets are not present in raw dispute events. For direct app-created deals, confirm the asset and parties in the Deals tab or add a shadow marketplace binding before final evidence capture.</div>' : '') +
             '</div>' +
             commandBlock(dispute) +
@@ -633,6 +766,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         if (!response.ok) throw new Error(data.error || 'Failed to load dispute operations');
         document.getElementById('stats').innerHTML =
           stat('Open Disputes', data.openDisputeCount || 0, data.openDisputeCount ? 'error' : '') +
+          stat('Admin Execution', data.adminExecution?.enabled && data.adminExecution?.configured ? 'enabled' : 'command only') +
           stat('Network', data.network || config.network) +
           stat('Contract', data.contractAddress || config.contractAddress);
         document.getElementById('open-disputes').innerHTML = renderOpenDisputes(data.openDisputes || []);
@@ -648,11 +782,44 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         if (target) target.textContent = button.dataset.command;
         const status = document.getElementById(button.dataset.status);
         if (status) status.textContent = 'Selected: ' + (button.dataset.label || 'command') + '. Command copied; replace <ADMIN_IDENTITY> before running.';
+        const executeButton = document.querySelector('button[data-execute-resolution][data-deal-id="' + button.closest('article').querySelector('button[data-execute-resolution]').dataset.dealId + '"][data-milestone-idx="' + button.closest('article').querySelector('button[data-execute-resolution]').dataset.milestoneIdx + '"]');
+        if (executeButton && button.dataset.refundBps) executeButton.dataset.refundBps = button.dataset.refundBps;
         try {
           await navigator.clipboard.writeText(button.dataset.command);
           button.textContent = 'Copied';
           setTimeout(() => { button.textContent = button.dataset.label || 'Copy command'; }, 1200);
         } catch (_) {}
+      });
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-execute-resolution], button[data-execute-refund]');
+        if (!button) return;
+        const status = document.getElementById(button.dataset.status || button.dataset.executeStatus);
+        const isRefund = button.hasAttribute('data-execute-refund');
+        const message = isRefund
+          ? 'Execute emergency refund for every funded/disputed unreleased milestone on this deal?'
+          : 'Execute selected dispute resolution on-chain?';
+        if (!window.confirm(message)) return;
+        if (status) status.textContent = 'Submitting admin transaction...';
+        button.disabled = true;
+        try {
+          const response = await fetch(isRefund ? '/api/admin/disputes/refund' : '/api/admin/disputes/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealId: Number(button.dataset.dealId),
+              milestoneIdx: Number(button.dataset.milestoneIdx),
+              refundBps: Number(button.dataset.refundBps || 5000),
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Admin transaction failed');
+          if (status) status.innerHTML = 'Submitted: <a href="' + escapeHtml(data.explorerTxUrl || '#') + '" target="_blank" rel="noreferrer">' + escapeHtml(short(data.txHash)) + '</a>. Indexer inserted ' + escapeHtml(data.indexer?.inserted ?? 0) + ' events.';
+          await loadAdmin();
+        } catch (error) {
+          if (status) status.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
       });
       loadAdmin().catch((error) => {
         document.getElementById('stats').innerHTML = stat('Admin Error', error.message, 'error');
@@ -685,7 +852,7 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
 
   app.get('/api/admin/disputes', requireAdminAuth, async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) => {
-      const [events, bindings] = await Promise.all([
+      const [events, bindings, disputeNotes] = await Promise.all([
         indexerDb.transfers
           .find({ sorobanContractAddress: config.contractAddress })
           .sort({ sorobanLedgerSeq: -1, updatedAt: -1 })
@@ -696,10 +863,69 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
           .sort({ updatedAt: -1 })
           .limit(100)
           .toArray(),
+        indexerDb.disputeNotes.find({}).sort({ updatedAt: -1 }).limit(200).toArray(),
       ]);
 
-      return buildDisputeOperations(config, events, bindings);
+      return buildDisputeOperations(config, events, bindings, disputeNotes);
     });
+  });
+
+  app.post('/api/admin/disputes/resolve', requireAdminAuth, async (req: Request, res: Response) => {
+    const dealId = Number(req.body?.dealId);
+    const milestoneIdx = Number(req.body?.milestoneIdx);
+    const refundBps = Number(req.body?.refundBps);
+
+    if (!Number.isInteger(dealId) || dealId < 0) {
+      res.status(400).json({ error: 'dealId must be a non-negative integer' });
+      return;
+    }
+    if (!Number.isInteger(milestoneIdx) || milestoneIdx < 0) {
+      res.status(400).json({ error: 'milestoneIdx must be a non-negative integer' });
+      return;
+    }
+    if (!Number.isInteger(refundBps) || refundBps < 0 || refundBps > 10000) {
+      res.status(400).json({ error: 'refundBps must be an integer between 0 and 10000' });
+      return;
+    }
+
+    const indexerDb = await connectIndexerDb(config.databaseUri);
+    try {
+      const result = await resolveDisputeOnChain(config, dealId, milestoneIdx, refundBps);
+      const indexer = await runStellarIndexerOnce(config, indexerDb);
+      res.json({
+        ...result,
+        explorerTxUrl: getExplorerTxUrl(result.txHash, config.network),
+        indexer,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      await closeIndexerDb(indexerDb);
+    }
+  });
+
+  app.post('/api/admin/disputes/refund', requireAdminAuth, async (req: Request, res: Response) => {
+    const dealId = Number(req.body?.dealId);
+
+    if (!Number.isInteger(dealId) || dealId < 0) {
+      res.status(400).json({ error: 'dealId must be a non-negative integer' });
+      return;
+    }
+
+    const indexerDb = await connectIndexerDb(config.databaseUri);
+    try {
+      const result = await refundDealOnChain(config, dealId);
+      const indexer = await runStellarIndexerOnce(config, indexerDb);
+      res.json({
+        ...result,
+        explorerTxUrl: getExplorerTxUrl(result.txHash, config.network),
+        indexer,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      await closeIndexerDb(indexerDb);
+    }
   });
 
   app.get('/market_dashboard', (_req: Request, res: Response) => {

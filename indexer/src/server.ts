@@ -113,6 +113,56 @@ app.post('/api/indexer/run-once', requireAdminAuth, async (_req, res) => {
   }
 });
 
+app.post('/api/dispute-notes', async (req, res) => {
+  const dealId = Number(req.body?.dealId);
+  const milestoneIdx = Number(req.body?.milestoneIdx);
+  const walletAddress = typeof req.body?.walletAddress === 'string' ? req.body.walletAddress.trim() : '';
+  const txHash = typeof req.body?.txHash === 'string' ? req.body.txHash.trim() : undefined;
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+
+  if (!Number.isInteger(dealId) || dealId < 0) {
+    res.status(400).json({ error: 'dealId must be a non-negative integer' });
+    return;
+  }
+  if (!Number.isInteger(milestoneIdx) || milestoneIdx < 0) {
+    res.status(400).json({ error: 'milestoneIdx must be a non-negative integer' });
+    return;
+  }
+  if (!/^G[A-Z2-7]{55}$/.test(walletAddress)) {
+    res.status(400).json({ error: 'walletAddress must be a valid Stellar public key' });
+    return;
+  }
+  if (!reason || reason.length < 5) {
+    res.status(400).json({ error: 'reason must be at least 5 characters' });
+    return;
+  }
+  if (reason.length > 1000) {
+    res.status(400).json({ error: 'reason must be 1000 characters or fewer' });
+    return;
+  }
+
+  const indexerDb = await connectIndexerDb(config.databaseUri);
+  try {
+    const now = new Date();
+    await indexerDb.disputeNotes.insertOne({
+      dealId,
+      milestoneIdx,
+      walletAddress,
+      txHash,
+      reason,
+      createdAt: now,
+      updatedAt: now,
+    });
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    await closeIndexerDb(indexerDb);
+  }
+});
+
 app.post('/api/marketplace-bindings', requireAdminAuth, async (req, res) => {
   const indexerDb = await connectIndexerDb(config.databaseUri);
   try {

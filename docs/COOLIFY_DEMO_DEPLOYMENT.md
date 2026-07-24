@@ -96,6 +96,9 @@ INNGEST_SIGNING_KEY=<inngest-signing-key>
 PAYLOAD_SECRET=<random-long-secret>
 ADMIN_USERNAME=<admin-username>
 ADMIN_PASSWORD=<strong-admin-password>
+ADMIN_RESOLUTION_EXECUTION_ENABLED=false
+ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
+ADMIN_RESOLUTION_ALLOW_MAINNET=false
 
 # NEAR Intents server-side integration: disabled unless explicitly enabled
 NEAR_INTENTS_ENABLED=false
@@ -143,6 +146,9 @@ PAYLOAD_SECRET=<rotate-and-set-in-coolify>
 DATABASE_URI=<rotate-mongodb-password-and-set-in-coolify>
 ADMIN_USERNAME=<set-in-coolify>
 ADMIN_PASSWORD=<rotate-and-set-in-coolify>
+ADMIN_RESOLUTION_EXECUTION_ENABLED=false
+ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
+ADMIN_RESOLUTION_ALLOW_MAINNET=false
 
 # Indexer runtime
 INDEXER_ENABLED=true
@@ -201,7 +207,15 @@ INNGEST_SIGNING_KEY=<inngest-signing-key>
 PAYLOAD_SECRET=<random-long-secret>
 ADMIN_USERNAME=<admin-username>
 ADMIN_PASSWORD=<strong-admin-password>
+ADMIN_RESOLUTION_EXECUTION_ENABLED=false
+ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
+ADMIN_RESOLUTION_ALLOW_MAINNET=false
 ```
+
+Leave `ADMIN_RESOLUTION_EXECUTION_ENABLED=false` unless the protected `/admin`
+console should submit admin resolution/refund transactions from a server-side
+testnet operator key. Keep `ADMIN_RESOLUTION_ALLOW_MAINNET=false` unless the
+production deployment has explicitly accepted server-side hot-key risk.
 
 ### NEAR Intents Server Config
 

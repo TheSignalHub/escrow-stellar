@@ -35,9 +35,11 @@ server secrets in Coolify or a secrets manager, not in git.
 
 `/market_dashboard` is intentionally public and read-only for review. `/admin`
 is a protected dispute-operations console with open-dispute evidence,
-resolution/refund command guidance, and manual indexer controls. It is
-protected by `ADMIN_USERNAME` / `ADMIN_PASSWORD` and does not store or operate
-admin signing keys.
+resolution/refund actions, and manual indexer controls. It is protected by
+`ADMIN_USERNAME` / `ADMIN_PASSWORD`. By default it generates admin-ready
+commands without holding signing keys; a testnet/operator deployment can enable
+server-side admin execution with `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and
+`ADMIN_STELLAR_SECRET_KEY`.
 
 Backend readiness can be checked before frontend QA from `indexer/`:
 
@@ -125,7 +127,7 @@ mix production marketplace payments with the grant demo service. See
 - **Fund-Once Milestone Escrow** — Deals split into milestones (e.g., 30/50/20). The client can lock the remaining deal balance once, then release or dispute each milestone independently.
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
-- **Dispute Resolution** — Either party raises a dispute to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence plus admin-ready resolution commands.
+- **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
 - **Wallet Prep** — Prepare testnet funds and swap XLM into the configured USDC-compatible testnet settlement asset before funding a milestone.
 - **Cross-Chain Add Funds Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents/1Click top-up into the connected Stellar wallet before confirming Fund Deal. Deal-tied top-ups show human Stellar units, lock the destination to the deal's approved Stellar settlement asset, rank recommended 1Click routes first, and show signed quote evidence for route previews. EVM source routes can connect a browser wallet so live quote refunds return to the source wallet; NEAR/Solana source wallets remain preview-only until their native connectors are wired.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.

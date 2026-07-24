@@ -153,6 +153,16 @@ export interface MarketplaceBindingEvent {
   createdAt: Date;
 }
 
+export interface DisputeNote {
+  dealId: number;
+  milestoneIdx: number;
+  walletAddress: string;
+  txHash?: string;
+  reason: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface MarketplaceBindingReconcileResult {
   bindingsChecked: number;
   eventsScanned: number;
