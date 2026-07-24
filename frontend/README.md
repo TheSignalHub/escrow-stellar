@@ -185,11 +185,13 @@ deal's approved Stellar settlement asset: Stellar USDC-compatible settlement
 token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
 user-selectable from supported non-Stellar 1Click routes; recommended discovered
 routes are ranked first, source amounts are estimated from live token prices
-when available, and successful dry quotes show a quote-evidence checklist. Live
-execution requires a connected source wallet so refunds return to the wallet
-that pays. EVM source routes now support a lightweight browser-wallet connector
-for Ethereum/Base-style live quote readiness; NEAR and Solana source routes
-remain preview-only until their native connectors are wired.
+when available, and successful dry quotes show a quote-evidence checklist. The
+panel now separates **Preview Quote** from **Get Live Payment Quote** so the app
+can prove live 1Click pricing without pretending a source payment is ready.
+Live execution requires a connected source wallet so refunds return to the
+wallet that pays. EVM source routes now support a lightweight browser-wallet
+connector for Ethereum/Base-style live quote readiness; NEAR and Solana source
+routes remain preview-only until their native connectors are wired.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

@@ -502,12 +502,27 @@ export function NearIntentsPanel({
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
   const sourceUsesEvmWallet = Boolean(selectedOriginAsset && EVM_CHAINS.has(selectedOriginAsset.blockchain));
+  const sourceConnectorKind = sourceUsesEvmWallet
+    ? 'evm'
+    : selectedOriginAsset?.blockchain === 'near'
+      ? 'near'
+      : selectedOriginAsset?.blockchain === 'sol'
+        ? 'solana'
+        : selectedOriginAsset
+          ? 'unsupported'
+          : 'none';
   const sourceRefundAddress: string | undefined =
     sourceUsesEvmWallet && evmSourceWallet.address ? evmSourceWallet.address : undefined;
   const hasSourceRefundRoute = Boolean(sourceRefundAddress || quoteDemoDestination);
   const paymentPreviewOnly = !livePaymentAvailable || quoteDemoDestination || !sourceRefundAddress;
+  const liveSourceWalletReady = Boolean(
+    livePaymentAvailable &&
+    !quoteDemoDestination &&
+    sourceUsesEvmWallet &&
+    evmSourceWallet.isConnected &&
+    sourceRefundAddress
+  );
   const quoteSourceAmount = selectedOriginAsset ? decimalToBaseUnits(sourceAmount, selectedOriginAsset.decimals) : '';
-  const quoteRefundAddress = sourceRefundAddress || (paymentPreviewOnly ? getDryQuoteRefundAddress(selectedOriginAsset) : undefined);
   const quoteRequestAmount = quoteSourceAmount;
   const suggestedSourceAmount = estimateSourceAmount(amount, destinationToken, selectedOriginAsset);
   const selectedRouteRecommended = isRecommendedSourceToken(selectedOriginAsset);
@@ -576,8 +591,10 @@ export function NearIntentsPanel({
     },
   ];
 
-  const createQuote = async () => {
+  const createQuote = async ({ forceDry = false }: { forceDry?: boolean } = {}) => {
     if (!canRequestQuote) return;
+    const dry = forceDry || paymentPreviewOnly;
+    const refundTo = sourceRefundAddress || (dry ? getDryQuoteRefundAddress(selectedOriginAsset) : undefined);
     setLoadingQuote(true);
     setStatus(null);
     setError(null);
@@ -586,16 +603,16 @@ export function NearIntentsPanel({
         originAsset: originAsset.trim(),
         destinationAsset: destinationAsset.trim(),
         amount: quoteRequestAmount.trim(),
-        refundTo: quoteRefundAddress,
+        refundTo,
         recipient: quoteDemoDestination ? undefined : walletAddress,
-        dry: paymentPreviewOnly,
+        dry,
         slippageTolerance: 100,
       });
       setQuote(result);
       setRecentlyQuotedAssetIds((current) =>
         originAsset ? [originAsset, ...current.filter((assetId) => assetId !== originAsset)].slice(0, 12) : current
       );
-      toast(isDealFundingMode ? 'Add Funds quote ready' : 'Cross-chain quote ready', 'success');
+      toast(dry ? 'Quote preview ready' : isDealFundingMode ? 'Live Add Funds quote ready' : 'Live cross-chain quote ready', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
@@ -897,6 +914,55 @@ export function NearIntentsPanel({
               </div>
             )}
 
+            <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-zinc-300">Production payment flow</p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    Preview quotes prove 1Click pricing. Live payment unlocks only after the selected source wallet is connected, so refunds return to the same wallet that pays.
+                  </p>
+                </div>
+                <Tag color={liveSourceWalletReady ? 'emerald' : 'amber'}>
+                  {liveSourceWalletReady ? 'Live route ready' : 'Preview mode'}
+                </Tag>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">1. Stellar wallet</p>
+                  <p className="mt-1 text-xs text-emerald-100/80">{hasValidStellarRecipient ? `${shortText(walletAddress)} connected` : 'Connect Stellar wallet first'}</p>
+                </div>
+                <div className={`rounded-lg border px-3 py-2 ${
+                  sourceAssetAvailable ? 'border-blue-500/20 bg-blue-500/10' : 'border-zinc-800 bg-zinc-950/60'
+                }`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${sourceAssetAvailable ? 'text-blue-200' : 'text-zinc-500'}`}>2. Source route</p>
+                  <p className={`mt-1 text-xs ${sourceAssetAvailable ? 'text-blue-100/80' : 'text-zinc-500'}`}>
+                    {sourceAssetAvailable ? tokenLabel(selectedOriginAsset) : 'Choose source chain and asset'}
+                  </p>
+                </div>
+                <div className={`rounded-lg border px-3 py-2 ${
+                  liveSourceWalletReady ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-amber-500/20 bg-amber-500/10'
+                }`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${liveSourceWalletReady ? 'text-emerald-200' : 'text-amber-200'}`}>3. Source wallet</p>
+                  <p className={`mt-1 text-xs ${liveSourceWalletReady ? 'text-emerald-100/80' : 'text-amber-100/80'}`}>
+                    {liveSourceWalletReady
+                      ? `${shortText(evmSourceWallet.address)} ready for live quote`
+                      : sourceConnectorKind === 'evm'
+                        ? 'Connect EVM wallet to unlock live payment'
+                        : sourceConnectorKind === 'near'
+                          ? 'NEAR wallet connector is next; preview quote works now'
+                          : sourceConnectorKind === 'solana'
+                            ? 'Solana wallet connector is next; preview quote works now'
+                            : 'Live connector not available for this source yet'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">4. Escrow funding</p>
+                  <p className="mt-1 text-xs text-zinc-500">After top-up settles, click Fund Deal from the Stellar wallet.</p>
+                </div>
+              </div>
+            </div>
+
             {settlementRouteMismatch && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 This deal settles in {settlementTokenSymbol || 'the selected asset'}, so the cross-chain destination must be {expectedSettlementLabel}.
@@ -994,15 +1060,26 @@ export function NearIntentsPanel({
               </div>
             )}
 
-            <Button
-              onClick={createQuote}
-              disabled={loadingQuote || !canRequestQuote}
-              variant={canRequestQuote ? 'primary' : 'secondary'}
-              className="w-full py-4"
-              icon={loadingQuote ? Loader2 : ShieldCheck}
-            >
-              {loadingQuote ? 'Getting Quote...' : isDealFundingMode ? 'Get Add Funds Quote' : 'Get Quote'}
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button
+                onClick={() => createQuote({ forceDry: true })}
+                disabled={loadingQuote || !canRequestQuote}
+                variant="secondary"
+                className="w-full py-4"
+                icon={loadingQuote ? Loader2 : ShieldCheck}
+              >
+                {loadingQuote ? 'Getting Quote...' : 'Preview Quote'}
+              </Button>
+              <Button
+                onClick={() => createQuote({ forceDry: false })}
+                disabled={loadingQuote || !canRequestQuote || !liveSourceWalletReady}
+                variant={canRequestQuote && liveSourceWalletReady ? 'primary' : 'secondary'}
+                className="w-full py-4"
+                icon={loadingQuote ? Loader2 : Wallet}
+              >
+                {loadingQuote ? 'Getting Quote...' : 'Get Live Payment Quote'}
+              </Button>
+            </div>
           </div>
 
           {error && (
