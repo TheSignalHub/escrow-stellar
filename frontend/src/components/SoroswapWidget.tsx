@@ -9,8 +9,6 @@ import {
   XLM_SAC_ADDRESS,
 } from '../lib/stellar';
 import { stellarBrokerClient } from '../lib/stellarBroker';
-import { stellarDexClient } from '../lib/stellarDex';
-import { soroswapClient, type SwapQuote as PublicAggregatorQuote } from '../lib/soroswap';
 import { useToast } from '../App';
 import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
@@ -61,9 +59,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [error, setError] = useState('');
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
-  const [publicQuote, setPublicQuote] = useState<PublicAggregatorQuote | null>(null);
-  const [publicQuoteLoading, setPublicQuoteLoading] = useState(false);
-  const [publicQuoteError, setPublicQuoteError] = useState('');
 
   const handleFundbot = async () => {
     setFundingLoading(true);
@@ -122,8 +117,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       setAssetOutSymbol(asset.symbol);
     }
     setTxHash('');
-    setPublicQuote(null);
-    setPublicQuoteError('');
     resetQuoteState();
   };
 
@@ -162,8 +155,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     }
     setSwapMode('exact-in');
     setTxHash('');
-    setPublicQuote(null);
-    setPublicQuoteError('');
     resetQuoteState();
   };
 
@@ -175,8 +166,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setAssetInKey(assetOutKey);
     setAssetOutKey(assetInKey);
     setTxHash('');
-    setPublicQuote(null);
-    setPublicQuoteError('');
     resetQuoteState();
   };
 
@@ -193,40 +182,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     : '';
   const isTokenContractAddress = (value: string) => /^C[A-Z2-7]{55}$/.test(value.trim());
   const routeConfigured = isTokenContractAddress(assetInAddress) && isTokenContractAddress(assetOutAddress);
-
-  const checkPublicAggregatorRoute = async () => {
-    const amount = parseFloat(swapAmount);
-    if (!amount || amount <= 0 || !routeConfigured) return;
-
-    setPublicQuoteLoading(true);
-    setPublicQuote(null);
-    setPublicQuoteError('');
-    try {
-      const stroops = BigInt(Math.round(amount * 1e7)).toString();
-      if (!IS_TESTNET && stellarDexClient.canHandle(assetInAddress.trim(), assetOutAddress.trim())) {
-        const result = await stellarDexClient.getQuote(
-          assetInAddress.trim(),
-          assetOutAddress.trim(),
-          stroops,
-          swapMode === 'exact-out' ? 'EXACT_OUT' : 'EXACT_IN'
-        );
-        setPublicQuote(result);
-        return;
-      }
-
-      const result = await soroswapClient.getQuote(
-        assetInAddress.trim(),
-        assetOutAddress.trim(),
-        stroops,
-        swapMode === 'exact-out' ? 'EXACT_OUT' : 'EXACT_IN'
-      );
-      setPublicQuote(result);
-    } catch (err: any) {
-      setPublicQuoteError(err.message || 'No public aggregator route found for this token pair.');
-    } finally {
-      setPublicQuoteLoading(false);
-    }
-  };
 
   const fetchQuote = async () => {
     const amount = parseFloat(swapAmount);
@@ -535,8 +490,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                         value={assetInAddress}
                         onChange={(event) => {
                           setAssetInAddress(event.target.value.trim());
-                          setPublicQuote(null);
-                          setPublicQuoteError('');
                           resetQuoteState();
                         }}
                         spellCheck={false}
@@ -558,8 +511,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                         value={assetOutAddress}
                         onChange={(event) => {
                           setAssetOutAddress(event.target.value.trim());
-                          setPublicQuote(null);
-                          setPublicQuoteError('');
                           resetQuoteState();
                         }}
                         spellCheck={false}
@@ -692,60 +643,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                    </div>
                 </div>
               )}
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Route discovery</h4>
-                    <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
-                      Check whether a public route is currently discoverable for the selected pair before calculating the executable broker quote.
-                    </p>
-                  </div>
-                  <Tag color="zinc">Optional</Tag>
-                </div>
-
-                <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs font-mono text-zinc-400 space-y-2">
-                  <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-2">
-                    <span className="text-zinc-600 uppercase tracking-widest">From</span>
-                    <span className="break-all">{assetInAddress || 'not configured'}</span>
-                  </div>
-                  <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-2">
-                    <span className="text-zinc-600 uppercase tracking-widest">To</span>
-                    <span className="break-all">{assetOutAddress || 'not configured'}</span>
-                  </div>
-                </div>
-                <Button
-                  onClick={checkPublicAggregatorRoute}
-                  disabled={publicQuoteLoading || !routeConfigured || !swapAmount || parseFloat(swapAmount) <= 0}
-                  variant="secondary"
-                  className="w-full py-3 text-xs"
-                >
-                  {publicQuoteLoading ? 'Checking Route...' : 'Check Selected Route'}
-                </Button>
-
-                {publicQuote && (
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-mono text-zinc-300 space-y-2">
-                    <div className="flex justify-between gap-3">
-                      <span className="text-zinc-500">Amount in</span>
-                      <span>{(Number(publicQuote.amountIn) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} {inputSymbol}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span className="text-zinc-500">Amount out</span>
-                      <span>{(Number(publicQuote.amountOut) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 7 })} {outputSymbol}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span className="text-zinc-500">Route legs</span>
-                      <span>{publicQuote.route?.length || 0}</span>
-                    </div>
-                  </div>
-                )}
-
-                {publicQuoteError && (
-                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 leading-relaxed">
-                    {publicQuoteError}
-                  </div>
-                )}
-              </div>
 
               {/* Empty pool notice */}
               {poolEmpty && (
