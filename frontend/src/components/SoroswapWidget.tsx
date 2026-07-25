@@ -184,6 +184,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const outputSymbol = assetOutSymbol || 'Token out';
   const inputLabel = swapMode === 'exact-out' ? 'Target Receive Amount' : 'Pay Amount';
   const outputLabel = swapMode === 'exact-out' ? 'Pay Estimate' : 'Receive Estimate';
+  const editableSymbol = swapMode === 'exact-out' ? outputSymbol : inputSymbol;
+  const estimateSymbol = swapMode === 'exact-out' ? inputSymbol : outputSymbol;
   const outputAmount = quote
     ? swapMode === 'exact-out'
       ? quote.amountIn
@@ -635,10 +637,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       className="bg-transparent text-3xl font-mono text-white outline-none w-full placeholder:text-zinc-700 appearance-none"
                     />
                     <div className="flex items-center gap-2 bg-zinc-800/80 rounded-lg px-3 py-1.5 shrink-0 border border-zinc-700">
-                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${inputSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
-                        {inputSymbol === 'XLM' ? 'X' : '$'}
+                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${editableSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
+                        {editableSymbol === 'XLM' ? 'X' : '$'}
                       </div>
-                      <span className="font-bold text-sm">{inputSymbol}</span>
+                      <span className="font-bold text-sm">{editableSymbol}</span>
                     </div>
                   </div>
                 </div>
@@ -666,11 +668,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                       readOnly
                       className="bg-transparent text-3xl font-mono text-white outline-none w-full truncate"
                     />
-                    <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 shrink-0 border ${outputSymbol === 'XLM' ? 'bg-zinc-800/80 border-zinc-700' : 'bg-[#2775ca]/20 border-[#2775ca]/30'}`}>
-                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${outputSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
-                        {outputSymbol === 'XLM' ? 'X' : '$'}
+                    <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 shrink-0 border ${estimateSymbol === 'XLM' ? 'bg-zinc-800/80 border-zinc-700' : 'bg-[#2775ca]/20 border-[#2775ca]/30'}`}>
+                      <div className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${estimateSymbol === 'XLM' ? 'bg-white text-black' : 'bg-[#2775ca] text-white'}`}>
+                        {estimateSymbol === 'XLM' ? 'X' : '$'}
                       </div>
-                      <span className={`font-bold text-sm ${outputSymbol === 'XLM' ? 'text-white' : 'text-[#2775ca]'}`}>{outputSymbol}</span>
+                      <span className={`font-bold text-sm ${estimateSymbol === 'XLM' ? 'text-white' : 'text-[#2775ca]'}`}>{estimateSymbol}</span>
                     </div>
                   </div>
                 </div>
