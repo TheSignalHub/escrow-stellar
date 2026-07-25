@@ -10,6 +10,9 @@ import {
   SETTLEMENT_MIN_UNITS,
   isValidStellarAddress,
   getExplorerTxLink,
+  accountExists,
+  getKnownTrustlineAsset,
+  hasClassicAssetTrustline,
 } from '../lib/stellar';
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
@@ -66,6 +69,7 @@ const DEMO_SCENARIOS = [
 ];
 
 interface Props {
+  walletAddress: string;
   onCreateDeal: (
     provider: string,
     connector: string,
@@ -77,7 +81,7 @@ interface Props {
   onDealCreated?: (dealId: number) => void;
 }
 
-export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
+export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props) {
   const toast = useToast();
   const [dealTitle, setDealTitle] = useState('');
   const [dealDescription, setDealDescription] = useState('');
@@ -93,6 +97,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
     { name: 'Final Remediation Check', percentage: 20 },
   ]);
   const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [txStep, setTxStep] = useState<'signing' | 'submitting' | 'confirming' | null>(null);
   const [result, setResult] = useState<{ dealId: number; txHash: string } | null>(null);
   const [error, setError] = useState('');
@@ -108,8 +113,8 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
     setDealTitle(scenario.name);
     setDealDescription(scenario.description);
-    setProvider(DEMO_ACCOUNTS.provider);
-    setConnector(DEMO_ACCOUNTS.connector);
+    setProvider(IS_TESTNET ? DEMO_ACCOUNTS.provider : '');
+    setConnector(IS_TESTNET ? DEMO_ACCOUNTS.connector : '');
     setTotalAmount(scenario.totalAmount);
     setSettlementAsset('XLM_DIRECT');
     setPlatformFee(scenario.platformFee);
@@ -143,7 +148,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
   // Step 1: Validate deal terms, then show review. Payment preparation happens
   // after creation from the pending milestone funding step.
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -175,6 +180,48 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
           : 'Settlement token address not configured. Check your .env file (VITE_USDC_TOKEN_ADDRESS).',
       );
       return;
+    }
+
+    if (!IS_TESTNET) {
+      setValidating(true);
+      try {
+        const [clientExists, providerExists, connectorExists] = await Promise.all([
+          accountExists(walletAddress),
+          accountExists(provider.trim()),
+          accountExists(connector.trim()),
+        ]);
+
+        if (!clientExists) {
+          setError('Activate your Stellar wallet with XLM before creating a mainnet deal.');
+          return;
+        }
+        if (!providerExists) {
+          setError('Provider wallet is not active on Stellar mainnet. Ask the provider to activate it with XLM before creating the deal.');
+          return;
+        }
+        if (!connectorExists) {
+          setError('Connector wallet is not active on Stellar mainnet. Ask the connector to activate it with XLM before creating the deal.');
+          return;
+        }
+
+        const trustlineAsset = settlementAsset === 'USDC' ? getKnownTrustlineAsset(settlementTokenAddress) : null;
+        if (trustlineAsset) {
+          const [providerTrustline, connectorTrustline] = await Promise.all([
+            hasClassicAssetTrustline(provider.trim(), trustlineAsset),
+            hasClassicAssetTrustline(connector.trim(), trustlineAsset),
+          ]);
+          if (!providerTrustline) {
+            setError(`Provider wallet needs a ${trustlineAsset.symbol} trustline before receiving released funds.`);
+            return;
+          }
+          if (!connectorTrustline) {
+            setError(`Connector wallet needs a ${trustlineAsset.symbol} trustline before receiving released funds.`);
+            return;
+          }
+        }
+      } finally {
+        setValidating(false);
+      }
     }
 
     setShowReview(true);
@@ -434,6 +481,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
         <div>
           <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Create Deal</h2>
           <p className="text-zinc-500 font-medium text-sm lg:text-base">Configure the parties, milestones, settlement asset, and split rules.</p>
+          {!IS_TESTNET && (
+            <p className="mt-2 text-xs leading-relaxed text-amber-200/80">
+              Mainnet deals require active Stellar provider and connector wallets. USDC deals also require those recipient wallets to have a USDC trustline before release.
+            </p>
+          )}
         </div>
         
         {/* Demo Scenarios */}
@@ -717,12 +769,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
                 )}
 
                 <Button
-                  disabled={loading || totalMilestonePercent !== 100}
+                  disabled={loading || validating || totalMilestonePercent !== 100}
                   variant="primary"
                   className="w-full py-4 text-base mt-4"
                   icon={ArrowRight}
                 >
-                   Review Payload
+                   {validating ? 'Checking Wallets...' : 'Review Payload'}
                 </Button>
               </div>
 

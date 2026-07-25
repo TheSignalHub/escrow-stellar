@@ -91,6 +91,10 @@ Wallet Prep creates required trustlines from the connected Stellar wallet for
 known issued receive assets such as Circle USDC before swap settlement when the
 wallet has not opted in yet. Unknown advanced pasted receive contracts require
 manual trustline preparation before execution.
+Production NEAR Intents top-up and deal creation require activated Stellar
+destination accounts. Mainnet Create Deal validates the connected client wallet,
+provider wallet, and connector wallet before review; USDC deals also require
+provider/connector trustlines so release transactions can settle.
 See [`../docs/SETTLEMENT_ASSET_POLICY.md`](../docs/SETTLEMENT_ASSET_POLICY.md)
 for precision, minimum amount, trustline, and dust/rounding policy.
 

@@ -1,5 +1,5 @@
-import { Copy, ShieldCheck, Wallet } from 'lucide-react';
-import { useMemo } from 'react';
+import { AlertCircle, Copy, ShieldCheck, Wallet } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWallets } from '@privy-io/react-auth';
 import { useToast } from '../App';
 import {
@@ -8,7 +8,7 @@ import {
   onrampChainLabel,
   shortOnrampAddress,
 } from '../lib/privyOnramp';
-import { SETTLEMENT_TOKEN_SYMBOL } from '../lib/stellar';
+import { accountExists, IS_TESTNET, SETTLEMENT_TOKEN_SYMBOL } from '../lib/stellar';
 import { Card, Tag } from './ui/Components';
 
 interface WalletPrepOverviewProps {
@@ -22,6 +22,7 @@ function truncateStellar(address: string): string {
 
 export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOverviewProps) {
   const toast = useToast();
+  const [stellarAccountExists, setStellarAccountExists] = useState<boolean | null>(null);
   const { wallets } = useWallets();
   const evmWallet = useMemo(
     () => findEmbeddedEvmWallet(wallets as Array<{ address: string; walletClientType?: string }>),
@@ -34,6 +35,22 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOve
     await navigator.clipboard.writeText(address);
     toast(`${label} copied`, 'success');
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!stellarAddress) {
+      setStellarAccountExists(null);
+      return;
+    }
+
+    accountExists(stellarAddress).then((exists) => {
+      if (!cancelled) setStellarAccountExists(exists);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stellarAddress]);
 
   return (
     <Card className="p-4 sm:p-6 bg-[#02040a]">
@@ -73,6 +90,16 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOve
             <div className="mt-3 rounded-lg border border-emerald-500/10 bg-black/20 px-3 py-2 text-xs font-mono text-emerald-100/80">
               {xlmBalance ? `${parseFloat(xlmBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM` : 'Balance loading'}
             </div>
+            {!IS_TESTNET && stellarAccountExists === false && (
+              <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/80">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                  <span>
+                    Activate this Stellar wallet before using escrow, swaps, or NEAR Intents. Send at least the network minimum XLM reserve to this address from an exchange, treasury, or sponsor wallet.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">

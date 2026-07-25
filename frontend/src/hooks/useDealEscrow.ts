@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import {
   DEAL_ESCROW_CONTRACT,
+  getExplorerTxLink,
   NETWORK_PASSPHRASE,
   sorobanServer,
 } from '../lib/stellar';
@@ -10,7 +11,7 @@ import {
 // so the dual-class mismatch is already resolved and the any cast is unnecessary.
 const rpc = StellarSdk.rpc;
 
-const MAX_TX_POLL_RETRIES = 30; // 30 × 2s = 60s max wait
+const MAX_TX_POLL_RETRIES = 60; // 60 × 2s = 120s max wait
 
 // ── Operation types & Soroban error codes ──────────────────────────────
 type EscrowOperation = 'create_deal' | 'deposit' | 'fund_deal' | 'release_milestone' | 'dispute' | 'resolve_dispute' | 'refund';
@@ -217,7 +218,7 @@ export function useDealEscrow(
         let retries = 0;
         do {
           if (retries >= MAX_TX_POLL_RETRIES) {
-            throw new Error(`${capitalize(OP_LABELS[opName])} confirmation timed out. The transaction may still succeed — check Stellar Explorer.`);
+            throw new Error(`${capitalize(OP_LABELS[opName])} confirmation timed out. The transaction may still succeed — check Stellar Explorer: ${getExplorerTxLink(sendResult.hash)}`);
           }
           await new Promise((r) => setTimeout(r, 2000));
           getResult = await sorobanServer.getTransaction(sendResult.hash);

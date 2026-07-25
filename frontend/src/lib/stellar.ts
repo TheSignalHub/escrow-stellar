@@ -150,6 +150,15 @@ export async function getXlmBalance(address: string): Promise<string> {
   }
 }
 
+export async function accountExists(accountAddress: string): Promise<boolean> {
+  try {
+    await horizonServer.loadAccount(accountAddress);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Get token balance via Soroban
 export async function getTokenBalance(
   tokenAddress: string,

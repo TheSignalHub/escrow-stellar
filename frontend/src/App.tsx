@@ -511,6 +511,7 @@ export default function App() {
 
               {activeTab === 'create' && (
                 <CreateDeal
+                  walletAddress={wallet.address}
                   onCreateDeal={escrow.createDeal}
                   onDealCreated={handleDealCreated}
                 />

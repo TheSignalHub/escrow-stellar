@@ -23,7 +23,7 @@ import {
   type NearIntentsReadiness,
   type NearIntentsToken,
 } from '../lib/nearIntents';
-import { SETTLEMENT_TOKEN_DECIMALS, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
+import { accountExists, IS_TESTNET, SETTLEMENT_TOKEN_DECIMALS, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
 import { useEvmSourceWallet } from '../hooks/useEvmSourceWallet';
 import { Card, Button, Tag } from './ui/Components';
 
@@ -366,6 +366,7 @@ export function NearIntentsPanel({
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState<NearIntentsApiError | null>(null);
+  const [stellarRecipientExists, setStellarRecipientExists] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (amountDue) setAmount(amountDue);
@@ -507,6 +508,7 @@ export function NearIntentsPanel({
   const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
+  const hasActivatedStellarRecipient = IS_TESTNET || stellarRecipientExists === true;
   const sourceUsesEvmWallet = Boolean(selectedOriginAsset && EVM_CHAINS.has(selectedOriginAsset.blockchain));
   const sourceConnectorKind = sourceUsesEvmWallet
     ? 'evm'
@@ -541,6 +543,22 @@ export function NearIntentsPanel({
   );
 
   useEffect(() => {
+    let cancelled = false;
+    if (!hasValidStellarRecipient) {
+      setStellarRecipientExists(null);
+      return;
+    }
+
+    accountExists(walletAddress).then((exists) => {
+      if (!cancelled) setStellarRecipientExists(exists);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasValidStellarRecipient, walletAddress]);
+
+  useEffect(() => {
     if (!selectedOriginAsset || sourceAmountTouched) return;
     setSourceAmount(suggestedSourceAmount);
   }, [selectedOriginAsset, sourceAmountTouched, suggestedSourceAmount]);
@@ -550,12 +568,13 @@ export function NearIntentsPanel({
     return Boolean(
         readiness?.enabled &&
         hasValidStellarRecipient &&
+        hasActivatedStellarRecipient &&
         sourceAssetAvailable &&
         originAsset.trim() &&
         destinationAsset.trim() &&
         quoteRequestAmount.trim()
     );
-  }, [destinationAsset, hasValidStellarRecipient, originAsset, quoteRequestAmount, readiness?.enabled, sourceAssetAvailable]);
+  }, [destinationAsset, hasActivatedStellarRecipient, hasValidStellarRecipient, originAsset, quoteRequestAmount, readiness?.enabled, sourceAssetAvailable]);
 
   const nearIntent: NearIntentMetadata | undefined = status?.nearIntent || quote?.nearIntent;
   const quoteDetails = quote?.quote?.quote;
@@ -998,6 +1017,12 @@ export function NearIntentsPanel({
             {!hasValidStellarRecipient && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-3 text-xs leading-relaxed text-red-200">
                 Connect a Stellar wallet before requesting a cross-chain quote so settlement can target a real Stellar recipient.
+              </div>
+            )}
+
+            {hasValidStellarRecipient && !hasActivatedStellarRecipient && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                Activate the connected Stellar wallet with XLM before requesting a cross-chain top-up. NEAR Intents settlement requires an existing Stellar destination account.
               </div>
             )}
 
