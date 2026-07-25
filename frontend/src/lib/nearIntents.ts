@@ -134,6 +134,18 @@ export interface NearIntentStatusResponse {
   };
 }
 
+export interface NearIntentDepositTxResponse {
+  bindingId: string;
+  externalPaymentIntent: ExternalPaymentIntent;
+  nearIntent: NearIntentMetadata;
+  result: {
+    status: NearIntentProviderStatus;
+    correlationId?: string;
+    updatedAt?: string;
+    swapDetails?: NearIntentStatusResponse['status']['swapDetails'];
+  };
+}
+
 export class NearIntentsApiError extends Error {
   status: number;
   detail?: unknown;
@@ -197,8 +209,8 @@ export const nearIntentsClient = {
     );
   },
 
-  submitDepositTx(bindingId: string, body: { txHash: string; nearSenderAccount?: string }): Promise<NearIntentStatusResponse> {
-    return request<NearIntentStatusResponse>(
+  submitDepositTx(bindingId: string, body: { txHash: string; nearSenderAccount?: string }): Promise<NearIntentDepositTxResponse> {
+    return request<NearIntentDepositTxResponse>(
       `/api/marketplace-bindings/${encodeURIComponent(bindingId)}/near-intents/deposit-tx`,
       {
         method: 'POST',

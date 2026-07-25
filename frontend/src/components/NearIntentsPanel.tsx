@@ -17,6 +17,7 @@ import { useToast } from '../App';
 import {
   nearIntentsClient,
   NearIntentsApiError,
+  type NearIntentDepositTxResponse,
   type NearIntentMetadata,
   type NearIntentQuoteResponse,
   type NearIntentStatusResponse,
@@ -652,7 +653,7 @@ export function NearIntentsPanel({
   const providerStatus =
     quoteDemoDestination && quote
       ? 'QUOTE_CREATED'
-      : status?.status.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
+      : status?.status?.status || nearIntent?.providerStatusRaw || (quote ? 'QUOTE_CREATED' : undefined);
   const statusColor = STATUS_COLORS[providerStatus || 'disabled'] || 'zinc';
   const expectedSettlement =
     quoteDetails?.amountOutFormatted ||
@@ -669,9 +670,9 @@ export function NearIntentsPanel({
     nearIntent?.deadline;
   const quoteReference = nearIntent?.quoteId || quote?.externalPaymentIntent?.intentId;
   const sourcePaymentAmount = nearIntent?.sourceAmount || quoteDetails?.amountIn || quoteRequestAmount;
-  const statusUpdatedAt = status?.status.updatedAt || nearIntent?.providerStatusUpdatedAt || status?.externalPaymentIntent.updatedAt;
-  const detectedSourceTx = status?.status.swapDetails?.sourceChainTxHashes?.[0];
-  const detectedDestinationTx = status?.status.swapDetails?.destinationChainTxHashes?.[0];
+  const statusUpdatedAt = status?.status?.updatedAt || nearIntent?.providerStatusUpdatedAt || status?.externalPaymentIntent.updatedAt;
+  const detectedSourceTx = status?.status?.swapDetails?.sourceChainTxHashes?.[0];
+  const detectedDestinationTx = status?.status?.swapDetails?.destinationChainTxHashes?.[0];
   const displayedSourceTxHash = sourcePaymentTxHash || nearIntent?.submittedDepositTxHash || detectedSourceTx?.hash || '';
   const displayedSourceTxUrl =
     detectedSourceTx?.explorerUrl || sourceTxExplorerUrl(selectedOriginAsset, displayedSourceTxHash);
@@ -740,8 +741,8 @@ export function NearIntentsPanel({
     }
   };
 
-  const applyStatusResult = (result: NearIntentStatusResponse) => {
-    setStatus(result);
+  const applyStatusResult = (result: NearIntentStatusResponse | NearIntentDepositTxResponse) => {
+    if ('status' in result) setStatus(result);
     setLastStatusCheckedAt(new Date().toISOString());
     if (result.nearIntent.submittedDepositTxHash) setSourcePaymentTxHash(result.nearIntent.submittedDepositTxHash);
     setQuote((current) =>
