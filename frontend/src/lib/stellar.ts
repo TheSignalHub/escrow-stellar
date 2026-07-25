@@ -33,6 +33,12 @@ export const EXPLORER_URL =
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
 export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 export const CIRCLE_USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+export interface ClassicTrustlineAsset {
+  symbol: string;
+  code: string;
+  issuer: string;
+  contractAddress: string;
+}
 
 // Demo settlement token address.
 // Default = the SCF #42 demo test USD-compatible SAC deployed and seeded
@@ -92,6 +98,19 @@ export const TOKENS: Record<string, { name: string; symbol: string; decimals: nu
   XLM: { name: 'Stellar Lumens', symbol: 'XLM', decimals: 7, address: XLM_SAC_ADDRESS },
   USDC: { name: SETTLEMENT_TOKEN_NAME, symbol: SETTLEMENT_TOKEN_SYMBOL, decimals: SETTLEMENT_TOKEN_DECIMALS, address: USDC_TOKEN_ADDRESS },
 };
+
+export const KNOWN_TRUSTLINE_ASSETS: ClassicTrustlineAsset[] = [
+  {
+    symbol: 'USDC',
+    code: 'USDC',
+    issuer: CIRCLE_USDC_ISSUER,
+    contractAddress: USDC_TOKEN_ADDRESS,
+  },
+];
+
+export function getKnownTrustlineAsset(contractAddress: string): ClassicTrustlineAsset | null {
+  return KNOWN_TRUSTLINE_ASSETS.find((asset) => asset.contractAddress === contractAddress.trim()) || null;
+}
 
 // Resolve token symbol from contract address
 export function getTokenSymbol(address: string): string {
@@ -161,25 +180,25 @@ export async function getTokenBalance(
   }
 }
 
-export async function hasCircleUsdcTrustline(accountAddress: string): Promise<boolean> {
+export async function hasClassicAssetTrustline(accountAddress: string, asset: ClassicTrustlineAsset): Promise<boolean> {
   try {
     const account = await horizonServer.loadAccount(accountAddress);
     return account.balances.some((balance: any) => (
-      balance.asset_code === 'USDC' && balance.asset_issuer === CIRCLE_USDC_ISSUER
+      balance.asset_code === asset.code && balance.asset_issuer === asset.issuer
     ));
   } catch {
     return false;
   }
 }
 
-export async function buildCircleUsdcTrustlineTransaction(accountAddress: string): Promise<string> {
+export async function buildTrustlineTransaction(accountAddress: string, asset: ClassicTrustlineAsset): Promise<string> {
   const account = await horizonServer.loadAccount(accountAddress);
-  const usdc = new StellarSdk.Asset('USDC', CIRCLE_USDC_ISSUER);
+  const classicAsset = new StellarSdk.Asset(asset.code, asset.issuer);
   const tx = new StellarSdk.TransactionBuilder(account, {
     fee: StellarSdk.BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
-    .addOperation(StellarSdk.Operation.changeTrust({ asset: usdc }))
+    .addOperation(StellarSdk.Operation.changeTrust({ asset: classicAsset }))
     .setTimeout(120)
     .build();
 

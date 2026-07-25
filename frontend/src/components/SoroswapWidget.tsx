@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  buildCircleUsdcTrustlineTransaction,
-  CIRCLE_USDC_ISSUER,
+  buildTrustlineTransaction,
   fundTestnetAccount,
+  getKnownTrustlineAsset,
   getExplorerTxLink,
-  hasCircleUsdcTrustline,
+  hasClassicAssetTrustline,
   IS_TESTNET,
   NETWORK_PASSPHRASE,
   SETTLEMENT_TOKEN_SYMBOL,
@@ -82,28 +82,30 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [error, setError] = useState('');
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
-  const [usdcTrustline, setUsdcTrustline] = useState<boolean | null>(null);
+  const [receiveTrustline, setReceiveTrustline] = useState<boolean | null>(null);
   const [trustlineLoading, setTrustlineLoading] = useState(false);
   const [trustlineError, setTrustlineError] = useState('');
 
-  const routeUsesUsdc = assetInAddress === USDC_TOKEN_ADDRESS || assetOutAddress === USDC_TOKEN_ADDRESS;
-  const needsUsdcTrustline = !IS_TESTNET && routeUsesUsdc && usdcTrustline === false;
+  const receiveTrustlineAsset = getKnownTrustlineAsset(assetOutAddress);
+  const receiveNeedsClassicTrustline = !IS_TESTNET && Boolean(receiveTrustlineAsset);
+  const unknownReceiveTrustline = !IS_TESTNET && assetOutAddress !== XLM_SAC_ADDRESS && !receiveTrustlineAsset && isTokenContractAddress(assetOutAddress);
+  const needsReceiveTrustline = receiveNeedsClassicTrustline && receiveTrustline === false;
 
   useEffect(() => {
     let cancelled = false;
-    if (IS_TESTNET || !walletAddress || !routeUsesUsdc) {
-      setUsdcTrustline(null);
+    if (!receiveNeedsClassicTrustline || !walletAddress || !receiveTrustlineAsset) {
+      setReceiveTrustline(null);
       return;
     }
 
-    hasCircleUsdcTrustline(walletAddress).then((exists) => {
-      if (!cancelled) setUsdcTrustline(exists);
+    hasClassicAssetTrustline(walletAddress, receiveTrustlineAsset).then((exists) => {
+      if (!cancelled) setReceiveTrustline(exists);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [routeUsesUsdc, walletAddress]);
+  }, [receiveNeedsClassicTrustline, receiveTrustlineAsset, walletAddress]);
 
   const handleFundbot = async () => {
     setFundingLoading(true);
@@ -225,7 +227,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       ? quote.amountIn
       : quote.amountOut
     : '';
-  const isTokenContractAddress = (value: string) => /^C[A-Z2-7]{55}$/.test(value.trim());
+  function isTokenContractAddress(value: string): boolean {
+    return /^C[A-Z2-7]{55}$/.test(value.trim());
+  }
   const routeConfigured = isTokenContractAddress(assetInAddress) && isTokenContractAddress(assetOutAddress);
 
   const fetchQuote = async () => {
@@ -264,22 +268,23 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     }
   };
 
-  const prepareUsdcTrustline = async () => {
+  const prepareReceiveTrustline = async () => {
+    if (!receiveTrustlineAsset) return;
     setTrustlineLoading(true);
     setTrustlineError('');
     try {
-      const xdr = await buildCircleUsdcTrustlineTransaction(walletAddress);
+      const xdr = await buildTrustlineTransaction(walletAddress, receiveTrustlineAsset);
       const signedXdr = await signTransaction(xdr, {
         networkPassphrase: NETWORK_PASSPHRASE,
         address: walletAddress,
       });
       await submitStellarTransaction(signedXdr);
-      setUsdcTrustline(true);
-      toast('USDC trustline prepared', 'success');
+      setReceiveTrustline(true);
+      toast(`${receiveTrustlineAsset.symbol} trustline prepared`, 'success');
       onBalanceRefresh?.();
     } catch (err: any) {
-      setTrustlineError(formatSwapError(err, 'USDC trustline setup failed. Check the wallet signature and available XLM reserve, then try again.'));
-      toast('USDC trustline setup failed', 'error');
+      setTrustlineError(formatSwapError(err, `${receiveTrustlineAsset.symbol} trustline setup failed. Check the wallet signature and available XLM reserve, then try again.`));
+      toast(`${receiveTrustlineAsset.symbol} trustline setup failed`, 'error');
     } finally {
       setTrustlineLoading(false);
     }
@@ -710,14 +715,14 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
               )}
 
-              {needsUsdcTrustline && (
+              {needsReceiveTrustline && receiveTrustlineAsset && (
                 <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 space-y-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle size={16} className="text-blue-300 shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <p className="text-blue-100 font-bold text-sm mb-1">USDC trustline required</p>
+                      <p className="text-blue-100 font-bold text-sm mb-1">{receiveTrustlineAsset.symbol} trustline required</p>
                       <p className="text-blue-100/75 text-xs leading-relaxed">
-                        Stellar wallets must opt in before holding USDC. This creates a trustline to Circle USDC issuer {CIRCLE_USDC_ISSUER}, then XLM to USDC swaps can settle into this wallet.
+                        Stellar wallets must opt in before holding issued assets. This creates a trustline to {receiveTrustlineAsset.code} issuer {receiveTrustlineAsset.issuer}, then swaps can settle into this wallet.
                       </p>
                     </div>
                   </div>
@@ -727,14 +732,28 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     </p>
                   )}
                   <Button
-                    onClick={prepareUsdcTrustline}
+                    onClick={prepareReceiveTrustline}
                     disabled={trustlineLoading}
                     variant="primary"
                     className="w-full py-3 text-xs"
                     icon={trustlineLoading ? RefreshCw : CheckCircle2}
                   >
-                    {trustlineLoading ? 'Preparing Trustline...' : 'Prepare USDC Trustline'}
+                    {trustlineLoading ? 'Preparing Trustline...' : `Prepare ${receiveTrustlineAsset.symbol} Trustline`}
                   </Button>
+                </div>
+              )}
+
+              {unknownReceiveTrustline && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="text-amber-300 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-amber-200 font-bold text-sm mb-1">Manual trustline may be required</p>
+                      <p className="text-amber-100/75 text-xs leading-relaxed">
+                        The pasted receive token is not in the app's known asset list, so we cannot safely create its trustline automatically. Use a known Stellar asset such as XLM or USDC, or prepare the trustline in your wallet before converting.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -794,11 +813,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </Button>
                 <Button
                   onClick={handleSwap}
-                  disabled={swapLoading || !quote || needsUsdcTrustline}
+                  disabled={swapLoading || !quote || needsReceiveTrustline || unknownReceiveTrustline}
                   variant={quote ? "primary" : "secondary"}
                   className="py-4"
                 >
-                  {needsUsdcTrustline ? 'Prepare Trustline First' : 'Convert Balance'}
+                  {needsReceiveTrustline ? 'Prepare Trustline First' : unknownReceiveTrustline ? 'Manual Trustline Required' : 'Convert Balance'}
                 </Button>
               </div>
             </div>
