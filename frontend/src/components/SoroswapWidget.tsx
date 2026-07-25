@@ -26,6 +26,25 @@ const SLIPPAGE_PRESETS = [
   { label: '2%', bps: 200 },
 ];
 
+function formatSwapError(error: any, fallback: string): string {
+  const response = error?.response?.data;
+  if (response) {
+    const parts = [
+      response.title,
+      response.detail,
+      response.extras?.result_codes ? `Result codes: ${JSON.stringify(response.extras.result_codes)}` : '',
+      response.extras?.result_xdr ? `Result XDR: ${response.extras.result_xdr}` : '',
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.join('\n');
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 interface Props {
   walletAddress: string;
   signTransaction: (xdr: string, opts?: any) => Promise<string>;
@@ -211,7 +230,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       if (msg.includes('no path') || msg.includes('no route') || msg.includes('no liquidity')) {
         setPoolEmpty(true);
       } else {
-        setError(err.message || `Failed to fetch a Stellar Broker quote from the configured ${IS_TESTNET ? 'testnet route' : 'route'}.`);
+        setError(formatSwapError(err, `Failed to fetch a Stellar Broker quote from the configured ${IS_TESTNET ? 'testnet route' : 'route'}.`));
       }
       setQuote(null);
     } finally {
@@ -237,7 +256,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         onSwapComplete(quote.amountOut);
       }
     } catch (err: any) {
-      setError(err.message || 'Swap transaction failed. Check your balance and try again.');
+      setError(formatSwapError(err, 'Swap transaction failed. Check your balance, trustlines, slippage, and route liquidity, then try again.'));
       toast('Swap failed — check the error details below', 'error');
     } finally {
       setSwapLoading(false);
@@ -684,7 +703,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               {error && !poolEmpty && (
                 <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 p-3 rounded-lg border border-red-500/20">
                   <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <span className="flex-1">{error}</span>
+                  <span className="flex-1 whitespace-pre-wrap break-words">{error}</span>
                   <button onClick={() => { setError(''); fetchQuote(); }} className="font-bold hover:text-red-300 underline">Retry</button>
                 </div>
               )}

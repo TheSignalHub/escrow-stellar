@@ -64,15 +64,34 @@ function reserveParams(prefix: 'source' | 'destination', asset: string): Record<
   throw new Error('Stellar DEX route supports native XLM and Circle USDC only.');
 }
 
+function describeHorizonError(body: string): string {
+  try {
+    const parsed = JSON.parse(body);
+    const parts = [
+      parsed.title,
+      parsed.detail,
+      parsed.extras?.result_codes ? `Result codes: ${JSON.stringify(parsed.extras.result_codes)}` : '',
+      parsed.extras?.result_xdr ? `Result XDR: ${parsed.extras.result_xdr}` : '',
+    ].filter(Boolean);
+    return parts.join('\n');
+  } catch {
+    return body;
+  }
+}
+
 async function horizonJson(path: string, params: Record<string, string>) {
   const url = new URL(path, HORIZON_URL);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   const response = await fetch(url.toString());
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText);
-    throw new Error(text || response.statusText);
+    throw new Error(describeHorizonError(text || response.statusText) || `Horizon request failed with status ${response.status}`);
   }
   return response.json();
+}
+
+function isDirectRecord(record: any): boolean {
+  return Array.isArray(record?.path) && record.path.length === 0;
 }
 
 export const stellarDexClient = {
@@ -107,7 +126,8 @@ export const stellarDexClient = {
             destination_assets: assetParam(assetOut),
           });
 
-    const record = result?._embedded?.records?.[0];
+    const records = result?._embedded?.records || [];
+    const record = records.find(isDirectRecord) || records[0];
     if (!record) {
       throw new Error('No Stellar DEX path found for this pair.');
     }
