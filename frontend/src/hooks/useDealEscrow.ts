@@ -5,6 +5,7 @@ import {
   getExplorerTxLink,
   NETWORK_PASSPHRASE,
   sorobanServer,
+  STELLAR_INCLUSION_FEE_STROOPS,
 } from '../lib/stellar';
 
 // Access rpc namespace directly — stellar-base is pinned at 14.1.0 via package.json overrides,
@@ -185,7 +186,7 @@ export function useDealEscrow(
       try {
         const account = await sorobanServer.getAccount(walletAddress);
         const tx = new StellarSdk.TransactionBuilder(account, {
-          fee: StellarSdk.BASE_FEE, // 100 stroops — assembleTransaction will set the real simulated fee
+          fee: STELLAR_INCLUSION_FEE_STROOPS,
           networkPassphrase: NETWORK_PASSPHRASE,
         })
           .addOperation(operation)

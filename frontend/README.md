@@ -45,6 +45,7 @@ VITE_STELLAR_NETWORK=testnet
 VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_STELLAR_EXPLORER_URL=https://stellar.expert/explorer/testnet
+VITE_STELLAR_INCLUSION_FEE_STROOPS=100
 VITE_FRIENDBOT_URL=https://friendbot.stellar.org
 # Optional override. By default the app derives native XLM SAC by network:
 # testnet CDLZFC3S...HHGCYSC, mainnet CAS3J7GY...XOWMA.
@@ -96,7 +97,9 @@ refund account is only a dry-quote QA fallback.
 For a non-testnet profile, set `VITE_STELLAR_NETWORK=mainnet`, provide mainnet
 RPC/Horizon/Explorer URLs, omit `VITE_FRIENDBOT_URL`, and replace the demo
 settlement token/router/pool with production-approved provider settings. The
-Wallet Prep creates required trustlines from the connected Stellar wallet for
+frontend defaults mainnet escrow transactions to `10000` stroops inclusion fee;
+override `VITE_STELLAR_INCLUSION_FEE_STROOPS` if your RPC/provider policy needs
+a different value. Wallet Prep creates required trustlines from the connected Stellar wallet for
 known issued receive assets such as Circle USDC before swap settlement when the
 wallet has not opted in yet. Unknown advanced pasted receive contracts require
 manual trustline preparation before execution.

@@ -29,6 +29,9 @@ export const FRIENDBOT_URL = IS_TESTNET
 export const EXPLORER_URL =
   import.meta.env.VITE_STELLAR_EXPLORER_URL ||
   (IS_TESTNET ? 'https://stellar.expert/explorer/testnet' : 'https://stellar.expert/explorer/public');
+export const STELLAR_INCLUSION_FEE_STROOPS =
+  import.meta.env.VITE_STELLAR_INCLUSION_FEE_STROOPS ||
+  (IS_TESTNET ? StellarSdk.BASE_FEE : '10000');
 
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban.
 // The native SAC id is network-specific; never reuse the testnet id on mainnet.

@@ -25,6 +25,7 @@ export interface IndexerConfig {
     executionEnabled: boolean;
     secretKey?: string;
     allowMainnet: boolean;
+    inclusionFeeStroops: string;
   };
   enabled: boolean;
   overlapLedgers: number;
@@ -104,6 +105,9 @@ export function getConfig(): IndexerConfig {
       executionEnabled: process.env.ADMIN_RESOLUTION_EXECUTION_ENABLED === 'true',
       secretKey: process.env.ADMIN_STELLAR_SECRET_KEY,
       allowMainnet: process.env.ADMIN_RESOLUTION_ALLOW_MAINNET === 'true',
+      inclusionFeeStroops:
+        process.env.ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS ||
+        (network === 'mainnet' ? '10000' : '100'),
     },
     enabled: process.env.INDEXER_ENABLED !== 'false',
     overlapLedgers: readOptionalInt('INDEXER_OVERLAP_LEDGERS') ?? 5,

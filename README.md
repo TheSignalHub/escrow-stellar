@@ -43,7 +43,10 @@ resolution/refund actions, and manual indexer controls. It is protected by
 commands without holding signing keys; a testnet/operator deployment can enable
 server-side admin execution with `ADMIN_RESOLUTION_EXECUTION_ENABLED=true`,
 `ADMIN_STELLAR_SECRET_KEY`, and, for mainnet only,
-`ADMIN_RESOLUTION_ALLOW_MAINNET=true`.
+`ADMIN_RESOLUTION_ALLOW_MAINNET=true`. Mainnet server execution defaults to a
+`10000` stroop inclusion fee; override with
+`ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS` if the RPC/provider policy requires a
+different value.
 
 Backend readiness can be checked before frontend QA from `indexer/`:
 
@@ -90,6 +93,8 @@ Network endpoints are environment-driven. The app defaults to testnet for SCF
 review, but `VITE_STELLAR_NETWORK`, `VITE_STELLAR_RPC_URL`,
 `VITE_STELLAR_HORIZON_URL`, and `VITE_STELLAR_EXPLORER_URL` can be set for a
 mainnet/staging profile. Friendbot is testnet-only and hidden outside testnet.
+Mainnet browser-signed escrow transactions default to a `10000` stroop
+inclusion fee; override with `VITE_STELLAR_INCLUSION_FEE_STROOPS` if needed.
 Wallet Prep includes browser-signed native XLM transfer and fresh-account
 activation, so users can move XLM from a Privy/Stellar wallet without
 exporting private keys.

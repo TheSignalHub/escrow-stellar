@@ -145,7 +145,7 @@ async function submitAdminContractCall(
   const server = new rpc.Server(config.rpcUrl);
   const account = await server.getAccount(keypair.publicKey());
   const tx = new StellarSdk.TransactionBuilder(account, {
-    fee: StellarSdk.BASE_FEE,
+    fee: config.adminResolution.inclusionFeeStroops,
     networkPassphrase: networkPassphrase(config),
   })
     .addOperation(operation)

@@ -104,6 +104,7 @@ ADMIN_PASSWORD=<strong-password>
 ADMIN_RESOLUTION_EXECUTION_ENABLED=false
 ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
 ADMIN_RESOLUTION_ALLOW_MAINNET=false
+ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS=100
 STELLAR_NETWORK=testnet
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_DEAL_ESCROW_CONTRACT=CASW4L3WIFJDL2ZOBKBEMO6GV5O34DRBURRUF2EPRFFIQLJHZMSUK7IC
@@ -454,10 +455,13 @@ set:
 ADMIN_RESOLUTION_EXECUTION_ENABLED=true
 ADMIN_STELLAR_SECRET_KEY=<contract-admin-secret-key>
 ADMIN_RESOLUTION_ALLOW_MAINNET=false
+ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS=100
 ```
 
 Keep `ADMIN_RESOLUTION_ALLOW_MAINNET=false` unless the deployment has explicitly
-accepted a server-side production hot-key risk. The public `/market_dashboard`
+accepted a server-side production hot-key risk. Mainnet server execution
+defaults to `10000` stroops inclusion fee when
+`ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS` is not set. The public `/market_dashboard`
 route is intentionally read-only and has no buttons that can mutate indexer
 state. Inngest scheduled runs do not depend on the admin session.
 
