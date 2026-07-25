@@ -147,6 +147,10 @@ function findPreferredDestinationAsset(assetIds: string[], tokenAddress?: string
   return assetIds.find((assetId) => getSettlementKindFromAssetId(assetId) === expectedKind) || '';
 }
 
+function findXlmDestinationAsset(assetIds: string[]): string {
+  return assetIds.find((assetId) => getSettlementKindFromAssetId(assetId) === 'xlm') || '';
+}
+
 function uniqueAssets(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -471,11 +475,13 @@ export function NearIntentsPanel({
       : [...approvedStellarDestinationAllowlist, ...demoDestinationAllowlist]
   );
   const preferredDestinationAsset = findPreferredDestinationAsset(stellarDestinationAllowlist, settlementTokenAddress);
+  const routePreviewDefaultDestination = !isDealFundingMode ? findXlmDestinationAsset(destinationAllowlist) : '';
   const configuredDefaultDestination = readiness?.destinationAssets?.default || '';
 
   useEffect(() => {
     const nextDestinationAsset =
       preferredDestinationAsset ||
+      routePreviewDefaultDestination ||
       (destinationAllowlist.includes(configuredDefaultDestination) ? configuredDefaultDestination : destinationAllowlist[0] || '');
 
     if (destinationAsset && !destinationAllowlist.includes(destinationAsset)) {
@@ -483,7 +489,7 @@ export function NearIntentsPanel({
       return;
     }
     if (nextDestinationAsset && !destinationAsset) setDestinationAsset(nextDestinationAsset);
-  }, [configuredDefaultDestination, destinationAllowlist, destinationAsset, preferredDestinationAsset]);
+  }, [configuredDefaultDestination, destinationAllowlist, destinationAsset, preferredDestinationAsset, routePreviewDefaultDestination]);
 
   const quoteDemoDestination = demoDestinationAllowlist.includes(destinationAsset);
   const destinationToken = allTokens.find((token) => token.assetId === destinationAsset);
@@ -722,7 +728,7 @@ export function NearIntentsPanel({
             <div className="grid grid-cols-1 gap-3">
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                  {isDealFundingMode ? 'Amount due' : 'Top-up target hint'}
+                  {isDealFundingMode ? 'Amount due' : 'Target top-up amount'}
                 </span>
                 <input
                   value={isDealFundingMode ? topUpAmountLabel : amount}
@@ -937,7 +943,7 @@ export function NearIntentsPanel({
 
             {isDealFundingMode && (
               <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
-                Top-up destination is locked to the deal settlement asset: Stellar USDC for USDC deals, or Stellar XLM for XLM deals.
+                Top-up destination is locked to the deal settlement asset. XLM deals top up Stellar XLM by default; USDC deals top up Stellar USDC only when the wallet and payout path are ready for issued assets.
                 The source asset is what the user pays from. Quote previews are wired for supported 1Click routes; live source-wallet execution is a next step.
               </div>
             )}

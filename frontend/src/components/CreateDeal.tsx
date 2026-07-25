@@ -666,12 +666,12 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                     }}
                     className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-xl px-3 py-3 text-white font-bold outline-none cursor-pointer"
                   >
-                    <option value="XLM_DIRECT">Stellar XLM — fund and release in XLM</option>
-                    <option value="USDC">Stellar USDC — fund and release in USDC</option>
+                    <option value="XLM_DIRECT">Stellar XLM — recommended default</option>
+                    <option value="USDC">Stellar USDC — optional issued-asset settlement</option>
                   </select>
                   {settlementAsset === 'XLM_DIRECT' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = XLM SAC. Fund and release in native XLM. This is the simplest path for fresh payout addresses.
+                      Deal token = XLM SAC. Fund and release in native XLM. This is the default path for the XLM grant demo and the simplest path for fresh payout addresses.
                     </p>
                   )}
                   {settlementAsset === 'USDC' && (

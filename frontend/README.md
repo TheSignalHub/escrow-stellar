@@ -100,10 +100,12 @@ manual trustline preparation before execution.
 Production NEAR Intents top-up and direct escrow funding require active Stellar
 destination accounts. Mainnet Create Deal requires the connected client wallet
 to be active, then accepts valid provider/connector payout addresses without
-forcing recipient onboarding during agreement creation. XLM payout addresses
-can be fresh at creation; USDC payout addresses must be active with XLM reserve
-and opted into Stellar USDC before release, because release is the step that
-actually sends issued assets to recipients.
+forcing recipient onboarding during agreement creation. XLM settlement is the
+recommended default for the grant demo and fresh payout addresses; USDC
+settlement remains available as an optional issued-asset path. USDC payout
+addresses must be active with XLM reserve and opted into Stellar USDC before
+release, because release is the step that actually sends issued assets to
+recipients.
 Mainnet quick-start presets can prefill public payout addresses using
 `VITE_MAINNET_DEMO_PROVIDER_ADDRESS` and
 `VITE_MAINNET_DEMO_CONNECTOR_ADDRESS`; only public Stellar addresses belong in
@@ -165,7 +167,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 ## Features
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
-- **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection
+- **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection; Stellar XLM is selected by default, while Stellar USDC remains available as an optional issued-asset path
 - **Wallet Prep** — review wallet destinations, buy USDC with fiat through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
@@ -196,7 +198,7 @@ escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's
 fiat-to-crypto modal and sends purchased USDC to the Base/EVM wallet. It is a
 top-up path only: the deal is not escrow-funded until the user routes assets
 into Stellar when needed and confirms **Fund Deal** from the Stellar wallet.
-For fresh Stellar wallets, the recommended route target is native XLM first,
+For fresh Stellar wallets, the default route target is native XLM first,
 because XLM activates the Stellar account and can fund XLM-settled escrow
 directly. Stellar USDC is appropriate after the Stellar wallet has XLM reserve
 and an enabled USDC trustline.
