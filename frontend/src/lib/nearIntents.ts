@@ -128,6 +128,8 @@ export interface NearIntentStatusResponse {
       amountOutFormatted?: string;
       depositedAmount?: string;
       refundReason?: string;
+      sourceChainTxHashes?: Array<{ hash: string; explorerUrl?: string }>;
+      destinationChainTxHashes?: Array<{ hash: string; explorerUrl?: string }>;
     };
   };
 }
@@ -192,6 +194,16 @@ export const nearIntentsClient = {
   getStatus(bindingId: string): Promise<NearIntentStatusResponse> {
     return request<NearIntentStatusResponse>(
       `/api/marketplace-bindings/${encodeURIComponent(bindingId)}/near-intents/status`
+    );
+  },
+
+  submitDepositTx(bindingId: string, body: { txHash: string; nearSenderAccount?: string }): Promise<NearIntentStatusResponse> {
+    return request<NearIntentStatusResponse>(
+      `/api/marketplace-bindings/${encodeURIComponent(bindingId)}/near-intents/deposit-tx`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
     );
   },
 };

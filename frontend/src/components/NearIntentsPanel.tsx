@@ -60,6 +60,17 @@ const EVM_CHAIN_IDS: Record<string, string> = {
   xlayer: '0xc4',
   scroll: '0x82750',
 };
+const EVM_TX_EXPLORERS: Record<string, string> = {
+  eth: 'https://etherscan.io/tx/',
+  base: 'https://basescan.org/tx/',
+  arb: 'https://arbiscan.io/tx/',
+  op: 'https://optimistic.etherscan.io/tx/',
+  avax: 'https://snowtrace.io/tx/',
+  bsc: 'https://bscscan.com/tx/',
+  pol: 'https://polygonscan.com/tx/',
+  gnosis: 'https://gnosisscan.io/tx/',
+  scroll: 'https://scrollscan.com/tx/',
+};
 const DRY_QUOTE_SOURCE_CHAINS = new Set(['near', 'sol', ...EVM_CHAINS]);
 const RECOMMENDED_SOURCE_ROUTES = [
   { chain: 'near', symbol: 'wNEAR' },
@@ -112,6 +123,12 @@ function isNativeEvmToken(token?: NearIntentsToken): boolean {
   const symbol = token.symbol.toUpperCase();
   const assetId = token.assetId.toLowerCase();
   return !token.contractAddress || assetId.startsWith('native:') || ['ETH', 'BNB', 'MATIC', 'AVAX'].includes(symbol);
+}
+
+function sourceTxExplorerUrl(token: NearIntentsToken | undefined, txHash: string): string {
+  if (!token || !txHash) return '';
+  const baseUrl = EVM_TX_EXPLORERS[token.blockchain];
+  return baseUrl ? `${baseUrl}${txHash}` : '';
 }
 
 function friendlySettlementAsset(assetId?: string): string {
@@ -408,6 +425,7 @@ export function NearIntentsPanel({
   const [sendingSourcePayment, setSendingSourcePayment] = useState(false);
   const [sourcePaymentTxHash, setSourcePaymentTxHash] = useState('');
   const [sourcePaymentError, setSourcePaymentError] = useState('');
+  const [lastStatusCheckedAt, setLastStatusCheckedAt] = useState('');
   const [error, setError] = useState<NearIntentsApiError | null>(null);
   const [stellarRecipientExists, setStellarRecipientExists] = useState<boolean | null>(null);
 
@@ -651,6 +669,15 @@ export function NearIntentsPanel({
     nearIntent?.deadline;
   const quoteReference = nearIntent?.quoteId || quote?.externalPaymentIntent?.intentId;
   const sourcePaymentAmount = nearIntent?.sourceAmount || quoteDetails?.amountIn || quoteRequestAmount;
+  const statusUpdatedAt = status?.status.updatedAt || nearIntent?.providerStatusUpdatedAt || status?.externalPaymentIntent.updatedAt;
+  const detectedSourceTx = status?.status.swapDetails?.sourceChainTxHashes?.[0];
+  const detectedDestinationTx = status?.status.swapDetails?.destinationChainTxHashes?.[0];
+  const displayedSourceTxHash = sourcePaymentTxHash || nearIntent?.submittedDepositTxHash || detectedSourceTx?.hash || '';
+  const displayedSourceTxUrl =
+    detectedSourceTx?.explorerUrl || sourceTxExplorerUrl(selectedOriginAsset, displayedSourceTxHash);
+  const nearExplorerUrl = nearIntent?.depositAddress
+    ? `https://explorer.near-intents.org/?search=${encodeURIComponent(nearIntent.depositAddress)}`
+    : '';
   const canSendEvmSourcePayment = Boolean(
     liveSourceWalletReady &&
     nearIntent?.depositAddress &&
@@ -666,16 +693,16 @@ export function NearIntentsPanel({
   const settlementReported = providerStatus === 'SUCCESS';
   const paymentSteps: Array<{ label: string; state: StepState }> = [
     { label: hasQuote ? 'Top-up route quoted by 1Click' : 'Choose top-up source', state: hasQuote ? 'done' : 'active' },
-    { label: 'Source payment pending', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
-    { label: 'NEAR Intents routing', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
+    { label: 'Waiting for 1Click to detect source payment', state: sourcePaymentSeen ? 'done' : hasQuote ? 'active' : 'pending' },
+    { label: 'Routing through 1Click / NEAR Intents', state: routingStarted ? 'done' : sourcePaymentSeen ? 'active' : 'pending' },
     {
-      label: quoteDemoDestination ? 'Quote route priced by 1Click' : 'Settling on Stellar',
+      label: quoteDemoDestination ? 'Quote route priced by 1Click' : 'Sending settlement to Stellar wallet',
       state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending',
     },
     {
       label: quoteDemoDestination
         ? isDealFundingMode ? 'Escrow funding not included in quote demo' : 'Wallet top-up not included in quote demo'
-        : isDealFundingMode ? 'Fund Deal after wallet top-up' : 'Return to Deals after wallet top-up',
+        : isDealFundingMode ? 'Fund Deal from Stellar wallet' : 'Return to Deals after wallet top-up',
       state: quoteDemoDestination ? 'pending' : settlementReported ? 'active' : 'pending',
     },
   ];
@@ -713,30 +740,53 @@ export function NearIntentsPanel({
     }
   };
 
-  const refreshStatus = async () => {
+  const applyStatusResult = (result: NearIntentStatusResponse) => {
+    setStatus(result);
+    setLastStatusCheckedAt(new Date().toISOString());
+    if (result.nearIntent.submittedDepositTxHash) setSourcePaymentTxHash(result.nearIntent.submittedDepositTxHash);
+    setQuote((current) =>
+      current
+        ? {
+            ...current,
+            externalPaymentIntent: result.externalPaymentIntent,
+            nearIntent: result.nearIntent,
+          }
+        : current
+    );
+  };
+
+  const refreshStatus = async ({ quiet = false }: { quiet?: boolean } = {}) => {
     setLoadingStatus(true);
     setError(null);
     try {
       const result = await nearIntentsClient.getStatus(REVIEW_BINDING_ID);
-      setStatus(result);
-      setQuote((current) =>
-        current
-          ? {
-              ...current,
-              externalPaymentIntent: result.externalPaymentIntent,
-              nearIntent: result.nearIntent,
-            }
-          : current
-      );
-      toast('Payment status refreshed', 'success');
+      applyStatusResult(result);
+      if (!quiet) toast('Payment status refreshed', 'success');
     } catch (err) {
       const apiError = err instanceof NearIntentsApiError ? err : new NearIntentsApiError(String(err), 500);
       setError(apiError);
-      toast(apiError.message, 'error');
+      if (!quiet) toast(apiError.message, 'error');
     } finally {
       setLoadingStatus(false);
     }
   };
+
+  useEffect(() => {
+    const shouldAutoPoll = Boolean(
+      displayedSourceTxHash &&
+      nearIntent?.depositAddress &&
+      providerStatus &&
+      !['SUCCESS', 'FAILED', 'REFUNDED'].includes(providerStatus)
+    );
+    if (!shouldAutoPoll) return;
+
+    const pollMs = Math.max(10, readiness?.pollIntervalSeconds || 20) * 1000;
+    const interval = window.setInterval(() => {
+      void refreshStatus({ quiet: true });
+    }, pollMs);
+
+    return () => window.clearInterval(interval);
+  }, [displayedSourceTxHash, nearIntent?.depositAddress, providerStatus, readiness?.pollIntervalSeconds]);
 
   const sendEvmSourcePayment = async () => {
     if (!canSendEvmSourcePayment || !nearIntent?.depositAddress || !selectedOriginAsset || !sourcePaymentAmount) return;
@@ -785,7 +835,17 @@ export function NearIntentsPanel({
       const normalizedHash = typeof txHash === 'string' ? txHash : '';
       setSourcePaymentTxHash(normalizedHash);
       toast('Source payment submitted', 'success');
-      void refreshStatus();
+      if (normalizedHash) {
+        try {
+          const result = await nearIntentsClient.submitDepositTx(REVIEW_BINDING_ID, { txHash: normalizedHash });
+          applyStatusResult(result);
+        } catch {
+          setSourcePaymentError('Source transaction was submitted. 1Click notification is still pending, so use Refresh Payment Status to continue tracking.');
+          void refreshStatus({ quiet: true });
+        }
+      } else {
+        void refreshStatus();
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Source payment was rejected or failed before submission.';
       setSourcePaymentError(message);
@@ -1345,10 +1405,20 @@ export function NearIntentsPanel({
                           </Button>
                         </div>
                       )}
-                      {sourcePaymentTxHash && (
+                      {displayedSourceTxHash && (
                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
                           <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-1">Source tx submitted</p>
-                          <p className="break-all font-mono text-xs text-emerald-100">{sourcePaymentTxHash}</p>
+                          <p className="break-all font-mono text-xs text-emerald-100">{displayedSourceTxHash}</p>
+                          {displayedSourceTxUrl && (
+                            <a
+                              href={displayedSourceTxUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-flex text-[10px] font-black uppercase tracking-widest text-blue-200 hover:text-blue-100"
+                            >
+                              View source tx
+                            </a>
+                          )}
                         </div>
                       )}
                       {sourcePaymentError && (
@@ -1364,6 +1434,16 @@ export function NearIntentsPanel({
                   )}
                   {quoteReference && (
                     <p className="text-[10px] text-zinc-600">Reference {shortText(quoteReference)}</p>
+                  )}
+                  {nearExplorerUrl && (
+                    <a
+                      href={nearExplorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex text-[10px] font-black uppercase tracking-widest text-blue-300 hover:text-blue-200"
+                    >
+                      Track on NEAR Intents Explorer
+                    </a>
                   )}
                 </div>
 
@@ -1403,6 +1483,29 @@ export function NearIntentsPanel({
                 <PaymentStep key={step.label} label={step.label} state={step.state} />
               ))}
             </div>
+            {(lastStatusCheckedAt || statusUpdatedAt || detectedDestinationTx?.hash) && (
+              <div className="rounded-lg border border-zinc-800 bg-black/20 px-3 py-2 text-[10px] leading-relaxed text-zinc-500 space-y-1">
+                {lastStatusCheckedAt && <p>Last checked {formatDateTime(lastStatusCheckedAt)}</p>}
+                {statusUpdatedAt && <p>1Click updated {formatDateTime(statusUpdatedAt)}</p>}
+                {detectedDestinationTx?.hash && (
+                  <p>
+                    Stellar settlement tx{' '}
+                    {detectedDestinationTx.explorerUrl ? (
+                      <a
+                        href={detectedDestinationTx.explorerUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-blue-300 hover:text-blue-200"
+                      >
+                        {shortText(detectedDestinationTx.hash)}
+                      </a>
+                    ) : (
+                      <span className="font-mono text-zinc-300">{shortText(detectedDestinationTx.hash)}</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed flex items-start gap-3">
