@@ -35,6 +35,7 @@ export interface StellarBrokerProvider {
     amount: string,
     tradeType?: 'EXACT_IN' | 'EXACT_OUT',
     sourceAddress?: string,
+    slippageBps?: number,
   ): Promise<BrokerQuote>;
   buildTransaction(quote: BrokerQuote, fromAddress: string): Promise<string>;
   sendTransaction(signedXdr: string): Promise<{ txHash: string }>;
@@ -42,21 +43,31 @@ export interface StellarBrokerProvider {
 
 let lastBuiltSubmitter: 'stellar-dex' | 'soroswap' = 'soroswap';
 
-function withProviderMetadata(quote: SwapQuote, providerId = STELLAR_BROKER_PROVIDER): BrokerQuote {
+function normalizeSlippage(slippageBps?: number): number {
+  if (!Number.isFinite(slippageBps)) return STELLAR_BROKER_SLIPPAGE_BPS;
+  return Math.min(500, Math.max(10, Math.round(slippageBps || STELLAR_BROKER_SLIPPAGE_BPS)));
+}
+
+function withProviderMetadata(quote: SwapQuote, providerId = STELLAR_BROKER_PROVIDER, slippageBps?: number): BrokerQuote {
+  const safeSlippageBps = normalizeSlippage(slippageBps);
   return {
     ...quote,
+    rawQuote: {
+      ...quote.rawQuote,
+      slippageBps: safeSlippageBps,
+    },
     providerId,
     quoteExpiresAt: Date.now() + STELLAR_BROKER_QUOTE_TTL_SECONDS * 1000,
-    slippageBps: STELLAR_BROKER_SLIPPAGE_BPS,
+    slippageBps: safeSlippageBps,
   };
 }
 
 export const stellarBrokerClient: StellarBrokerProvider = {
   id: STELLAR_BROKER_PROVIDER,
-  async getQuote(assetIn, assetOut, amount, tradeType, sourceAddress) {
+  async getQuote(assetIn, assetOut, amount, tradeType, sourceAddress, slippageBps) {
     if (STELLAR_NETWORK === 'mainnet' && stellarDexClient.canHandle(assetIn, assetOut)) {
       const quote = await stellarDexClient.getQuote(assetIn, assetOut, amount, tradeType);
-      return withProviderMetadata(quote, 'stellar-dex-mainnet');
+      return withProviderMetadata(quote, 'stellar-dex-mainnet', slippageBps);
     }
 
     const quote = await soroswapOnchainClient.getQuote(
@@ -66,7 +77,7 @@ export const stellarBrokerClient: StellarBrokerProvider = {
       tradeType,
       sourceAddress,
     );
-    return withProviderMetadata(quote);
+    return withProviderMetadata(quote, undefined, slippageBps);
   },
   buildTransaction(quote, fromAddress) {
     if ((quote.rawQuote as any)?.kind === 'stellar-dex-path') {

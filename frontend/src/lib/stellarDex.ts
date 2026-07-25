@@ -3,7 +3,6 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import {
   HORIZON_URL,
   NETWORK_PASSPHRASE,
-  STELLAR_BROKER_SLIPPAGE_BPS,
   USDC_TOKEN_ADDRESS,
   XLM_SAC_ADDRESS,
   horizonServer,
@@ -22,9 +21,9 @@ function toStroops(human: string): string {
   return BigInt(Math.round(Number(human) * 1e7)).toString();
 }
 
-function withSlippage(humanAmount: string, direction: 'up' | 'down'): string {
+function withSlippage(humanAmount: string, direction: 'up' | 'down', slippageBps: number): string {
   const amount = Number(humanAmount);
-  const factor = STELLAR_BROKER_SLIPPAGE_BPS / 10000;
+  const factor = slippageBps / 10000;
   const adjusted = direction === 'up' ? amount * (1 + factor) : amount * (1 - factor);
   return adjusted.toFixed(7);
 }
@@ -145,12 +144,13 @@ export const stellarDexClient = {
       if (item.asset_type === 'native') return StellarSdk.Asset.native();
       return new StellarSdk.Asset(item.asset_code, item.asset_issuer);
     });
+    const slippageBps = Number(raw.slippageBps || (quote as any).slippageBps || 100);
 
     const operation =
       raw.tradeType === 'EXACT_OUT'
         ? StellarSdk.Operation.pathPaymentStrictReceive({
             sendAsset,
-            sendMax: withSlippage(raw.sourceAmount, 'up'),
+            sendMax: withSlippage(raw.sourceAmount, 'up', slippageBps),
             destination: fromAddress,
             destAsset,
             destAmount: raw.destinationAmount,
@@ -161,7 +161,7 @@ export const stellarDexClient = {
             sendAmount: raw.sourceAmount,
             destination: fromAddress,
             destAsset,
-            destMin: withSlippage(raw.destinationAmount, 'down'),
+            destMin: withSlippage(raw.destinationAmount, 'down', slippageBps),
             path,
           });
 

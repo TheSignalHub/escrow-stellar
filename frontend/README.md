@@ -160,10 +160,10 @@ assets through the configured AMM/broker route, with the seeded Soroswap
 testnet path retained for reproducible XLM/demo-USDC review and a mainnet
 Stellar DEX/Horizon path for XLM/Circle USDC. This is shown as **Convert on
 Stellar** because it prepares wallet balance only; escrow locks later from
-Deals via **Fund Deal**. The conversion form accepts custom Stellar token
-contract addresses for pay/receive assets, with XLM/USDC presets kept for
-common routes. Custom pairs quote and execute only when the configured broker
-route has liquidity.
+Deals via **Fund Deal**. The conversion form uses route dropdowns for common
+XLM/USDC routes and keeps custom Stellar token contract addresses in advanced
+mode. Slippage is user-selectable. Custom pairs quote and execute only when the
+configured broker route has liquidity.
 
 Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
 card when Privy onramps are enabled. The wallet overview separates the Stellar

@@ -58,8 +58,8 @@ function pathScVal(path: string[]): StellarSdk.xdr.ScVal {
 }
 
 /** Apply a slippage buffer: for EXACT_OUT we raise amount_in_max, for EXACT_IN we lower amount_out_min. */
-function withSlippage(amount: bigint, direction: 'up' | 'down'): bigint {
-  const bps = BigInt(STELLAR_BROKER_SLIPPAGE_BPS);
+function withSlippage(amount: bigint, direction: 'up' | 'down', slippageBps = STELLAR_BROKER_SLIPPAGE_BPS): bigint {
+  const bps = BigInt(slippageBps);
   const denom = BigInt(10000);
   return direction === 'up'
     ? (amount * (denom + bps)) / denom
@@ -141,7 +141,7 @@ export class SoroswapOnchainClient {
 
     let op: StellarSdk.xdr.Operation;
     if (tradeType === 'EXACT_OUT') {
-      const amountInMax = withSlippage(BigInt(quote.amountIn), 'up');
+      const amountInMax = withSlippage(BigInt(quote.amountIn), 'up', quote.rawQuote.slippageBps);
       op = contract.call(
         'swap_tokens_for_exact_tokens',
         i128(amount), // amount_out (exact)
@@ -151,7 +151,7 @@ export class SoroswapOnchainClient {
         deadlineScVal,
       );
     } else {
-      const amountOutMin = withSlippage(BigInt(quote.amountOut), 'down');
+      const amountOutMin = withSlippage(BigInt(quote.amountOut), 'down', quote.rawQuote.slippageBps);
       op = contract.call(
         'swap_exact_tokens_for_tokens',
         i128(amount), // amount_in (exact)

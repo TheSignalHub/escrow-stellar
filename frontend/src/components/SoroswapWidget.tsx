@@ -19,6 +19,13 @@ import { WalletPrepOverview } from './WalletPrepOverview';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
 type SwapMode = 'exact-in' | 'exact-out';
+type SwapAssetKey = 'xlm' | 'usdc';
+
+const SLIPPAGE_PRESETS = [
+  { label: '0.5%', bps: 50 },
+  { label: '1%', bps: 100 },
+  { label: '2%', bps: 200 },
+];
 
 interface Props {
   walletAddress: string;
@@ -42,6 +49,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [assetOutAddress, setAssetOutAddress] = useState(USDC_TOKEN_ADDRESS);
   const [assetInSymbol, setAssetInSymbol] = useState('XLM');
   const [assetOutSymbol, setAssetOutSymbol] = useState(SETTLEMENT_TOKEN_SYMBOL);
+  const [assetInKey, setAssetInKey] = useState<SwapAssetKey>('xlm');
+  const [assetOutKey, setAssetOutKey] = useState<SwapAssetKey>('usdc');
+  const [customRouteOpen, setCustomRouteOpen] = useState(false);
+  const [slippageBps, setSlippageBps] = useState(100);
+  const [customSlippagePct, setCustomSlippagePct] = useState('');
   const [quote, setQuote] = useState<BrokerQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
@@ -80,18 +92,71 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     resetQuoteState();
   };
 
+  const swapAssets = {
+    xlm: {
+      key: 'xlm' as const,
+      symbol: 'XLM',
+      name: 'XLM',
+      network: 'Native',
+      address: XLM_SAC_ADDRESS,
+    },
+    usdc: {
+      key: 'usdc' as const,
+      symbol: SETTLEMENT_TOKEN_SYMBOL,
+      name: 'Circle USDC',
+      network: 'Stellar',
+      address: USDC_TOKEN_ADDRESS,
+    },
+  };
+
+  const selectAsset = (side: 'in' | 'out', key: SwapAssetKey) => {
+    const asset = swapAssets[key];
+    if (side === 'in') {
+      setAssetInKey(key);
+      setAssetInAddress(asset.address);
+      setAssetInSymbol(asset.symbol);
+    } else {
+      setAssetOutKey(key);
+      setAssetOutAddress(asset.address);
+      setAssetOutSymbol(asset.symbol);
+    }
+    setTxHash('');
+    setPublicQuote(null);
+    setPublicQuoteError('');
+    resetQuoteState();
+  };
+
+  const handleSlippagePreset = (bps: number) => {
+    setSlippageBps(bps);
+    setCustomSlippagePct('');
+    resetQuoteState();
+  };
+
+  const handleCustomSlippage = (value: string) => {
+    setCustomSlippagePct(value);
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      setSlippageBps(Math.min(500, Math.max(10, Math.round(parsed * 100))));
+      resetQuoteState();
+    }
+  };
+
   const applyRoutePreset = (preset: 'xlm-to-usdc' | 'usdc-to-xlm') => {
     if (preset === 'xlm-to-usdc') {
       setAssetInAddress(XLM_SAC_ADDRESS);
       setAssetOutAddress(USDC_TOKEN_ADDRESS);
       setAssetInSymbol('XLM');
       setAssetOutSymbol(SETTLEMENT_TOKEN_SYMBOL);
+      setAssetInKey('xlm');
+      setAssetOutKey('usdc');
       setSwapAmount('2260');
     } else {
       setAssetInAddress(USDC_TOKEN_ADDRESS);
       setAssetOutAddress(XLM_SAC_ADDRESS);
       setAssetInSymbol(SETTLEMENT_TOKEN_SYMBOL);
       setAssetOutSymbol('XLM');
+      setAssetInKey('usdc');
+      setAssetOutKey('xlm');
       setSwapAmount('100');
     }
     setSwapMode('exact-in');
@@ -106,6 +171,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setAssetOutAddress(assetInAddress);
     setAssetInSymbol(assetOutSymbol);
     setAssetOutSymbol(assetInSymbol);
+    setAssetInKey(assetOutKey);
+    setAssetOutKey(assetInKey);
     setTxHash('');
     setPublicQuote(null);
     setPublicQuoteError('');
@@ -177,7 +244,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         assetOutAddress.trim(),
         stroops,
         tradeType,
-        walletAddress
+        walletAddress,
+        slippageBps
       );
       setQuote(q);
     } catch (err: any) {
@@ -383,9 +451,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Token route</h4>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Swap route</h4>
                     <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                      Paste Stellar token contract addresses, or use the presets for XLM and USDC.
+                      Choose the common Stellar route, or open advanced mode to paste token contracts.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -401,60 +469,151 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
-                    <input
-                      value={assetInSymbol}
-                      onChange={(event) => {
-                        setAssetInSymbol(event.target.value.toUpperCase().slice(0, 12));
-                        resetQuoteState();
-                      }}
-                      className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
-                      aria-label="Pay token symbol"
-                    />
-                    <input
-                      value={assetInAddress}
-                      onChange={(event) => {
-                        setAssetInAddress(event.target.value.trim());
-                        setPublicQuote(null);
-                        setPublicQuoteError('');
-                        resetQuoteState();
-                      }}
-                      spellCheck={false}
-                      className={`bg-[#09090b] border ${assetInAddress && !isTokenContractAddress(assetInAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
-                      aria-label="Pay token contract"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
-                    <input
-                      value={assetOutSymbol}
-                      onChange={(event) => {
-                        setAssetOutSymbol(event.target.value.toUpperCase().slice(0, 12));
-                        resetQuoteState();
-                      }}
-                      className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
-                      aria-label="Receive token symbol"
-                    />
-                    <input
-                      value={assetOutAddress}
-                      onChange={(event) => {
-                        setAssetOutAddress(event.target.value.trim());
-                        setPublicQuote(null);
-                        setPublicQuoteError('');
-                        resetQuoteState();
-                      }}
-                      spellCheck={false}
-                      className={`bg-[#09090b] border ${assetOutAddress && !isTokenContractAddress(assetOutAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
-                      aria-label="Receive token contract"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end">
+                  <label className="space-y-2 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">From</span>
+                    <select
+                      value={assetInKey}
+                      onChange={(event) => selectAsset('in', event.target.value as SwapAssetKey)}
+                      className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-3 text-sm text-zinc-100 font-bold outline-none"
+                    >
+                      {Object.values(swapAssets).map((asset) => (
+                        <option key={asset.key} value={asset.key}>
+                          {asset.symbol} - {asset.network}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={flipRoute}
+                    className="h-11 w-11 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:text-emerald-300 hover:border-emerald-500/40 transition-colors"
+                    aria-label="Flip swap route"
+                  >
+                    ↔
+                  </button>
+                  <label className="space-y-2 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">To</span>
+                    <select
+                      value={assetOutKey}
+                      onChange={(event) => selectAsset('out', event.target.value as SwapAssetKey)}
+                      className="w-full bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-3 text-sm text-zinc-100 font-bold outline-none"
+                    >
+                      {Object.values(swapAssets).map((asset) => (
+                        <option key={asset.key} value={asset.key}>
+                          {asset.symbol} - {asset.network}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomRouteOpen((value) => !value)}
+                  className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-emerald-300 transition-colors"
+                >
+                  {customRouteOpen ? 'Hide advanced token contracts' : 'Advanced: paste token contracts'}
+                </button>
+
+                {customRouteOpen && (
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
+                      <input
+                        value={assetInSymbol}
+                        onChange={(event) => {
+                          setAssetInSymbol(event.target.value.toUpperCase().slice(0, 12));
+                          resetQuoteState();
+                        }}
+                        className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
+                        aria-label="Pay token symbol"
+                      />
+                      <input
+                        value={assetInAddress}
+                        onChange={(event) => {
+                          setAssetInAddress(event.target.value.trim());
+                          setPublicQuote(null);
+                          setPublicQuoteError('');
+                          resetQuoteState();
+                        }}
+                        spellCheck={false}
+                        className={`bg-[#09090b] border ${assetInAddress && !isTokenContractAddress(assetInAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
+                        aria-label="Pay token contract"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[6rem_minmax(0,1fr)] gap-2">
+                      <input
+                        value={assetOutSymbol}
+                        onChange={(event) => {
+                          setAssetOutSymbol(event.target.value.toUpperCase().slice(0, 12));
+                          resetQuoteState();
+                        }}
+                        className="bg-[#09090b] border border-zinc-800 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 font-bold outline-none"
+                        aria-label="Receive token symbol"
+                      />
+                      <input
+                        value={assetOutAddress}
+                        onChange={(event) => {
+                          setAssetOutAddress(event.target.value.trim());
+                          setPublicQuote(null);
+                          setPublicQuoteError('');
+                          resetQuoteState();
+                        }}
+                        spellCheck={false}
+                        className={`bg-[#09090b] border ${assetOutAddress && !isTokenContractAddress(assetOutAddress) ? 'border-red-500/40' : 'border-zinc-800'} focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono outline-none`}
+                        aria-label="Receive token contract"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {!routeConfigured && (
                   <p className="text-xs leading-relaxed text-amber-300">
                     Use Stellar SAC contract ids beginning with C. Conversion can quote only when the configured broker/AMM route has liquidity for the selected pair.
                   </p>
                 )}
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Slippage</h4>
+                    <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
+                      Protects the signed swap from price movement between quote and confirmation.
+                    </p>
+                  </div>
+                  <Tag color="zinc">{(slippageBps / 100).toFixed(2)}%</Tag>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {SLIPPAGE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.bps}
+                      type="button"
+                      onClick={() => handleSlippagePreset(preset.bps)}
+                      className={`rounded-lg border px-2 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        slippageBps === preset.bps && !customSlippagePct
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                          : 'border-zinc-800 bg-zinc-900/60 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <label className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-2 py-1 flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="5"
+                      step="0.1"
+                      value={customSlippagePct}
+                      onChange={(event) => handleCustomSlippage(event.target.value)}
+                      placeholder="Custom"
+                      className="w-full bg-transparent text-[10px] font-bold text-zinc-100 outline-none placeholder:text-zinc-600"
+                      aria-label="Custom slippage percent"
+                    />
+                    <span className="text-[10px] font-bold text-zinc-500">%</span>
+                  </label>
+                </div>
               </div>
 
               {/* Swap Inputs */}
@@ -526,7 +685,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                    </div>
                    <div className="flex justify-between">
                      <span>Slippage Tolerance</span>
-                     <span className="text-emerald-400">1.0%</span>
+                     <span className="text-emerald-400">{(quote.slippageBps / 100).toFixed(2)}%</span>
                    </div>
                 </div>
               )}
