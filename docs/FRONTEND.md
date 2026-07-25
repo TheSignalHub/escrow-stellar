@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 19:29 BST | NEAR Intents completed badge | Changed the terminal 1Click settlement badge from the internal **Awaiting escrow event** amber state to a green **Swap completed** state while keeping the separate Fund Deal reminder below. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:24 BST | NEAR Intents settlement success copy | Replaced internal reconcile/indexing language in the top-up success banner with a user-facing next step: funds reached the Stellar wallet, then open Deals and fund escrow. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:18 BST | NEAR Intents pay-card responsive fix | Changed the Add Funds **You pay** card so source amount and source selectors stack cleanly in narrow columns, preventing the chain/asset dropdowns from overlapping the amount field. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:12 BST | NEAR Intents status wait guidance | Added concise waiting-time guidance to the payment status copy so users understand that 1Click detection, routing, and Stellar settlement can take a few minutes after source payment submission. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |

@@ -1404,7 +1404,7 @@ export function NearIntentsPanel({
                 </p>
               </div>
               {settlementReported && (
-                <Tag color="amber">Awaiting escrow event</Tag>
+                <Tag color="emerald">Swap completed</Tag>
               )}
             </div>
             <div className="space-y-2">
