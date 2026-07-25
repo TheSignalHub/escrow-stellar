@@ -54,6 +54,17 @@ function txHashOf(event: any): string | undefined {
   return event.txHash ?? event.tx_hash ?? event.transactionHash;
 }
 
+function contractIdOf(event: any): string | undefined {
+  const value =
+    event.contractId ??
+    event.contract_id ??
+    event.contractAddress ??
+    event.contract_address ??
+    event.contract;
+  if (!value) return undefined;
+  return typeof value === 'string' ? value : String(value);
+}
+
 function ledgerOf(event: any): number {
   return Number(event.ledger ?? event.ledgerSeq ?? event.ledger_sequence ?? 0);
 }
@@ -63,6 +74,11 @@ export function parseEscrowEvent(
   contractAddress: string,
   network: 'testnet' | 'mainnet'
 ): DecodedEscrowEvent | null {
+  const emittingContractAddress = contractIdOf(event);
+  if (emittingContractAddress && emittingContractAddress !== contractAddress) {
+    return null;
+  }
+
   const rawTopics = event.topic ?? event.topics ?? [];
   if (!Array.isArray(rawTopics) || rawTopics.length === 0) return null;
 
@@ -127,6 +143,7 @@ export function parseEscrowEvent(
       linkedToMarketplaceDeal: false,
     },
     sorobanContractAddress: contractAddress,
+    sorobanEmittingContractAddress: emittingContractAddress || contractAddress,
     sorobanDealId: dealId,
     sorobanMilestoneIdx: milestoneIdx,
     sorobanEventTopic: escrowTopic,

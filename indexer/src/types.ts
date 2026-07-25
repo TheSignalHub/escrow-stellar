@@ -34,6 +34,7 @@ export interface DecodedEscrowEvent {
     linkedToMarketplaceDeal: false;
   };
   sorobanContractAddress: string;
+  sorobanEmittingContractAddress?: string;
   sorobanDealId?: number;
   sorobanMilestoneIdx?: number;
   sorobanEventTopic: EscrowEventTopic;

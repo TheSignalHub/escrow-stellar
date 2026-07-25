@@ -19,10 +19,23 @@ It does not:
 ```txt
 DealEscrow contract event
   -> Soroban RPC getEvents
+  -> confirm the emitting contract is the watched DealEscrow contract
   -> parseEscrowEvent()
   -> escrow-transfers
   -> stellar-indexer-state cursor update
 ```
+
+The market dashboard intentionally shows only DealEscrow lifecycle rows with a
+numeric `deal_id` and one of the known escrow topics. NEAR Intents / 1Click
+wallet top-ups can be valid production evidence, but they are wallet-funding
+state and must stay out of the escrow lifecycle tables until the user signs
+`fund_deal` from the Stellar wallet.
+
+## Behavior Log
+
+| Timestamp | Area | Change | Validation |
+|---|---|---|---|
+| 2026-07-25 21:20 BST | Market dashboard event boundary | Added parser/API guards so non-DealEscrow payment-route events cannot appear as DealEscrow lifecycle evidence. | `npm run build` in `indexer/` passed |
 
 ## Collections
 

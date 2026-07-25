@@ -4,10 +4,31 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import type { IndexerConfig } from './config.js';
 import { closeIndexerDb, connectIndexerDb } from './db.js';
 import { runStellarIndexerOnce } from './runStellarIndexerOnce.js';
-import type { DecodedEscrowEvent, DisputeNote, MarketplaceBinding } from './types.js';
+import type { DecodedEscrowEvent, DisputeNote, EscrowEventTopic, MarketplaceBinding } from './types.js';
 
 const rpc = StellarSdk.rpc;
 const MAX_ADMIN_TX_POLL_RETRIES = 30;
+const DEAL_ESCROW_EVENT_TOPICS: EscrowEventTopic[] = [
+  'created',
+  'funded',
+  'released',
+  'done',
+  'dispute',
+  'resolved',
+  'refund',
+];
+
+function dealEscrowEventQuery(config: IndexerConfig): Record<string, unknown> {
+  return {
+    sorobanContractAddress: config.contractAddress,
+    sorobanDealId: { $type: 'number' },
+    sorobanEventTopic: { $in: DEAL_ESCROW_EVENT_TOPICS },
+    $or: [
+      { sorobanEmittingContractAddress: { $exists: false } },
+      { sorobanEmittingContractAddress: config.contractAddress },
+    ],
+  };
+}
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? '')
@@ -63,7 +84,11 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
 
 function getExplorerTxUrl(txHash?: string, network: IndexerConfig['network'] = 'testnet'): string | undefined {
   if (!txHash) return undefined;
-  return `https://stellar.expert/explorer/${network}/tx/${txHash}`;
+  return `https://stellar.expert/explorer/${explorerNetworkSegment(network)}/tx/${txHash}`;
+}
+
+function explorerNetworkSegment(network: IndexerConfig['network']): 'testnet' | 'public' {
+  return network === 'mainnet' ? 'public' : 'testnet';
 }
 
 function eventTime(event: DecodedEscrowEvent): number {
@@ -441,7 +466,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
       <header>
         <div>
           <h1>Market Dashboard</h1>
-          <div class="sub">Read-only Soroban DealEscrow events synchronized into MongoDB for the Tranche 2 testnet demo.</div>
+          <div class="sub">Read-only Soroban DealEscrow lifecycle events synchronized into MongoDB. Cross-chain wallet top-ups are tracked separately and are not counted as escrow state.</div>
         </div>
         <div class="actions">
           <button id="refresh">Refresh</button>
@@ -478,17 +503,20 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
       <div class="footer" id="lastUpdated"></div>
     </main>
     <script>
+      const config = ${JSON.stringify({
+        explorerNetwork: explorerNetworkSegment(config.network),
+      })};
       const fmt = new Intl.NumberFormat('en-US');
       const statusClass = (value) => value === 'error' ? 'error' : value === 'running' ? 'running' : 'ok';
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-      const explorer = (tx) => tx ? 'https://stellar.expert/explorer/testnet/tx/' + tx : undefined;
+      const explorer = (tx) => tx ? 'https://stellar.expert/explorer/' + config.explorerNetwork + '/tx/' + tx : undefined;
 
       function stat(label, value, cls = '') {
         return '<div class="panel stat"><div class="label">' + label + '</div><div class="value ' + cls + '">' + escapeHtml(value) + '</div></div>';
       }
 
       function renderDeals(deals) {
-        if (!deals.length) return '<div class="empty">No indexed deals yet. Create/fund/release a testnet deal, then run or wait for the indexer.</div>';
+        if (!deals.length) return '<div class="empty">No indexed DealEscrow lifecycle events yet. Create, fund, release, or resolve a deal, then run or wait for the indexer.</div>';
         return '<table><thead><tr><th>Deal</th><th>Last Event</th><th>Milestones Seen</th><th>Events</th><th>Latest Ledger</th></tr></thead><tbody>' +
           deals.map((deal) => '<tr><td class="mono">#' + escapeHtml(deal.dealId) + '</td><td><span class="pill ' + escapeHtml(deal.lastEvent) + '">' + escapeHtml(deal.lastEvent) + '</span></td><td>' + fmt.format(deal.milestonesSeen || 0) + '</td><td>' + fmt.format(deal.eventCount || 0) + '</td><td class="mono">' + fmt.format(deal.latestLedger || 0) + '</td></tr>').join('') +
           '</tbody></table>';
@@ -502,7 +530,7 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
       }
 
       function renderEvents(events) {
-        if (!events.length) return '<div class="empty">No escrow events indexed yet.</div>';
+        if (!events.length) return '<div class="empty">No DealEscrow lifecycle events indexed yet.</div>';
         return '<table><thead><tr><th>Event</th><th>Deal</th><th>Milestone</th><th>Amount</th><th>Ledger</th><th>Tx</th></tr></thead><tbody>' +
           events.map((event) => {
             const url = explorer(event.onchainTxHash);
@@ -516,10 +544,11 @@ function renderMarketDashboardPage(config: IndexerConfig): string {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load dashboard');
         const state = data.state || {};
+        const lifecycleEventCount = (data.countsByTopic || []).reduce((total, item) => total + (Number(item.count) || 0), 0);
         document.getElementById('stats').innerHTML =
           stat('Status', state.lastTickStatus || 'idle', statusClass(state.lastTickStatus)) +
           stat('Last Ledger', state.lastSeenLedger ? fmt.format(state.lastSeenLedger) : '-') +
-          stat('Events Indexed', fmt.format(state.totalEventsProcessed || 0)) +
+          stat('Lifecycle Events', fmt.format(lifecycleEventCount)) +
           stat('Last Tick', state.lastTickAt ? new Date(state.lastTickAt).toLocaleString() : '-');
         document.getElementById('deals').innerHTML = renderDeals(data.deals || []);
         document.getElementById('bindings').innerHTML = renderBindings(data.marketplaceBindings || []);
@@ -852,9 +881,10 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
 
   app.get('/api/admin/disputes', requireAdminAuth, async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) => {
+      const escrowEventQuery = dealEscrowEventQuery(config);
       const [events, bindings, disputeNotes] = await Promise.all([
         indexerDb.transfers
-          .find({ sorobanContractAddress: config.contractAddress })
+          .find(escrowEventQuery)
           .sort({ sorobanLedgerSeq: -1, updatedAt: -1 })
           .limit(500)
           .toArray(),
@@ -934,28 +964,24 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
 
   app.get('/api/market-dashboard/summary', async (_req: Request, res: Response) => {
     await withIndexerDb(config, res, async (indexerDb) => {
+      const escrowEventQuery = dealEscrowEventQuery(config);
       const [state, recentEvents, countsByTopic, deals, marketplaceBindings] = await Promise.all([
         indexerDb.state.findOne({ contractAddress: config.contractAddress, network: config.network }),
         indexerDb.transfers
-          .find({ sorobanContractAddress: config.contractAddress })
+          .find(escrowEventQuery)
           .sort({ sorobanLedgerSeq: -1, updatedAt: -1 })
           .limit(50)
           .toArray(),
         indexerDb.transfers
           .aggregate([
-            { $match: { sorobanContractAddress: config.contractAddress } },
+            { $match: escrowEventQuery },
             { $group: { _id: '$sorobanEventTopic', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
           ])
           .toArray(),
         indexerDb.transfers
           .aggregate([
-            {
-              $match: {
-                sorobanContractAddress: config.contractAddress,
-                sorobanDealId: { $ne: null },
-              },
-            },
+            { $match: escrowEventQuery },
             { $sort: { sorobanLedgerSeq: 1, updatedAt: 1 } },
             {
               $group: {
@@ -1018,7 +1044,7 @@ export function registerAdminDashboard(app: Express, config: IndexerConfig): voi
     const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
     await withIndexerDb(config, res, async (indexerDb) =>
       indexerDb.transfers
-        .find({ sorobanContractAddress: config.contractAddress })
+        .find(dealEscrowEventQuery(config))
         .sort({ sorobanLedgerSeq: -1, updatedAt: -1 })
         .limit(limit)
         .toArray()

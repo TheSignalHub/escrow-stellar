@@ -14,6 +14,14 @@ All numeric encodings follow Stellar's stroop precision: integer amounts at 7 de
 
 ---
 
+## Behavior Log
+
+| Timestamp | Area | Change | Validation |
+|---|---|---|---|
+| 2026-07-25 21:20 BST | DealEscrow dashboard boundary | Parser now rejects events whose emitting contract differs from the configured DealEscrow contract, and dashboard/API reads only lifecycle rows with a numeric `deal_id`. NEAR Intents / 1Click wallet top-ups remain separate payment evidence and are not counted as escrow state. | `npm run build` in `indexer/` passed |
+
+---
+
 ## Events
 
 ### 1. `created` — Deal initialized
@@ -161,6 +169,7 @@ Each event maps 1:1 to a Mongo `escrow-transfers` row, with `chain = "stellar"` 
 |---|---|
 | `chain` | always `"stellar"` for these events |
 | `sorobanContractAddress` | contract being indexed (from `stellar-indexer-state`) |
+| `sorobanEmittingContractAddress` | actual event emitter when provided by Soroban RPC; must match the indexed DealEscrow contract |
 | `sorobanDealId` | `deal_id` (u64 → number, safe within JS precision for foreseeable use) |
 | `sorobanMilestoneIdx` | `milestone_idx` if topic carries it |
 | `sorobanEventTopic` | the topic string |
