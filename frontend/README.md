@@ -184,9 +184,10 @@ testnet path retained for reproducible XLM/demo-USDC review and a mainnet
 Stellar DEX/Horizon path for XLM/Circle USDC. This is shown as **Convert on
 Stellar** because it prepares wallet balance only; escrow locks later from
 Deals via **Fund Deal**. The conversion form uses route dropdowns for common
-XLM/USDC routes and keeps custom Stellar token contract addresses in advanced
-mode. Slippage is user-selectable. Custom pairs quote and execute only when the
-configured broker route has liquidity.
+XLM/USDC routes, shows selected XLM/USDC balances beside the route and amount
+fields, includes an exact-pay **Max** action, and keeps custom Stellar token
+contract addresses in advanced mode. Slippage is user-selectable. Custom pairs
+quote and execute only when the configured broker route has liquidity.
 For mainnet issued-asset receives, the connected Stellar wallet must exist on
 Stellar before a browser-signed trustline can be created. Inactive wallets show
 an XLM activation reminder first; active wallets missing Circle USDC show the

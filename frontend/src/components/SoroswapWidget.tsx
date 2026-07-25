@@ -57,9 +57,10 @@ interface Props {
   onFundComplete?: () => void;
   onBalanceRefresh?: () => void;
   xlmBalance?: string;
+  usdcBalance?: string;
 }
 
-export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete, onFundComplete, onBalanceRefresh, xlmBalance }: Props) {
+export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete, onFundComplete, onBalanceRefresh, xlmBalance, usdcBalance }: Props) {
   const toast = useToast();
   // Friendbot section
   const [fundingLoading, setFundingLoading] = useState(false);
@@ -238,6 +239,14 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const outputLabel = swapMode === 'exact-out' ? 'Pay Estimate' : 'Receive Estimate';
   const editableSymbol = swapMode === 'exact-out' ? outputSymbol : inputSymbol;
   const estimateSymbol = swapMode === 'exact-out' ? inputSymbol : outputSymbol;
+  const balancesByKey: Record<SwapAssetKey, string> = {
+    xlm: xlmBalance || '0',
+    usdc: usdcBalance || '0',
+  };
+  const selectedPayBalance = balancesByKey[assetInKey] || '0';
+  const selectedReceiveBalance = balancesByKey[assetOutKey] || '0';
+  const editableBalance = swapMode === 'exact-out' ? selectedReceiveBalance : selectedPayBalance;
+  const estimateBalance = swapMode === 'exact-out' ? selectedPayBalance : selectedReceiveBalance;
   const outputAmount = quote
     ? swapMode === 'exact-out'
       ? quote.amountIn
@@ -246,6 +255,23 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   function isTokenContractAddress(value: string): boolean {
     return /^C[A-Z2-7]{55}$/.test(value.trim());
   }
+  function formatWalletBalance(value?: string): string {
+    const parsed = Number(value || 0);
+    if (!Number.isFinite(parsed)) return '0.00';
+    return parsed.toLocaleString(undefined, {
+      minimumFractionDigits: parsed > 0 && parsed < 1 ? 4 : 2,
+      maximumFractionDigits: parsed > 0 && parsed < 1 ? 7 : 2,
+    });
+  }
+  const setMaxPayAmount = () => {
+    if (swapMode !== 'exact-in') return;
+    const parsed = Number(selectedPayBalance || 0);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    // Keep a tiny native XLM buffer so the wallet can still sign/pay network fees.
+    const maxSpend = assetInKey === 'xlm' ? Math.max(parsed - 0.5, 0) : parsed;
+    setSwapAmount(maxSpend.toFixed(7).replace(/\.?0+$/, ''));
+    resetQuoteState();
+  };
   const routeConfigured = isTokenContractAddress(assetInAddress) && isTokenContractAddress(assetOutAddress);
 
   const fetchQuote = async () => {
@@ -522,7 +548,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end">
                   <label className="space-y-2 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">From</span>
+                    <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <span>From</span>
+                      <span className="truncate text-zinc-600">Bal {formatWalletBalance(selectedPayBalance)} {inputSymbol}</span>
+                    </span>
                     <select
                       value={assetInKey}
                       onChange={(event) => selectAsset('in', event.target.value as SwapAssetKey)}
@@ -544,7 +573,10 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     ↔
                   </button>
                   <label className="space-y-2 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">To</span>
+                    <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <span>To</span>
+                      <span className="truncate text-zinc-600">Bal {formatWalletBalance(selectedReceiveBalance)} {outputSymbol}</span>
+                    </span>
                     <select
                       value={assetOutKey}
                       onChange={(event) => selectAsset('out', event.target.value as SwapAssetKey)}
@@ -667,8 +699,21 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
               <div className="space-y-2 relative">
                 {/* Pay */}
                 <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 focus-within:border-emerald-500/50 transition-colors shadow-inner">
-                  <div className="flex justify-between mb-2">
+                  <div className="flex items-center justify-between gap-3 mb-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{inputLabel}</label>
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <span>Balance {formatWalletBalance(editableBalance)} {editableSymbol}</span>
+                      {swapMode === 'exact-in' && (
+                        <button
+                          type="button"
+                          onClick={setMaxPayAmount}
+                          disabled={Number(selectedPayBalance || 0) <= 0}
+                          className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-600"
+                        >
+                          Max
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <input
@@ -696,8 +741,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
                 {/* Receive */}
                 <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 shadow-inner opacity-80">
-                  <div className="flex justify-between mb-2">
+                  <div className="flex items-center justify-between gap-3 mb-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{outputLabel}</label>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      Balance {formatWalletBalance(estimateBalance)} {estimateSymbol}
+                    </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <input

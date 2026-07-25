@@ -506,6 +506,7 @@ export default function App() {
                   onFundComplete={handleFundComplete}
                   onBalanceRefresh={() => wallet.refreshBalances()}
                   xlmBalance={wallet.xlmBalance}
+                  usdcBalance={wallet.usdcBalance}
                 />
               )}
 
