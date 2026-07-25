@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 20:24 BST | Mainnet USDC SAC selection | Confirmed mainnet Circle USDC derives to `CCW67TSZ...JMI75` and made the frontend USDC default network-aware so a missing env cannot fall back to the testnet demo USDC on mainnet. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet Circle USDC SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`. |
 | 2026-07-25 20:15 BST | Mainnet XLM SAC selection | Made native XLM SAC selection network-aware so mainnet XLM deals use `CAS3J7GY...XOWMA` instead of the testnet SAC. Added a funding guard/error for already-created mainnet deals that reference the testnet XLM SAC. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet native SAC `CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA`. |
 | 2026-07-25 19:29 BST | NEAR Intents completed badge | Changed the terminal 1Click settlement badge from the internal **Awaiting escrow event** amber state to a green **Swap completed** state while keeping the separate Fund Deal reminder below. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:24 BST | NEAR Intents settlement success copy | Replaced internal reconcile/indexing language in the top-up success banner with a user-facing next step: funds reached the Stellar wallet, then open Deals and fund escrow. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -432,7 +433,7 @@ Only active when wallet is connected.
 | `VITE_STELLAR_HORIZON_URL` | No | Horizon URL for balance/account reads |
 | `VITE_STELLAR_EXPLORER_URL` | No | Explorer base URL for tx/contract/account links |
 | `VITE_FRIENDBOT_URL` | No | Testnet-only Friendbot URL; ignored outside testnet |
-| `VITE_USDC_TOKEN_ADDRESS` | No | Demo test USDC SAC address |
+| `VITE_USDC_TOKEN_ADDRESS` | No | Optional USDC-compatible SAC override; defaults to demo USDC on testnet and Circle USDC on mainnet |
 | `VITE_SETTLEMENT_TOKEN_SYMBOL` | No | Display symbol for configured settlement asset |
 | `VITE_SETTLEMENT_TOKEN_NAME` | No | Display name for configured settlement asset |
 | `VITE_SETTLEMENT_TOKEN_DECIMALS` | No | Settlement precision; defaults to `7` |

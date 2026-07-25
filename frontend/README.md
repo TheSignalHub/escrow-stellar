@@ -56,8 +56,8 @@ VITE_XLM_SAC_ADDRESS=
 VITE_MAINNET_DEMO_PROVIDER_ADDRESS=
 VITE_MAINNET_DEMO_CONNECTOR_ADDRESS=
 
-# Stellar USDC-compatible token address (SAC). Testnet may point to the demo
-# USDC-compatible asset; mainnet should point to the approved Stellar USDC SAC.
+# Optional override. By default the app derives USDC-compatible SAC by network:
+# testnet demo USDC CAHJQG77...IVLFX, mainnet Circle USDC CCW67TSZ...JMI75.
 VITE_USDC_TOKEN_ADDRESS=
 VITE_SETTLEMENT_TOKEN_SYMBOL=USDC
 VITE_SETTLEMENT_TOKEN_NAME=Stellar USDC

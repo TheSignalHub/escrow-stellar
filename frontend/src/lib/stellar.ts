@@ -45,13 +45,13 @@ export interface ClassicTrustlineAsset {
   contractAddress: string;
 }
 
-// Demo settlement token address.
-// Default = the SCF #42 demo test USD-compatible SAC deployed and seeded
-// against XLM for the Stellar Broker testnet route. This is not production
-// Circle USDC.
+// USDC-compatible settlement token SAC. Testnet defaults to the SCF demo token;
+// mainnet defaults to Circle USDC derived from USDC:GA5Z...KZVN.
+export const TESTNET_USDC_TOKEN_ADDRESS = 'CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX';
+export const MAINNET_USDC_TOKEN_ADDRESS = 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
 export const USDC_TOKEN_ADDRESS =
   import.meta.env.VITE_USDC_TOKEN_ADDRESS ||
-  'CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX';
+  (IS_TESTNET ? TESTNET_USDC_TOKEN_ADDRESS : MAINNET_USDC_TOKEN_ADDRESS);
 
 export const SETTLEMENT_TOKEN_SYMBOL =
   import.meta.env.VITE_SETTLEMENT_TOKEN_SYMBOL || 'USDC';
