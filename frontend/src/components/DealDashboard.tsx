@@ -248,7 +248,9 @@ export function DealDashboard({
 
   const tokenSymbol = selectedDeal ? getTokenSymbol(selectedDeal.token) : 'TOKEN';
   const selectedStatus = selectedDeal ? getDealStatus(selectedDeal) : '';
+  const isDealFrozenByDispute = selectedStatus === 'Disputed';
   const selectedMeta = selectedDealId !== null ? getDealMetadata(selectedDealId) : null;
+  const errorExplorerUrl = error.match(/https:\/\/stellar\.expert\/explorer\/[^\s)]+/)?.[0] ?? '';
   const crossChainMilestone =
     selectedDeal && crossChainMilestoneIdx !== null
       ? selectedDeal.milestones[crossChainMilestoneIdx]
@@ -408,6 +410,14 @@ export function DealDashboard({
 
   const handleRelease = async (milestoneIdx: number) => {
     if (selectedDealId === null || !selectedDeal) return;
+    if (isDealFrozenByDispute) {
+      setError('This deal is paused because a dispute is open.');
+      setErrorContext({
+        title: 'Deal Paused',
+        suggestion: 'Resolve the open dispute from the admin console before releasing additional milestones.',
+      });
+      return;
+    }
     setActionLoading(`release-${milestoneIdx}`);
     setError('');
     setErrorContext(null);
@@ -836,6 +846,16 @@ export function DealDashboard({
                   <div className="flex-1 space-y-2">
                     <h4 className="text-red-400 font-medium text-sm">{errorContext?.title || 'Execution Failed'}</h4>
                     <p className="text-red-500/70 text-xs">{error}</p>
+                    {errorExplorerUrl && (
+                      <a
+                        href={errorExplorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex text-xs font-bold text-red-300 hover:text-red-200 underline underline-offset-2"
+                      >
+                        Check transaction on Stellar Explorer
+                      </a>
+                    )}
                     {selectedDeal && getRole(selectedDeal, walletAddress) && (
                       <p className="text-zinc-500 text-xs">
                         You are connected as <span className="text-zinc-300 font-medium">{getRole(selectedDeal, walletAddress)}</span> in this deal.
@@ -876,6 +896,18 @@ export function DealDashboard({
                   </div>
                 );
               })()}
+
+              {isDealFrozenByDispute && (
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 flex items-start gap-3 text-sm text-amber-100">
+                  <AlertTriangle className="mt-0.5 shrink-0 text-amber-300" size={18} />
+                  <div className="space-y-1">
+                    <div className="font-bold text-amber-200">Deal paused for dispute review</div>
+                    <p className="text-xs leading-relaxed text-amber-100/80">
+                      Normal milestone releases are locked while a dispute is open. Admin resolution can refund the client, release to the provider, or split the disputed milestone.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Detail Header Card */}
               <Card className="p-6 relative overflow-hidden bg-[#02040a]">
@@ -1083,7 +1115,13 @@ export function DealDashboard({
                                   <span>This milestone is locked when the deal is funded once from the first pending milestone.</span>
                                 </div>
                               )}
-                              {status === 'Funded' && isClient && (
+                              {status === 'Funded' && isDealFrozenByDispute && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px]">
+                                  <AlertTriangle size={12} className="shrink-0" />
+                                  <span>Release is paused until the open dispute is resolved.</span>
+                                </div>
+                              )}
+                              {status === 'Funded' && isClient && !isDealFrozenByDispute && (
                                 <>
                                   <Button variant="secondary" onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 text-red-400 hover:bg-red-500/10 border-red-500/20">
                                     Flags Dispute
@@ -1093,7 +1131,7 @@ export function DealDashboard({
                                   </Button>
                                 </>
                               )}
-                              {status === 'Funded' && !isClient && isParty && (
+                              {status === 'Funded' && !isClient && isParty && !isDealFrozenByDispute && (
                                 <Button variant="secondary" onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 text-red-400 border-red-500/20">
                                   Flag Dispute
                                 </Button>
@@ -1117,13 +1155,13 @@ export function DealDashboard({
                                   <span>Waiting for the client to fund this milestone.</span>
                                 </div>
                               )}
-                              {status === 'Funded' && !isClient && isParty && selectedDeal.provider === walletAddress && (
+                              {status === 'Funded' && !isClient && isParty && selectedDeal.provider === walletAddress && !isDealFrozenByDispute && (
                                 <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px]">
                                   <Activity size={12} className="shrink-0" />
                                   <span>Milestone funded. Deliver the work and the client will release payment.</span>
                                 </div>
                               )}
-                              {status === 'Funded' && !isClient && !isParty && (
+                              {status === 'Funded' && !isClient && !isParty && !isDealFrozenByDispute && (
                                 <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-[10px]">
                                   <Clock size={12} className="shrink-0 text-zinc-500" />
                                   <span>Funded and awaiting client approval. As a connector, you will receive your share when released.</span>
