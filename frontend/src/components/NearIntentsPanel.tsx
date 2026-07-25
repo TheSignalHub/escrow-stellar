@@ -1001,7 +1001,7 @@ export function NearIntentsPanel({
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(9.5rem,14rem)] gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <input
                     value={sourceAmount}
                     onChange={(event) => {
@@ -1011,10 +1011,10 @@ export function NearIntentsPanel({
                       setStatus(null);
                       setError(null);
                     }}
-                    className="min-w-0 bg-transparent text-3xl font-mono text-zinc-100 outline-none"
+                    className="min-w-0 max-w-full bg-transparent text-2xl sm:text-3xl font-mono text-zinc-100 outline-none"
                     placeholder="0"
                   />
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <select
                       value={sourceChain}
                       onChange={(event) => {
