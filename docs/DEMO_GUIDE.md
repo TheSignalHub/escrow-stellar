@@ -365,7 +365,7 @@ Only active when wallet is connected.
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
 | "Insufficient balance" | Go to Wallet Prep and use Friendbot to get 10,000 XLM, or choose Top Up from Another Chain on the first pending milestone. |
 | "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
-| "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
+| "Transaction confirmation timed out" | The Stellar network may be congested. Use the transaction link shown during **Awaiting Finality** to check Stellar Explorer, then refresh **Deals** after the transaction succeeds. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
 | Connector cannot dispute | This is expected. Only the client or provider can dispute funded milestones. |
 | Admin resolution button missing in public app | This is expected. Use protected `/admin` for dispute evidence and admin-ready `resolve_dispute` commands. |

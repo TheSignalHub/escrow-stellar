@@ -75,7 +75,8 @@ interface Props {
     tokenAddress: string,
     platformFeeBps: number,
     connectorShareBps: number,
-    milestoneAmounts: bigint[]
+    milestoneAmounts: bigint[],
+    options?: { onSubmitted?: (txHash: string) => void }
   ) => Promise<{ dealId: number; txHash: string }>;
   onDealCreated?: (dealId: number) => void;
 }
@@ -98,6 +99,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [txStep, setTxStep] = useState<'signing' | 'submitting' | 'confirming' | null>(null);
+  const [submittedTxHash, setSubmittedTxHash] = useState('');
   const [result, setResult] = useState<{ dealId: number; txHash: string } | null>(null);
   const [error, setError] = useState('');
   const [showReview, setShowReview] = useState(false);
@@ -218,6 +220,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
 
     setLoading(true);
     setError('');
+    setSubmittedTxHash('');
     setTxStep('signing');
     try {
       const milestoneAmounts = milestones.map((m) =>
@@ -231,7 +234,13 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
         settlementTokenAddress,
         platformFee * 100,
         effectiveConnectorShare * 100,
-        milestoneAmounts
+        milestoneAmounts,
+        {
+          onSubmitted: (txHash) => {
+            setSubmittedTxHash(txHash);
+            setTxStep('confirming');
+          },
+        }
       );
 
       // Save deal metadata to localStorage (title, milestone names, timestamps)
@@ -432,6 +441,21 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                       {txStep === 'confirming' ? <span className="w-2 h-2 rounded-full bg-emerald-400" /> : <span className="w-2 h-2 rounded-full bg-zinc-800" />}
                       Awaiting Finality
                     </div>
+                    {submittedTxHash && (
+                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-relaxed text-zinc-300 font-sans">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <span>Mainnet confirmation can take a minute or two.</span>
+                          <a
+                            href={getExplorerTxLink(submittedTxHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono font-bold text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
+                          >
+                            View tx {submittedTxHash.slice(0, 10)}...
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

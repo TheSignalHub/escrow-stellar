@@ -34,6 +34,10 @@ const OP_LABELS: Record<EscrowOperation, string> = {
   refund: 'refund',
 };
 
+interface SubmitContractCallOptions {
+  onSubmitted?: (txHash: string) => void;
+}
+
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -167,7 +171,8 @@ export function useDealEscrow(
   const submitContractCall = useCallback(
     async (
       operation: StellarSdk.xdr.Operation,
-      opName: EscrowOperation
+      opName: EscrowOperation,
+      options: SubmitContractCallOptions = {}
     ): Promise<any> => {
       if (!walletAddress || !contractId) {
         throw new Error('Wallet not connected or contract not configured');
@@ -215,6 +220,7 @@ export function useDealEscrow(
         if (sendResult.status === 'ERROR') {
           throw new Error(`${capitalize(OP_LABELS[opName])} submission failed. The network may be congested — please try again.`);
         }
+        options.onSubmitted?.(sendResult.hash);
 
         // Wait for confirmation with timeout
         let getResult: any;
@@ -256,7 +262,8 @@ export function useDealEscrow(
       tokenAddress: string,
       platformFeeBps: number,
       connectorShareBps: number,
-      milestoneAmounts: bigint[]
+      milestoneAmounts: bigint[],
+      options: SubmitContractCallOptions = {}
     ): Promise<{ dealId: number; txHash: string }> => {
       const contract = new StellarSdk.Contract(contractId);
 
@@ -276,7 +283,7 @@ export function useDealEscrow(
         milestonesVec
       );
 
-      const result = await submitContractCall(op, 'create_deal');
+      const result = await submitContractCall(op, 'create_deal', options);
       const txHash = result._txHash || result.hash || '';
 
       // Extract deal_id from return value
