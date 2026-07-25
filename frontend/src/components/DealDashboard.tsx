@@ -265,6 +265,35 @@ export function DealDashboard({
     if (selectedDealId === null || !selectedDeal) return [];
     return getAllDealEvents(selectedDealId, selectedDeal.milestones.length);
   }, [selectedDealId, selectedDeal, allDeals]);
+  const activityGroups = useMemo(() => {
+    const groups = new Map<string, {
+      action: string;
+      timestamp: string;
+      txHash: string;
+      milestoneIdxs: number[];
+    }>();
+
+    for (const event of activityLog) {
+      // fund_deal emits one Soroban event per milestone in a single transaction.
+      // Group same-action/same-transaction rows so the activity feed reads as one deal-funding action.
+      const key = `${event.action}:${event.txHash || 'no-tx'}:${event.timestamp}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.milestoneIdxs.push(event.milestoneIdx);
+      } else {
+        groups.set(key, {
+          action: event.action,
+          timestamp: event.timestamp,
+          txHash: event.txHash,
+          milestoneIdxs: [event.milestoneIdx],
+        });
+      }
+    }
+
+    return Array.from(groups.values()).sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  }, [activityLog]);
 
   const computeSplit = (milestoneAmount: bigint) => {
     if (!selectedDeal) return null;
@@ -1164,17 +1193,33 @@ export function DealDashboard({
                     </div>
                   </Card>
 
-                  {activityLog.length > 0 && (
+                  {activityGroups.length > 0 && (
                     <Card className="p-5">
-                      <h4 className="text-xs uppercase font-bold tracking-wider text-zinc-500 mb-4 border-b border-zinc-800 pb-2">Event Ledger</h4>
+                      <div className="mb-4 border-b border-zinc-800 pb-2">
+                        <h4 className="text-xs uppercase font-bold tracking-wider text-zinc-500">Deal #{selectedDealId} Event Ledger</h4>
+                        <p className="mt-1 text-[10px] text-zinc-600">Grouped by transaction for this selected deal.</p>
+                      </div>
                       <div className="space-y-4">
-                        {activityLog.map((event, i) => (
+                        {activityGroups.map((event, i) => {
+                          const milestoneNames = event.milestoneIdxs.map((idx) =>
+                            selectedMeta?.milestoneNames?.[idx] || `MS${idx + 1}`
+                          );
+                          const isGroupedFunding = event.action === 'funded' && event.milestoneIdxs.length > 1;
+                          return (
                           <div key={i} className="flex gap-3 text-sm items-start relative before:absolute before:inset-y-0 before:left-[5px] before:w-px before:bg-zinc-800/50">
                             <div className={`w-3 h-3 rounded-full mt-1 relative z-10 border-2 border-[#02040a] ${event.action === 'funded' ? 'bg-blue-500' : event.action === 'released' || event.action === 'resolved' ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
                             <div className="flex-1 space-y-1">
                               <div className="text-zinc-200">
-                                {getEventLabel(event.action)} <span className="text-zinc-500">· {selectedMeta?.milestoneNames?.[event.milestoneIdx] || `MS${event.milestoneIdx + 1}`}</span>
+                                {isGroupedFunding ? 'Deal Funded' : getEventLabel(event.action)}
+                                <span className="text-zinc-500">
+                                  {' '}· {isGroupedFunding ? `${event.milestoneIdxs.length} milestones locked` : milestoneNames[0]}
+                                </span>
                               </div>
+                              {isGroupedFunding && (
+                                <div className="text-[11px] text-zinc-500 leading-relaxed">
+                                  {milestoneNames.join(', ')}
+                                </div>
+                              )}
                               <div className="text-xs text-zinc-600">{formatEventDateTime(event.timestamp)}</div>
                               {event.txHash && (
                                 <a href={getExplorerTxLink(event.txHash)} target="_blank" rel="noopener noreferrer" className="text-[10px] inline-flex items-center gap-1 text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-1.5 py-0.5 rounded">
@@ -1183,7 +1228,8 @@ export function DealDashboard({
                               )}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </Card>
                   )}
