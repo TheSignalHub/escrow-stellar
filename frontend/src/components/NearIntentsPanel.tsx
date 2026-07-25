@@ -359,7 +359,7 @@ export function NearIntentsPanel({
   const [sourceChain, setSourceChain] = useState('');
   const [originAsset, setOriginAsset] = useState('');
   const [destinationAsset, setDestinationAsset] = useState('');
-  const [amount, setAmount] = useState(amountDue || '1000000');
+  const [amount, setAmount] = useState(amountDue || '10');
   const [sourceAmount, setSourceAmount] = useState('1');
   const [sourceAmountTouched, setSourceAmountTouched] = useState(false);
   const [recentlyQuotedAssetIds, setRecentlyQuotedAssetIds] = useState<string[]>([]);
@@ -511,7 +511,10 @@ export function NearIntentsPanel({
       (selectedDestinationKind !== 'demo' && selectedDestinationKind !== dealSettlementKind));
   const expectedSettlementLabel =
     dealSettlementKind === 'xlm' ? 'Stellar XLM' : dealSettlementKind === 'usdc' ? 'Stellar USDC' : 'the deal settlement asset';
-  const topUpAmountLabel = `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`;
+  const targetTopUpBaseUnits = isDealFundingMode ? amount : decimalToBaseUnits(amount, 7);
+  const topUpAmountLabel = isDealFundingMode
+    ? `${formatStellarBaseUnits(amount)} ${settlementTokenSymbol || 'settlement units'}`
+    : `${amount || '0'} ${settlementLabel.includes('USDC') ? 'USDC' : 'XLM'}`;
   const livePaymentAvailable = Boolean(readiness?.enabled && readiness.liveExecutionEnabled);
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
   const hasActivatedStellarRecipient = IS_TESTNET || stellarRecipientExists === true;
@@ -538,7 +541,7 @@ export function NearIntentsPanel({
   );
   const quoteSourceAmount = selectedOriginAsset ? decimalToBaseUnits(sourceAmount, selectedOriginAsset.decimals) : '';
   const quoteRequestAmount = quoteSourceAmount;
-  const suggestedSourceAmount = estimateSourceAmount(amount, destinationToken, selectedOriginAsset);
+  const suggestedSourceAmount = estimateSourceAmount(targetTopUpBaseUnits, destinationToken, selectedOriginAsset);
   const selectedRouteRecommended = isRecommendedSourceToken(selectedOriginAsset);
   const selectedRouteRecentlyQuoted = Boolean(selectedOriginAsset && recentlyQuotedAssetIds.includes(selectedOriginAsset.assetId));
   const canFiatTopUpSelectedSource = Boolean(

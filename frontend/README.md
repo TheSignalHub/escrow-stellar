@@ -207,7 +207,9 @@ and an enabled USDC trustline.
 Wallet Prep also includes a general **Add Funds from Another Chain** NEAR
 Intents/1Click panel for wallet top-ups. The Deals tab keeps the deal-aware
 version where the remaining amount and settlement asset are locked from the
-selected pending deal.
+selected pending deal. Standalone Wallet Prep top-up amounts are shown in
+human Stellar units and converted to base units only when estimating a 1Click
+source amount.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
 cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
