@@ -128,6 +128,7 @@ export interface NearIntentStatusResponse {
       amountOutFormatted?: string;
       depositedAmount?: string;
       refundReason?: string;
+      originChainTxHashes?: Array<{ hash: string; explorerUrl?: string }>;
       sourceChainTxHashes?: Array<{ hash: string; explorerUrl?: string }>;
       destinationChainTxHashes?: Array<{ hash: string; explorerUrl?: string }>;
     };

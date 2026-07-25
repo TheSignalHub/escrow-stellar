@@ -671,7 +671,9 @@ export function NearIntentsPanel({
   const quoteReference = nearIntent?.quoteId || quote?.externalPaymentIntent?.intentId;
   const sourcePaymentAmount = nearIntent?.sourceAmount || quoteDetails?.amountIn || quoteRequestAmount;
   const statusUpdatedAt = status?.status?.updatedAt || nearIntent?.providerStatusUpdatedAt || status?.externalPaymentIntent.updatedAt;
-  const detectedSourceTx = status?.status?.swapDetails?.sourceChainTxHashes?.[0];
+  const detectedSourceTx =
+    status?.status?.swapDetails?.originChainTxHashes?.[0] ||
+    status?.status?.swapDetails?.sourceChainTxHashes?.[0];
   const detectedDestinationTx = status?.status?.swapDetails?.destinationChainTxHashes?.[0];
   const displayedSourceTxHash = sourcePaymentTxHash || nearIntent?.submittedDepositTxHash || detectedSourceTx?.hash || '';
   const displayedSourceTxUrl =
