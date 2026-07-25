@@ -724,10 +724,19 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         return '<div class="panel stat"><div class="label">' + label + '</div><div class="value ' + cls + '">' + escapeHtml(value) + '</div></div>';
       }
 
-      function commandBlock(dispute) {
+      function adminExecutionState(adminExecution) {
+        if (!adminExecution?.enabled) return { ready: false, label: 'command only', note: 'Server execution is disabled. Copy the command and sign from the admin wallet.' };
+        if (!adminExecution?.configured) return { ready: false, label: 'key missing', note: 'Server execution needs ADMIN_STELLAR_SECRET_KEY in the deployed environment.' };
+        if (config.network === 'mainnet' && !adminExecution?.mainnetAllowed) return { ready: false, label: 'mainnet locked', note: 'Mainnet server execution needs ADMIN_RESOLUTION_ALLOW_MAINNET=true.' };
+        return { ready: true, label: 'ready', note: 'Server execution is ready. The admin wallet will sign on Stellar after confirmation.' };
+      }
+
+      function commandBlock(dispute, adminExecution) {
         const id = 'cmd-' + dispute.dealId + '-' + dispute.milestoneIdx;
         const statusId = 'cmd-status-' + dispute.dealId + '-' + dispute.milestoneIdx;
         const executeId = 'execute-status-' + dispute.dealId + '-' + dispute.milestoneIdx;
+        const execution = adminExecutionState(adminExecution);
+        const disabled = execution.ready ? '' : ' disabled';
         return '<div><div class="label">Admin resolution command</div>' +
           '<div class="command-note" id="' + statusId + '">Selected: 50 / 50 split. Click another preset to update and copy the command.</div>' +
           '<div class="preset-row">' +
@@ -737,10 +746,10 @@ function renderInternalAdminPage(config: IndexerConfig): string {
           '</div>' +
           '<pre class="command mono" id="' + id + '">' + escapeHtml(dispute.commands.split50) + '</pre>' +
           '<div class="execute-row">' +
-            '<button class="primary" data-execute-resolution data-deal-id="' + escapeHtml(dispute.dealId) + '" data-milestone-idx="' + escapeHtml(dispute.milestoneIdx) + '" data-refund-bps="5000" data-status="' + executeId + '">Execute selected resolution</button>' +
-            '<button class="warn" data-execute-refund data-deal-id="' + escapeHtml(dispute.dealId) + '" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '" data-status="' + statusId + '" data-execute-status="' + executeId + '">Emergency full refund</button>' +
+            '<button class="primary" data-execute-resolution data-deal-id="' + escapeHtml(dispute.dealId) + '" data-milestone-idx="' + escapeHtml(dispute.milestoneIdx) + '" data-refund-bps="5000" data-status="' + executeId + '"' + disabled + '>Execute selected resolution</button>' +
+            '<button class="warn" data-execute-refund data-deal-id="' + escapeHtml(dispute.dealId) + '" data-label="Emergency full refund command" data-command="' + escapeHtml(dispute.commands.emergencyRefund) + '" data-target="' + id + '" data-status="' + statusId + '" data-execute-status="' + executeId + '"' + disabled + '>Emergency full refund</button>' +
           '</div>' +
-          '<div class="command-note" id="' + executeId + '">Server execution requires ADMIN_RESOLUTION_EXECUTION_ENABLED and ADMIN_STELLAR_SECRET_KEY.</div>' +
+          '<div class="command-note" id="' + executeId + '">' + escapeHtml(execution.note) + '</div>' +
           '</div>';
       }
 
@@ -755,7 +764,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         ).join('') + '</div>';
       }
 
-      function renderOpenDisputes(disputes) {
+      function renderOpenDisputes(disputes, adminExecution) {
         if (!disputes.length) return '<div class="empty">No open indexed disputes. File a dispute on a funded milestone, then run the indexer.</div>';
         return disputes.map((dispute) => {
           const binding = dispute.binding;
@@ -777,7 +786,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
               renderNotes(dispute.notes) +
               (!binding ? '<div class="notice">Settlement asset and party wallets are not present in raw dispute events. For direct app-created deals, confirm the asset and parties in the Deals tab or add a shadow marketplace binding before final evidence capture.</div>' : '') +
             '</div>' +
-            commandBlock(dispute) +
+            commandBlock(dispute, adminExecution) +
           '</article>';
         }).join('');
       }
@@ -793,12 +802,13 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         const response = await fetch('/api/admin/disputes', { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load dispute operations');
+        const execution = adminExecutionState(data.adminExecution);
         document.getElementById('stats').innerHTML =
           stat('Open Disputes', data.openDisputeCount || 0, data.openDisputeCount ? 'error' : '') +
-          stat('Admin Execution', data.adminExecution?.enabled && data.adminExecution?.configured ? 'enabled' : 'command only') +
+          stat('Admin Execution', execution.label, execution.ready ? '' : 'error') +
           stat('Network', data.network || config.network) +
           stat('Contract', data.contractAddress || config.contractAddress);
-        document.getElementById('open-disputes').innerHTML = renderOpenDisputes(data.openDisputes || []);
+        document.getElementById('open-disputes').innerHTML = renderOpenDisputes(data.openDisputes || [], data.adminExecution);
         document.getElementById('evidence').innerHTML = renderEvidence(data.evidence || []);
         document.getElementById('lastUpdated').textContent = 'Last refreshed ' + new Date().toLocaleString();
       }

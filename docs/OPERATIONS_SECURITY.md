@@ -9,6 +9,7 @@ path toward production-grade administration.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 23:43 BST | Admin execution readiness clarity | Updated the protected `/admin` dispute console to show whether server-side execution is ready, key-missing, command-only, or mainnet-locked. Execute buttons are disabled when required admin signer flags are not ready, and the README now calls out the mainnet allow flag. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 16:51 BST | Dispute note capture and gated admin execution | Added off-chain dispute notes for admin review and optional protected server-side `resolve_dispute` / `refund` execution when explicit admin signer envs are configured. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-24 16:45 BST | Admin dispute command clarity | Added visible preset/copy feedback and explicit unknown-settlement guidance for direct app-created disputes that do not have shadow binding metadata. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 15:38 BST | Protected dispute operations console | Replaced the `/admin` placeholder with an authenticated dispute queue that reads indexed dispute/resolution/refund evidence and provides admin-ready `resolve_dispute` / emergency `refund` CLI commands without storing signing keys. | `npm run build` passed in `indexer/`. |

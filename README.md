@@ -41,8 +41,9 @@ is a protected dispute-operations console with open-dispute evidence,
 resolution/refund actions, and manual indexer controls. It is protected by
 `ADMIN_USERNAME` / `ADMIN_PASSWORD`. By default it generates admin-ready
 commands without holding signing keys; a testnet/operator deployment can enable
-server-side admin execution with `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and
-`ADMIN_STELLAR_SECRET_KEY`.
+server-side admin execution with `ADMIN_RESOLUTION_EXECUTION_ENABLED=true`,
+`ADMIN_STELLAR_SECRET_KEY`, and, for mainnet only,
+`ADMIN_RESOLUTION_ALLOW_MAINNET=true`.
 
 Backend readiness can be checked before frontend QA from `indexer/`:
 
