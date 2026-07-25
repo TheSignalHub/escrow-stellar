@@ -719,6 +719,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
       const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 7 });
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
       const short = (value) => value ? String(value).slice(0, 10) + '...' : '-';
+      const milestoneLabel = (idx) => Number.isInteger(Number(idx)) ? 'Milestone ' + (Number(idx) + 1) + ' (index ' + Number(idx) + ')' : '-';
 
       function stat(label, value, cls = '') {
         return '<div class="panel stat"><div class="label">' + label + '</div><div class="value ' + cls + '">' + escapeHtml(value) + '</div></div>';
@@ -771,7 +772,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
           return '<article class="dispute-card">' +
             '<div>' +
               '<span class="pill dispute">Open dispute</span>' +
-              '<h3 style="margin-top:12px">Deal #' + escapeHtml(dispute.dealId) + ' / Milestone ' + escapeHtml(dispute.milestoneIdx) + '</h3>' +
+              '<h3 style="margin-top:12px">Deal #' + escapeHtml(dispute.dealId) + ' / ' + escapeHtml(milestoneLabel(dispute.milestoneIdx)) + '</h3>' +
               '<div class="meta">' +
                 '<div><div class="label">Indexed amount</div><div>' + fmt.format(dispute.amount || 0) + '</div></div>' +
                 '<div><div class="label">Settlement asset</div><div>' + escapeHtml(dispute.settlementSymbol || 'Unknown') + '</div></div>' +
@@ -794,7 +795,7 @@ function renderInternalAdminPage(config: IndexerConfig): string {
       function renderEvidence(events) {
         if (!events.length) return '<div class="empty">No dispute, resolved, or refund events indexed yet.</div>';
         return '<table><thead><tr><th>Event</th><th>Deal</th><th>Milestone</th><th>Amount</th><th>Ledger</th><th>Tx</th></tr></thead><tbody>' +
-          events.map((event) => '<tr><td><span class="pill ' + escapeHtml(event.event) + '">' + escapeHtml(event.event) + '</span></td><td class="mono">#' + escapeHtml(event.dealId ?? '-') + '</td><td>' + escapeHtml(event.milestoneIdx ?? '-') + '</td><td>' + fmt.format(event.amount || 0) + '</td><td class="mono">' + escapeHtml(event.ledger || '-') + '</td><td class="mono">' + (event.explorerTxUrl ? '<a href="' + escapeHtml(event.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(event.txHash)) + '</a>' : '-') + '</td></tr>').join('') +
+          events.map((event) => '<tr><td><span class="pill ' + escapeHtml(event.event) + '">' + escapeHtml(event.event) + '</span></td><td class="mono">#' + escapeHtml(event.dealId ?? '-') + '</td><td>' + escapeHtml(milestoneLabel(event.milestoneIdx)) + '</td><td>' + fmt.format(event.amount || 0) + '</td><td class="mono">' + escapeHtml(event.ledger || '-') + '</td><td class="mono">' + (event.explorerTxUrl ? '<a href="' + escapeHtml(event.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(event.txHash)) + '</a>' : '-') + '</td></tr>').join('') +
           '</tbody></table>';
       }
 

@@ -7,6 +7,8 @@
  * EscrowTransfers collection + submittedAt/approvedAt fields on Milestones).
  */
 
+import { DEAL_ESCROW_CONTRACT, STELLAR_NETWORK } from './stellar';
+
 // =====================================================
 // TYPES
 // =====================================================
@@ -48,13 +50,21 @@ export interface DealMetadata {
 const DEAL_META_PREFIX = 'deal-meta:';
 const DEAL_EVENTS_PREFIX = 'deal-events:';
 
+function scopedDealKey(prefix: string, dealId: number): string {
+  return `${prefix}${STELLAR_NETWORK}:${DEAL_ESCROW_CONTRACT || 'unknown-contract'}:${dealId}`;
+}
+
+function scopedEventKey(dealId: number, milestoneIdx: number): string {
+  return `${scopedDealKey(DEAL_EVENTS_PREFIX, dealId)}:${milestoneIdx}`;
+}
+
 // =====================================================
 // DEAL METADATA (title, description, milestone names)
 // =====================================================
 
 export function saveDealMetadata(dealId: number, meta: DealMetadata): void {
   try {
-    localStorage.setItem(DEAL_META_PREFIX + dealId, JSON.stringify(meta));
+    localStorage.setItem(scopedDealKey(DEAL_META_PREFIX, dealId), JSON.stringify(meta));
   } catch {
     // localStorage full or unavailable — non-critical
   }
@@ -62,7 +72,7 @@ export function saveDealMetadata(dealId: number, meta: DealMetadata): void {
 
 export function getDealMetadata(dealId: number): DealMetadata | null {
   try {
-    const raw = localStorage.getItem(DEAL_META_PREFIX + dealId);
+    const raw = localStorage.getItem(scopedDealKey(DEAL_META_PREFIX, dealId));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -74,7 +84,7 @@ export function getDealMetadata(dealId: number): DealMetadata | null {
 // =====================================================
 
 function getEventsKey(dealId: number, milestoneIdx: number): string {
-  return `${DEAL_EVENTS_PREFIX}${dealId}:${milestoneIdx}`;
+  return scopedEventKey(dealId, milestoneIdx);
 }
 
 export function recordMilestoneEvent(
