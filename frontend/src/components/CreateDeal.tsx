@@ -108,6 +108,17 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
   const settlementSymbol: 'XLM' | 'USDC' = settlementAsset === 'XLM_DIRECT' ? 'XLM' : 'USDC';
   const settlementTokenAddress = settlementAsset === 'XLM_DIRECT' ? XLM_SAC_ADDRESS : USDC_TOKEN_ADDRESS;
   const tokenSymbol = TOKENS[settlementSymbol].symbol;
+  const providerAddress = provider.trim();
+  const connectorAddress = connector.trim();
+  const hasConnector = connectorAddress.length > 0;
+  // DealEscrow requires a connector recipient. If the deal has no BD referrer,
+  // route that connector cut to the provider so the service provider keeps it.
+  const effectiveConnectorAddress = hasConnector ? connectorAddress : providerAddress;
+  const effectiveConnectorShare = connectorShare;
+  const connectorCutPct = (platformFee * effectiveConnectorShare) / 100;
+  const displayedProviderPct = hasConnector ? 100 - platformFee : 100 - platformFee + connectorCutPct;
+  const displayedConnectorPct = hasConnector ? connectorCutPct : 0;
+  const displayedProtocolPct = platformFee - connectorCutPct;
 
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
     setDealTitle(scenario.name);
@@ -151,11 +162,11 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
     e.preventDefault();
     setError('');
 
-    if (!isValidStellarAddress(provider)) {
+    if (!isValidStellarAddress(providerAddress)) {
       setError('Invalid provider address. Must be a 56-character Stellar address starting with G.');
       return;
     }
-    if (!isValidStellarAddress(connector)) {
+    if (hasConnector && !isValidStellarAddress(connectorAddress)) {
       setError('Invalid connector address. Must be a 56-character Stellar address starting with G.');
       return;
     }
@@ -215,11 +226,11 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
 
       setTxStep('submitting');
       const res = await onCreateDeal(
-        provider.trim(),
-        connector.trim(),
+        providerAddress,
+        effectiveConnectorAddress,
         settlementTokenAddress,
         platformFee * 100,
-        connectorShare * 100,
+        effectiveConnectorShare * 100,
         milestoneAmounts
       );
 
@@ -302,10 +313,6 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
 
   // Review / summary step before contract call
   if (showReview) {
-    const providerPct = 100 - platformFee;
-    const connectorPct = (platformFee * connectorShare) / 100;
-    const protocolPct = platformFee - connectorPct;
-
     return (
       <div className="w-full max-w-4xl mx-auto animate-fade-in">
          <div className="mb-4 lg:mb-8">
@@ -336,7 +343,11 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
 
                 <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Business Developer (Connector)</span>
-                  <span className="text-zinc-300 font-mono text-sm break-all">{connector}</span>
+                  {hasConnector ? (
+                    <span className="text-zinc-300 font-mono text-sm break-all">{connectorAddress}</span>
+                  ) : (
+                    <span className="text-zinc-300 text-sm">None. Connector share routes to the provider.</span>
+                  )}
                 </div>
               </div>
             </Card>
@@ -383,16 +394,21 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                   <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Split Per Release</h5>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-zinc-400">Provider</span>
-                    <span className="text-white font-medium">{providerPct}%</span>
+                    <span className="text-white font-medium">{displayedProviderPct.toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-zinc-400">Connector</span>
-                    <span className="text-emerald-400 font-medium">{connectorPct.toFixed(1)}%</span>
+                    <span className="text-emerald-400 font-medium">{displayedConnectorPct.toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-zinc-400">Protocol</span>
-                    <span className="text-white font-medium">{protocolPct.toFixed(1)}%</span>
+                    <span className="text-white font-medium">{displayedProtocolPct.toFixed(1)}%</span>
                   </div>
+                  {!hasConnector && (
+                    <p className="pt-2 text-[11px] leading-relaxed text-zinc-500">
+                      The on-chain connector recipient is set to the provider for this deal.
+                    </p>
+                  )}
                 </div>
 
                 {error && (
@@ -521,7 +537,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Participants</h3>
               </div>
               <div className="mb-5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-xs leading-relaxed text-blue-100/80">
-                Paste the provider and connector payout addresses for this deal. Fresh Stellar addresses are allowed at creation. If this deal settles in USDC, each payout wallet must hold enough XLM reserve and enable Stellar USDC before milestone release.
+                Paste the provider payout address. Connector is optional; if absent, the connector share routes to the provider. Fresh Stellar addresses are allowed at creation. If this deal settles in USDC, each payout wallet must hold enough XLM reserve and enable Stellar USDC before milestone release.
               </div>
               
               <div className="space-y-6">
@@ -546,18 +562,22 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                 <div>
                    <div className="flex justify-between items-end mb-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">Connector Address</label>
-                    <span className="text-[10px] text-zinc-600 font-mono uppercase">BD Referrer</span>
+                    <span className="text-[10px] text-zinc-600 font-mono uppercase">Optional BD Referrer</span>
                   </div>
                   <input
                     type="text"
                     value={connector}
                     onChange={(e) => setConnector(e.target.value)}
-                    placeholder="G..."
-                    required
-                    className={`w-full bg-[#09090b] border ${connector && !isValidStellarAddress(connector) ? 'border-red-500/50 focus:border-red-500/50' : 'border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/50'} rounded-xl px-4 py-3 text-white font-mono text-sm placeholder:text-zinc-700 outline-none transition-colors`}
+                    placeholder="Optional G..."
+                    className={`w-full bg-[#09090b] border ${connectorAddress && !isValidStellarAddress(connectorAddress) ? 'border-red-500/50 focus:border-red-500/50' : 'border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/50'} rounded-xl px-4 py-3 text-white font-mono text-sm placeholder:text-zinc-700 outline-none transition-colors`}
                   />
-                  {connector && !isValidStellarAddress(connector) && (
+                  {connectorAddress && !isValidStellarAddress(connectorAddress) && (
                     <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1"><AlertCircle size={12}/> Invalid Stellar address format</p>
+                  )}
+                  {!connectorAddress && (
+                    <p className="text-zinc-500 text-xs mt-1.5">
+                      No connector: the BD share is paid to the provider on release.
+                    </p>
                   )}
                 </div>
               </div>
@@ -722,16 +742,21 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                     <div className="space-y-2">
                        <div className="flex justify-between items-center text-sm">
                           <span className="text-zinc-400">Provider</span>
-                          <span className="text-white font-medium">{100 - platformFee}%</span>
+                          <span className="text-white font-medium">{displayedProviderPct.toFixed(1)}%</span>
                        </div>
                        <div className="flex justify-between items-center text-sm">
                           <span className="text-zinc-400">BD</span>
-                          <span className="text-emerald-400 font-medium">{((platformFee * connectorShare) / 100).toFixed(1)}%</span>
+                          <span className="text-emerald-400 font-medium">{displayedConnectorPct.toFixed(1)}%</span>
                        </div>
                        <div className="flex justify-between items-center text-sm">
                           <span className="text-zinc-400">Protocol</span>
-                          <span className="text-white font-medium">{(platformFee - (platformFee * connectorShare) / 100).toFixed(1)}%</span>
+                          <span className="text-white font-medium">{displayedProtocolPct.toFixed(1)}%</span>
                        </div>
+                       {!hasConnector && (
+                         <p className="pt-2 text-[11px] leading-relaxed text-zinc-500">
+                           No connector selected, so the BD slice is paid to the provider.
+                         </p>
+                       )}
                     </div>
                 </div>
 

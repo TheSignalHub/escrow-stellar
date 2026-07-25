@@ -102,8 +102,11 @@ wallet has not opted in yet. Unknown advanced pasted receive contracts require
 manual trustline preparation before execution.
 Production NEAR Intents top-up and direct escrow funding require active Stellar
 destination accounts. Mainnet Create Deal requires the connected client wallet
-to be active, then accepts valid provider/connector payout addresses without
-forcing recipient onboarding during agreement creation. XLM settlement is the
+to be active, then accepts a valid provider payout address without forcing
+recipient onboarding during agreement creation. The connector address is
+optional; when omitted, the frontend submits the provider as the connector
+recipient so the connector share is paid to the provider at milestone release.
+XLM settlement is the
 recommended default for the grant demo and fresh payout addresses; USDC
 settlement remains available as an optional issued-asset path. USDC payout
 addresses must be active with XLM reserve and opted into Stellar USDC before

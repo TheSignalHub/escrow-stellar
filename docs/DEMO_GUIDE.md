@@ -124,7 +124,7 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 ### Manual Configuration
 
 1. **Provider Address**: Paste the Stellar public key (G...) of the service provider
-2. **Connector Address**: Paste the BD referrer's address
+2. **Connector Address**: Optional. Paste the BD referrer's address when there is one; leave it blank when the deal has no connector.
 3. **Escrow Settlement Asset**: Keep the default Stellar XLM settlement for the grant smoke test, or switch to Stellar USDC only when intentionally testing issued-asset trustlines
 4. **Total Amount**: Enter the deal total in the selected token
 5. **Platform Fee**: Set the total platform fee percentage (e.g., 10%)
@@ -132,6 +132,8 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 7. **Milestones**: Add/remove milestones and set percentages (must sum to 100%)
 
 Fresh provider or connector Stellar addresses are acceptable at deal creation.
+If no connector is entered, the app submits the provider as the contract's
+connector recipient so the connector share is paid to the provider at release.
 XLM is the recommended default because native XLM can activate Stellar accounts
 and release directly. USDC remains available as an optional issued-asset path,
 but each payout address must be active with XLM reserve and opted into Stellar
