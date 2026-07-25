@@ -1155,7 +1155,7 @@ export function NearIntentsPanel({
 
             {paymentPreviewOnly && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
-                This environment can show pricing and route readiness. Source-chain payment instructions appear after live execution is enabled.
+                Preview mode: pricing only. Connect a supported source wallet to pay.
               </div>
             )}
 
@@ -1179,7 +1179,7 @@ export function NearIntentsPanel({
 
             {sourceAssetAvailable && !hasSourceRefundRoute && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
-                Quote preview only: live source payment requires the source wallet connection so failed routes can refund there automatically.
+                Connect the source wallet to unlock live payment and automatic refunds.
               </div>
             )}
 
