@@ -47,6 +47,12 @@ VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_STELLAR_EXPLORER_URL=https://stellar.expert/explorer/testnet
 VITE_FRIENDBOT_URL=https://friendbot.stellar.org
 
+# Optional public preset payout addresses for mainnet smoke deals.
+# Leave blank to use the pilot ops wallet fallback; set to separate funded
+# provider/connector wallets when available.
+VITE_MAINNET_DEMO_PROVIDER_ADDRESS=
+VITE_MAINNET_DEMO_CONNECTOR_ADDRESS=
+
 # Stellar USDC-compatible token address (SAC). Testnet may point to the demo
 # USDC-compatible asset; mainnet should point to the approved Stellar USDC SAC.
 VITE_USDC_TOKEN_ADDRESS=
@@ -91,10 +97,17 @@ Wallet Prep creates required trustlines from the connected Stellar wallet for
 known issued receive assets such as Circle USDC before swap settlement when the
 wallet has not opted in yet. Unknown advanced pasted receive contracts require
 manual trustline preparation before execution.
-Production NEAR Intents top-up and deal creation require activated Stellar
-destination accounts. Mainnet Create Deal validates the connected client wallet,
-provider wallet, and connector wallet before review; USDC deals also require
-provider/connector trustlines so release transactions can settle.
+Production NEAR Intents top-up and direct escrow funding require active Stellar
+destination accounts. Mainnet Create Deal requires the connected client wallet
+to be active, then accepts valid provider/connector payout addresses without
+forcing recipient onboarding during agreement creation. XLM payout addresses
+can be fresh at creation; USDC payout addresses must be active with XLM reserve
+and opted into Stellar USDC before release, because release is the step that
+actually sends issued assets to recipients.
+Mainnet quick-start presets can prefill public payout addresses using
+`VITE_MAINNET_DEMO_PROVIDER_ADDRESS` and
+`VITE_MAINNET_DEMO_CONNECTOR_ADDRESS`; only public Stellar addresses belong in
+those variables.
 See [`../docs/SETTLEMENT_ASSET_POLICY.md`](../docs/SETTLEMENT_ASSET_POLICY.md)
 for precision, minimum amount, trustline, and dust/rounding policy.
 
@@ -172,6 +185,10 @@ Deals via **Fund Deal**. The conversion form uses route dropdowns for common
 XLM/USDC routes and keeps custom Stellar token contract addresses in advanced
 mode. Slippage is user-selectable. Custom pairs quote and execute only when the
 configured broker route has liquidity.
+For mainnet issued-asset receives, the connected Stellar wallet must exist on
+Stellar before a browser-signed trustline can be created. Inactive wallets show
+an XLM activation reminder first; active wallets missing Circle USDC show the
+one-click USDC trustline action.
 
 Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
 card when Privy onramps are enabled. The wallet overview separates the Stellar
@@ -179,6 +196,10 @@ escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's
 fiat-to-crypto modal and sends purchased USDC to the Base/EVM wallet. It is a
 top-up path only: the deal is not escrow-funded until the user routes assets
 into Stellar when needed and confirms **Fund Deal** from the Stellar wallet.
+For fresh Stellar wallets, the recommended route target is native XLM first,
+because XLM activates the Stellar account and can fund XLM-settled escrow
+directly. Stellar USDC is appropriate after the Stellar wallet has XLM reserve
+and an enabled USDC trustline.
 
 Wallet Prep also includes a general **Add Funds from Another Chain** NEAR
 Intents/1Click panel for wallet top-ups. The Deals tab keeps the deal-aware

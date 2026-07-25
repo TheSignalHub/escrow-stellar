@@ -93,6 +93,15 @@ export const DEMO_ACCOUNTS = {
   platform: 'GANINT77BUNZNNNIVU4BCZFDA6IBDDQO2IU7MXLNQBLEIL2ZFD45C2OB',
 };
 
+export const MAINNET_PILOT_ACCOUNTS = {
+  provider:
+    import.meta.env.VITE_MAINNET_DEMO_PROVIDER_ADDRESS ||
+    'GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG',
+  connector:
+    import.meta.env.VITE_MAINNET_DEMO_CONNECTOR_ADDRESS ||
+    'GD7H2KNLMG5MUOE75HWFAYONMTX5P3CNT3KT53P7SFSB32J4H3JJKFYG',
+};
+
 // Token metadata
 export const TOKENS: Record<string, { name: string; symbol: string; decimals: number; address: string }> = {
   XLM: { name: 'Stellar Lumens', symbol: 'XLM', decimals: 7, address: XLM_SAC_ADDRESS },

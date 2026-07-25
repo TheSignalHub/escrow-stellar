@@ -5,14 +5,13 @@ import {
   USDC_TOKEN_ADDRESS,
   TOKENS,
   DEMO_ACCOUNTS,
+  MAINNET_PILOT_ACCOUNTS,
   IS_TESTNET,
   SETTLEMENT_ASSET_POLICY,
   SETTLEMENT_MIN_UNITS,
   isValidStellarAddress,
   getExplorerTxLink,
   accountExists,
-  getKnownTrustlineAsset,
-  hasClassicAssetTrustline,
 } from '../lib/stellar';
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
@@ -113,8 +112,8 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
   const loadScenario = (scenario: typeof DEMO_SCENARIOS[0]) => {
     setDealTitle(scenario.name);
     setDealDescription(scenario.description);
-    setProvider(IS_TESTNET ? DEMO_ACCOUNTS.provider : '');
-    setConnector(IS_TESTNET ? DEMO_ACCOUNTS.connector : '');
+    setProvider(IS_TESTNET ? DEMO_ACCOUNTS.provider : MAINNET_PILOT_ACCOUNTS.provider);
+    setConnector(IS_TESTNET ? DEMO_ACCOUNTS.connector : MAINNET_PILOT_ACCOUNTS.connector);
     setTotalAmount(scenario.totalAmount);
     setSettlementAsset('XLM_DIRECT');
     setPlatformFee(scenario.platformFee);
@@ -185,39 +184,11 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
     if (!IS_TESTNET) {
       setValidating(true);
       try {
-        const [clientExists, providerExists, connectorExists] = await Promise.all([
-          accountExists(walletAddress),
-          accountExists(provider.trim()),
-          accountExists(connector.trim()),
-        ]);
+        const clientExists = await accountExists(walletAddress);
 
         if (!clientExists) {
-          setError('Activate your Stellar wallet with XLM before creating a mainnet deal.');
+          setError('Your connected Stellar wallet must be active before creating a mainnet deal.');
           return;
-        }
-        if (!providerExists) {
-          setError('Provider wallet is not active on Stellar mainnet. Ask the provider to activate it with XLM before creating the deal.');
-          return;
-        }
-        if (!connectorExists) {
-          setError('Connector wallet is not active on Stellar mainnet. Ask the connector to activate it with XLM before creating the deal.');
-          return;
-        }
-
-        const trustlineAsset = settlementAsset === 'USDC' ? getKnownTrustlineAsset(settlementTokenAddress) : null;
-        if (trustlineAsset) {
-          const [providerTrustline, connectorTrustline] = await Promise.all([
-            hasClassicAssetTrustline(provider.trim(), trustlineAsset),
-            hasClassicAssetTrustline(connector.trim(), trustlineAsset),
-          ]);
-          if (!providerTrustline) {
-            setError(`Provider wallet needs a ${trustlineAsset.symbol} trustline before receiving released funds.`);
-            return;
-          }
-          if (!connectorTrustline) {
-            setError(`Connector wallet needs a ${trustlineAsset.symbol} trustline before receiving released funds.`);
-            return;
-          }
         }
       } finally {
         setValidating(false);
@@ -483,7 +454,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
           <p className="text-zinc-500 font-medium text-sm lg:text-base">Configure the parties, milestones, settlement asset, and split rules.</p>
           {!IS_TESTNET && (
             <p className="mt-2 text-xs leading-relaxed text-amber-200/80">
-              Mainnet deals require active Stellar provider and connector wallets. USDC deals also require those recipient wallets to have a USDC trustline before release.
+              Paste provider and connector payout addresses. XLM deals can pay native XLM directly; USDC deals require payout wallets to be active and opted into Stellar USDC before release.
             </p>
           )}
         </div>
@@ -548,6 +519,9 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
               <div className="flex items-center gap-3 mb-4 lg:mb-6">
                  <Search className="text-emerald-400" />
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Participants</h3>
+              </div>
+              <div className="mb-5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-xs leading-relaxed text-blue-100/80">
+                Paste the provider and connector payout addresses for this deal. Fresh Stellar addresses are allowed at creation. If this deal settles in USDC, each payout wallet must hold enough XLM reserve and enable Stellar USDC before milestone release.
               </div>
               
               <div className="space-y-6">
@@ -697,12 +671,12 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                   </select>
                   {settlementAsset === 'XLM_DIRECT' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = XLM SAC. Fund + release in XLM. No aggregator needed.
+                      Deal token = XLM SAC. Fund and release in native XLM. This is the simplest path for fresh payout addresses.
                     </p>
                   )}
                   {settlementAsset === 'USDC' && (
                     <p className="text-[10px] text-zinc-500 mt-1.5">
-                      Deal token = configured Stellar USDC SAC.{IS_TESTNET ? ' Testnet uses the configured demo USDC-compatible asset until mainnet Circle USDC is enabled.' : ''}
+                      Deal token = configured Stellar USDC SAC. Provider and connector payout wallets must be active with XLM reserve and a USDC trustline before release.{IS_TESTNET ? ' Testnet uses the configured demo USDC-compatible asset until mainnet Circle USDC is enabled.' : ''}
                     </p>
                   )}
                   <p className="text-[10px] text-zinc-500 mt-1.5">

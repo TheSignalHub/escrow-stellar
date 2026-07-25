@@ -104,7 +104,7 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-400">
-            Buy USDC into a {destinationLabel} wallet, then use <span className="text-zinc-200">Add Funds from Another Chain</span> to route that balance into the Stellar settlement wallet before funding escrow.
+            Buy USDC into a {destinationLabel} wallet, then use <span className="text-zinc-200">Add Funds from Another Chain</span> to route it into the connected Stellar wallet before funding escrow. For fresh Stellar wallets, route into XLM first because native XLM activates the account; use Stellar USDC when the wallet already has XLM reserve and a USDC trustline.
           </p>
 
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -156,9 +156,9 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs leading-relaxed text-zinc-500">
             <div className="mb-2 flex items-center gap-2 text-zinc-300 font-bold">
               <Wallet size={14} />
-              Fiat is not escrow state
+              Fiat top-up is step one
             </div>
-            Escrow locks only after the Stellar wallet receives settlement assets and the user confirms Fund Deal.
+            Recommended path: fiat to Base USDC, bridge/swap into Stellar XLM for a fresh wallet, then Fund Deal from the Stellar wallet. Escrow locks only after Fund Deal.
           </div>
         </div>
       </div>

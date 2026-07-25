@@ -84,6 +84,7 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 > Custom token pairs can be entered, but they only quote and execute when the configured broker/Soroswap route has liquidity for that pair.
+> On mainnet, a fresh Stellar wallet must first receive XLM to become active before it can create a USDC trustline or hold issued assets.
 
 ### Option C: Add Funds from Another Chain
 
@@ -129,6 +130,11 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 5. **Platform Fee**: Set the total platform fee percentage (e.g., 10%)
 6. **Connector Share**: Set the connector's share of the platform fee (e.g., 40%)
 7. **Milestones**: Add/remove milestones and set percentages (must sum to 100%)
+
+Fresh provider or connector Stellar addresses are acceptable at deal creation.
+For XLM deals, native XLM can be released directly. For USDC deals, each payout
+address must be active with XLM reserve and opted into Stellar USDC before the
+client approves a milestone release.
 
 The **Split Preview** at the bottom shows how each milestone release will be distributed:
 

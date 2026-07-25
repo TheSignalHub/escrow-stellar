@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   buildTrustlineTransaction,
+  accountExists,
   fundTestnetAccount,
   getKnownTrustlineAsset,
   getExplorerTxLink,
@@ -83,24 +84,39 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
   const [receiveTrustline, setReceiveTrustline] = useState<boolean | null>(null);
+  const [receiveAccountExists, setReceiveAccountExists] = useState<boolean | null>(null);
   const [trustlineLoading, setTrustlineLoading] = useState(false);
   const [trustlineError, setTrustlineError] = useState('');
 
   const receiveTrustlineAsset = getKnownTrustlineAsset(assetOutAddress);
   const receiveNeedsClassicTrustline = !IS_TESTNET && Boolean(receiveTrustlineAsset);
   const unknownReceiveTrustline = !IS_TESTNET && assetOutAddress !== XLM_SAC_ADDRESS && !receiveTrustlineAsset && isTokenContractAddress(assetOutAddress);
+  const receiveAccountMissing = receiveNeedsClassicTrustline && receiveAccountExists === false;
   const needsReceiveTrustline = receiveNeedsClassicTrustline && receiveTrustline === false;
 
   useEffect(() => {
     let cancelled = false;
     if (!receiveNeedsClassicTrustline || !walletAddress || !receiveTrustlineAsset) {
+      setReceiveAccountExists(null);
       setReceiveTrustline(null);
       return;
     }
 
-    hasClassicAssetTrustline(walletAddress, receiveTrustlineAsset).then((exists) => {
-      if (!cancelled) setReceiveTrustline(exists);
-    });
+    const checkReceiveReadiness = async () => {
+      const exists = await accountExists(walletAddress);
+      if (cancelled) return;
+      setReceiveAccountExists(exists);
+
+      if (!exists) {
+        setReceiveTrustline(null);
+        return;
+      }
+
+      const hasTrustline = await hasClassicAssetTrustline(walletAddress, receiveTrustlineAsset);
+      if (!cancelled) setReceiveTrustline(hasTrustline);
+    };
+
+    void checkReceiveReadiness();
 
     return () => {
       cancelled = true;
@@ -273,6 +289,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     setTrustlineLoading(true);
     setTrustlineError('');
     try {
+      const exists = await accountExists(walletAddress);
+      setReceiveAccountExists(exists);
+      if (!exists) {
+        setTrustlineError('Activate this Stellar wallet with XLM before creating a USDC trustline.');
+        return;
+      }
       const xdr = await buildTrustlineTransaction(walletAddress, receiveTrustlineAsset);
       const signedXdr = await signTransaction(xdr, {
         networkPassphrase: NETWORK_PASSPHRASE,
@@ -715,7 +737,21 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
               )}
 
-              {needsReceiveTrustline && receiveTrustlineAsset && (
+              {receiveAccountMissing && receiveTrustlineAsset && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="text-amber-300 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-amber-100 font-bold text-sm mb-1">Activate Stellar wallet first</p>
+                      <p className="text-amber-100/75 text-xs leading-relaxed">
+                        This wallet is not active on Stellar yet. Send a small amount of XLM to this address before preparing a {receiveTrustlineAsset.symbol} trustline or receiving issued assets.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!receiveAccountMissing && needsReceiveTrustline && receiveTrustlineAsset && (
                 <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 space-y-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle size={16} className="text-blue-300 shrink-0 mt-0.5" />
@@ -813,11 +849,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </Button>
                 <Button
                   onClick={handleSwap}
-                  disabled={swapLoading || !quote || needsReceiveTrustline || unknownReceiveTrustline}
+                  disabled={swapLoading || !quote || receiveAccountMissing || needsReceiveTrustline || unknownReceiveTrustline}
                   variant={quote ? "primary" : "secondary"}
                   className="py-4"
                 >
-                  {needsReceiveTrustline ? 'Prepare Trustline First' : unknownReceiveTrustline ? 'Manual Trustline Required' : 'Convert Balance'}
+                  {receiveAccountMissing ? 'Activate Wallet First' : needsReceiveTrustline ? 'Prepare Trustline First' : unknownReceiveTrustline ? 'Manual Trustline Required' : 'Convert Balance'}
                 </Button>
               </div>
             </div>

@@ -2,7 +2,19 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ShieldCheck, AlertCircle, AlertTriangle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
-import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol, SETTLEMENT_TOKEN_SYMBOL, USDC_TOKEN_ADDRESS, XLM_SAC_ADDRESS } from '../lib/stellar';
+import {
+  truncateAddress,
+  formatAmount,
+  getExplorerTxLink,
+  getTokenSymbol,
+  SETTLEMENT_TOKEN_SYMBOL,
+  USDC_TOKEN_ADDRESS,
+  XLM_SAC_ADDRESS,
+  IS_TESTNET,
+  accountExists,
+  getKnownTrustlineAsset,
+  hasClassicAssetTrustline,
+} from '../lib/stellar';
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
@@ -353,12 +365,57 @@ export function DealDashboard({
   };
 
   const handleRelease = async (milestoneIdx: number) => {
-    if (selectedDealId === null) return;
+    if (selectedDealId === null || !selectedDeal) return;
     setActionLoading(`release-${milestoneIdx}`);
     setError('');
     setErrorContext(null);
     setConfirmAction(null);
     try {
+      if (!IS_TESTNET) {
+        const payoutRecipients = [
+          { label: 'Provider', address: selectedDeal.provider },
+          { label: 'Connector', address: selectedDeal.connector },
+          { label: 'Protocol wallet', address: selectedDeal.protocol_wallet },
+        ];
+
+        const accountChecks = await Promise.all(
+          payoutRecipients.map(async (recipient) => ({
+            ...recipient,
+            exists: await accountExists(recipient.address),
+          })),
+        );
+        const missingAccounts = accountChecks.filter((recipient) => !recipient.exists);
+        if (missingAccounts.length > 0) {
+          const names = missingAccounts.map((recipient) => recipient.label).join(', ');
+          setError(`${names} payout address must be an active Stellar address before this milestone can be released.`);
+          setErrorContext({
+            title: 'Payout Recipient Not Ready',
+            suggestion: 'Approve & Release triggers the milestone transfer. The listed payout address must exist on Stellar before the atomic split can settle.',
+          });
+          return;
+        }
+
+        const trustlineAsset = getKnownTrustlineAsset(selectedDeal.token);
+        if (trustlineAsset) {
+          const trustlineChecks = await Promise.all(
+            payoutRecipients.map(async (recipient) => ({
+              ...recipient,
+              hasTrustline: await hasClassicAssetTrustline(recipient.address, trustlineAsset),
+            })),
+          );
+          const missingTrustlines = trustlineChecks.filter((recipient) => !recipient.hasTrustline);
+          if (missingTrustlines.length > 0) {
+            const names = missingTrustlines.map((recipient) => recipient.label).join(', ');
+            setError(`${names} payout address must be able to receive ${trustlineAsset.symbol} before this milestone can be released.`);
+            setErrorContext({
+              title: 'Payout Asset Not Receivable',
+              suggestion: 'Issued Stellar assets such as USDC require each payout address to be able to receive that asset before release.',
+            });
+            return;
+          }
+        }
+      }
+
       const res = await onRelease(selectedDealId, milestoneIdx);
       setLastTxHash(res.txHash);
       setSplitView({ milestoneIdx, txHash: res.txHash });

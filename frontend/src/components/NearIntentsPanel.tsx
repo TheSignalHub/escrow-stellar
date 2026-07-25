@@ -1061,7 +1061,7 @@ export function NearIntentsPanel({
                         ? 'Disconnect Source'
                         : evmSourceWallet.isAvailable
                           ? 'Connect EVM Wallet'
-                          : 'Install EVM Wallet'}
+                          : 'Detect EVM Wallet'}
                   </Button>
                 </div>
                 {evmSourceWallet.error && (

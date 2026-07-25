@@ -4,6 +4,9 @@ interface Eip1193Provider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
   on?: (event: 'accountsChanged' | 'chainChanged', handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: 'accountsChanged' | 'chainChanged', handler: (...args: unknown[]) => void) => void;
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  providers?: Eip1193Provider[];
 }
 
 export interface EvmSourceWalletState {
@@ -27,23 +30,64 @@ function normalizeChainId(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function getInjectedEvmProvider(): Eip1193Provider | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const ethereum = window.ethereum as Eip1193Provider | undefined;
+  if (!ethereum) return undefined;
+
+  if (Array.isArray(ethereum.providers) && ethereum.providers.length > 0) {
+    return (
+      ethereum.providers.find((candidate: Eip1193Provider) => candidate.isMetaMask) ||
+      ethereum.providers.find((candidate: Eip1193Provider) => candidate.isRabby) ||
+      ethereum.providers[0]
+    );
+  }
+
+  return ethereum;
+}
+
 export function useEvmSourceWallet(): EvmSourceWalletState {
-  const provider = typeof window !== 'undefined' ? (window.ethereum as Eip1193Provider | undefined) : undefined;
-  const isAvailable = Boolean(provider);
+  const [provider, setProvider] = useState<Eip1193Provider | undefined>(() => getInjectedEvmProvider());
   const [address, setAddress] = useState('');
   const [chainId, setChainId] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const detectProvider = useCallback(() => {
+    const nextProvider = getInjectedEvmProvider();
+    setProvider(nextProvider);
+    return nextProvider;
+  }, []);
+
   const refresh = useCallback(async () => {
-    if (!provider) return;
+    const currentProvider = provider || detectProvider();
+    if (!currentProvider) return;
     const [accounts, chain] = await Promise.all([
-      provider.request({ method: 'eth_accounts' }),
-      provider.request({ method: 'eth_chainId' }).catch(() => ''),
+      currentProvider.request({ method: 'eth_accounts' }),
+      currentProvider.request({ method: 'eth_chainId' }).catch(() => ''),
     ]);
     setAddress(normalizeAccount(accounts));
     setChainId(normalizeChainId(chain));
-  }, [provider]);
+  }, [detectProvider, provider]);
+
+  useEffect(() => {
+    detectProvider();
+    const handleInitialized = () => {
+      void refresh();
+    };
+    window.addEventListener('ethereum#initialized', handleInitialized, { once: true });
+    const firstRetry = window.setTimeout(() => {
+      void refresh();
+    }, 250);
+    const secondRetry = window.setTimeout(() => {
+      void refresh();
+    }, 1200);
+    return () => {
+      window.removeEventListener('ethereum#initialized', handleInitialized);
+      window.clearTimeout(firstRetry);
+      window.clearTimeout(secondRetry);
+    };
+  }, [detectProvider, refresh]);
 
   useEffect(() => {
     void refresh();
@@ -66,23 +110,24 @@ export function useEvmSourceWallet(): EvmSourceWalletState {
   }, [provider]);
 
   const connect = useCallback(async () => {
-    if (!provider) {
-      setError('Install an Ethereum wallet such as MetaMask or Rabby to continue.');
+    const currentProvider = provider || detectProvider();
+    if (!currentProvider) {
+      setError('No EVM wallet was detected. Unlock MetaMask, refresh the page, or check that the extension is enabled for this site.');
       return;
     }
     setIsConnecting(true);
     setError(null);
     try {
-      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const accounts = await currentProvider.request({ method: 'eth_requestAccounts' });
       setAddress(normalizeAccount(accounts));
-      const chain = await provider.request({ method: 'eth_chainId' }).catch(() => '');
+      const chain = await currentProvider.request({ method: 'eth_chainId' }).catch(() => '');
       setChainId(normalizeChainId(chain));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Source wallet connection was rejected.');
     } finally {
       setIsConnecting(false);
     }
-  }, [provider]);
+  }, [detectProvider, provider]);
 
   const disconnect = useCallback(() => {
     setAddress('');
@@ -94,13 +139,13 @@ export function useEvmSourceWallet(): EvmSourceWalletState {
     () => ({
       address,
       chainId,
-      isAvailable,
+      isAvailable: Boolean(provider),
       isConnected: Boolean(address),
       isConnecting,
       error,
       connect,
       disconnect,
     }),
-    [address, chainId, connect, disconnect, error, isAvailable, isConnecting]
+    [address, chainId, connect, disconnect, error, isConnecting, provider]
   );
 }
