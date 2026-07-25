@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 22:22 BST | Wallet Prep XLM transfer utility | Added a browser-signed **Send XLM** Wallet Prep utility for transferring native XLM from the connected Stellar wallet, including fresh-account activation via `createAccount` when the destination is not active. This avoids private-key export while supporting operator/tester wallet movement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:30 BST | Deal event ledger grouping | Grouped same-transaction `fund_deal` milestone rows in the selected deal sidebar so a full-deal funding transaction reads as one **Deal Funded** action with affected milestones listed, instead of looking like duplicate unrelated funding history. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:27 BST | Create Deal timeout explorer link | Derived the submitted transaction hash from the signed XDR and used it as the fallback for submitted, polling, success, and timeout explorer links so delayed finality messages never point to an empty `/tx` URL. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:23 BST | Create Deal mainnet finality tracking | Create Deal now receives the submitted transaction hash immediately after Soroban RPC accepts the transaction, switches the progress state to awaiting finality during polling, and shows a Stellar Explorer link while confirmation is pending. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -280,6 +281,8 @@ events.
 **File**: `src/components/SoroswapWidget.tsx`
 
 Wallet support interface (Wallet Prep tab):
+
+**Send XLM**: Browser-signed native XLM transfer from the connected Stellar wallet. Active destination accounts receive a standard payment; fresh destination addresses are activated with `createAccount` when the amount is at least 1 XLM. The utility uses the existing Privy/Stellar Wallets Kit signer and does not export private keys.
 
 **Friendbot / testnet only**: One-click 10,000 XLM testnet funding with duplicate-funding detection. This card is hidden outside testnet.
 

@@ -228,6 +228,47 @@ export async function buildTrustlineTransaction(accountAddress: string, asset: C
   return tx.toXDR();
 }
 
+export async function buildNativeXlmTransferTransaction(
+  sourceAddress: string,
+  destinationAddress: string,
+  amount: string
+): Promise<string> {
+  const trimmedDestination = destinationAddress.trim();
+  if (!StellarSdk.StrKey.isValidEd25519PublicKey(trimmedDestination)) {
+    throw new Error('Enter a valid Stellar destination address.');
+  }
+
+  const parsedAmount = Number(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Enter an XLM amount greater than 0.');
+  }
+
+  const source = await horizonServer.loadAccount(sourceAddress);
+  const destinationExists = await accountExists(trimmedDestination);
+  const txBuilder = new StellarSdk.TransactionBuilder(source, {
+    fee: StellarSdk.BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  });
+
+  if (destinationExists) {
+    txBuilder.addOperation(StellarSdk.Operation.payment({
+      destination: trimmedDestination,
+      asset: StellarSdk.Asset.native(),
+      amount: parsedAmount.toFixed(7).replace(/\.?0+$/, ''),
+    }));
+  } else {
+    if (parsedAmount < 1) {
+      throw new Error('Fresh Stellar addresses need at least 1 XLM to activate.');
+    }
+    txBuilder.addOperation(StellarSdk.Operation.createAccount({
+      destination: trimmedDestination,
+      startingBalance: parsedAmount.toFixed(7).replace(/\.?0+$/, ''),
+    }));
+  }
+
+  return txBuilder.setTimeout(120).build().toXDR();
+}
+
 export async function submitStellarTransaction(signedXdr: string): Promise<{ txHash: string }> {
   const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
   const result = await horizonServer.submitTransaction(signedTx);

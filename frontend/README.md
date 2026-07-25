@@ -174,7 +174,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection; Stellar XLM is selected by default, while Stellar USDC remains available as an optional issued-asset path
-- **Wallet Prep** — review wallet destinations, buy USDC with fiat through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
+- **Wallet Prep** — review wallet destinations, send native XLM through the connected wallet signer, buy USDC with fiat through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -209,6 +209,12 @@ For fresh Stellar wallets, the default route target is native XLM first,
 because XLM activates the Stellar account and can fund XLM-settled escrow
 directly. Stellar USDC is appropriate after the Stellar wallet has XLM reserve
 and an enabled USDC trustline.
+
+Wallet Prep includes a **Send XLM** utility for native Stellar transfers. It
+uses the same Privy/Stellar Wallets Kit signing bridge as escrow transactions:
+active destinations receive a payment, fresh destinations are activated with
+`createAccount` when the send amount is at least 1 XLM, and private keys are
+not exported.
 
 Wallet Prep also includes a general **Add Funds from Another Chain** NEAR
 Intents/1Click panel for wallet top-ups. The Deals tab keeps the deal-aware

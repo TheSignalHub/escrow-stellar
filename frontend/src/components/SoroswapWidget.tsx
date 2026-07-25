@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  buildNativeXlmTransferTransaction,
   buildTrustlineTransaction,
   accountExists,
   fundTestnetAccount,
@@ -20,7 +21,7 @@ import { Card, Button, Tag } from './ui/Components';
 import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { WalletPrepOverview } from './WalletPrepOverview';
 import { NearIntentsPanel } from './NearIntentsPanel';
-import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
+import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Send } from 'lucide-react';
 
 type SwapMode = 'exact-in' | 'exact-out';
 type SwapAssetKey = 'xlm' | 'usdc';
@@ -88,6 +89,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [receiveAccountExists, setReceiveAccountExists] = useState<boolean | null>(null);
   const [trustlineLoading, setTrustlineLoading] = useState(false);
   const [trustlineError, setTrustlineError] = useState('');
+  const [transferDestination, setTransferDestination] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [transferTxHash, setTransferTxHash] = useState('');
 
   const receiveTrustlineAsset = getKnownTrustlineAsset(assetOutAddress);
   const receiveNeedsClassicTrustline = !IS_TESTNET && Boolean(receiveTrustlineAsset);
@@ -136,6 +142,31 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
     } else {
       toast('Wallet already funded! You\'re ready to go.', 'info');
       onBalanceRefresh?.();
+    }
+  };
+
+  const handleSendXlm = async () => {
+    setTransferLoading(true);
+    setTransferError('');
+    setTransferTxHash('');
+
+    try {
+      const xdr = await buildNativeXlmTransferTransaction(walletAddress, transferDestination, transferAmount);
+      const signedXdr = await signTransaction(xdr, {
+        networkPassphrase: NETWORK_PASSPHRASE,
+        address: walletAddress,
+      });
+      const result = await submitStellarTransaction(signedXdr);
+      setTransferTxHash(result.txHash);
+      setTransferDestination('');
+      setTransferAmount('');
+      toast('XLM sent from connected wallet', 'success');
+      onBalanceRefresh?.();
+    } catch (err: any) {
+      setTransferError(formatSwapError(err, 'XLM transfer failed. Check the destination, amount, wallet signature, and available balance.'));
+      toast('XLM transfer failed', 'error');
+    } finally {
+      setTransferLoading(false);
     }
   };
 
@@ -383,6 +414,102 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       </div>
 
       <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} />
+
+      <Card className="p-4 sm:p-6 bg-[#02040a]" glowOnHover>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">
+              <Send size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Send XLM</h3>
+                <Tag color="emerald">Wallet signed</Tag>
+              </div>
+              <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
+                Move native XLM from the connected Stellar wallet without exporting keys. Fresh Stellar addresses are activated automatically when you send at least 1 XLM.
+              </p>
+            </div>
+          </div>
+          {xlmBalance && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Available</p>
+              <p className="mt-1 font-mono text-lg font-black text-emerald-300">
+                {formatWalletBalance(xlmBalance)} XLM
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_10rem_auto] gap-3">
+          <label className="space-y-2 min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Destination</span>
+            <input
+              value={transferDestination}
+              onChange={(event) => {
+                setTransferDestination(event.target.value.trim());
+                setTransferError('');
+                setTransferTxHash('');
+              }}
+              placeholder="G..."
+              spellCheck={false}
+              className="w-full min-w-0 bg-[#09090b] border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-sm text-zinc-100 font-mono placeholder:text-zinc-700 outline-none transition-colors"
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Amount</span>
+            <input
+              type="number"
+              min="0"
+              step="0.0000001"
+              value={transferAmount}
+              onChange={(event) => {
+                setTransferAmount(event.target.value);
+                setTransferError('');
+                setTransferTxHash('');
+              }}
+              placeholder="1"
+              className="w-full bg-[#09090b] border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-sm text-zinc-100 font-mono placeholder:text-zinc-700 outline-none transition-colors"
+            />
+          </label>
+          <div className="flex items-end">
+            <Button
+              onClick={handleSendXlm}
+              disabled={transferLoading || !transferDestination || !transferAmount}
+              variant="primary"
+              className="w-full lg:w-auto py-3.5"
+              icon={transferLoading ? RefreshCw : Send}
+            >
+              {transferLoading ? 'Sending...' : 'Send'}
+            </Button>
+          </div>
+        </div>
+
+        {transferError && (
+          <div className="mt-4 flex items-start gap-2 text-red-300 text-xs bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            <span className="flex-1 whitespace-pre-wrap break-words">{transferError}</span>
+          </div>
+        )}
+
+        {transferTxHash && (
+          <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-emerald-200">
+              <CheckCircle2 size={16} className="text-emerald-300" />
+              XLM transfer submitted
+            </div>
+            <a
+              href={getExplorerTxLink(transferTxHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-300 hover:text-emerald-200"
+            >
+              View tx <ExternalLink size={13} />
+            </a>
+          </div>
+        )}
+      </Card>
+
       <PrivyFiatTopUpCard stepNumber={1} />
 
       <div className={`grid grid-cols-1 gap-4 lg:gap-8 ${IS_TESTNET ? 'md:grid-cols-2' : ''}`}>

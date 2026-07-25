@@ -49,6 +49,19 @@ To connect:
 Navigate to the **Wallet Prep** tab (`Alt+1`) only if you need testnet XLM or
 the demo settlement asset before funding a milestone.
 
+### Option S: Send XLM
+
+1. Paste a Stellar destination address in **Send XLM**
+2. Enter the XLM amount
+3. Click **Send**
+4. Approve the transaction in Privy or your wallet extension
+5. Open the Explorer link after submission
+
+If the destination address is already active, the app signs a native XLM
+payment. If it is a fresh Stellar address, the app signs account activation
+with `createAccount` when the amount is at least 1 XLM. Private keys are never
+exported.
+
 ### Option 0: Fiat Top-Up via Privy
 
 1. Click **Buy USDC** in the **Buy USDC with Fiat** card
