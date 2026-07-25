@@ -86,7 +86,9 @@ refund account is only a dry-quote QA fallback.
 
 For a non-testnet profile, set `VITE_STELLAR_NETWORK=mainnet`, provide mainnet
 RPC/Horizon/Explorer URLs, omit `VITE_FRIENDBOT_URL`, and replace the demo
-settlement token/router/pool with production-approved provider settings.
+settlement token/router/pool with production-approved provider settings. The
+Wallet Prep XLM/USDC route creates the Circle USDC trustline from the connected
+Stellar wallet before USDC swap settlement when the wallet has not opted in yet.
 See [`../docs/SETTLEMENT_ASSET_POLICY.md`](../docs/SETTLEMENT_ASSET_POLICY.md)
 for precision, minimum amount, trustline, and dust/rounding policy.
 

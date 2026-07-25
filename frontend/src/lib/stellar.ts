@@ -32,6 +32,7 @@ export const EXPLORER_URL =
 
 // XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
 export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+export const CIRCLE_USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 
 // Demo settlement token address.
 // Default = the SCF #42 demo test USD-compatible SAC deployed and seeded
@@ -158,6 +159,37 @@ export async function getTokenBalance(
   } catch {
     return '0';
   }
+}
+
+export async function hasCircleUsdcTrustline(accountAddress: string): Promise<boolean> {
+  try {
+    const account = await horizonServer.loadAccount(accountAddress);
+    return account.balances.some((balance: any) => (
+      balance.asset_code === 'USDC' && balance.asset_issuer === CIRCLE_USDC_ISSUER
+    ));
+  } catch {
+    return false;
+  }
+}
+
+export async function buildCircleUsdcTrustlineTransaction(accountAddress: string): Promise<string> {
+  const account = await horizonServer.loadAccount(accountAddress);
+  const usdc = new StellarSdk.Asset('USDC', CIRCLE_USDC_ISSUER);
+  const tx = new StellarSdk.TransactionBuilder(account, {
+    fee: StellarSdk.BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(StellarSdk.Operation.changeTrust({ asset: usdc }))
+    .setTimeout(120)
+    .build();
+
+  return tx.toXDR();
+}
+
+export async function submitStellarTransaction(signedXdr: string): Promise<{ txHash: string }> {
+  const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+  const result = await horizonServer.submitTransaction(signedTx);
+  return { txHash: result.hash };
 }
 
 // Format token amount (7 decimals for Stellar)
