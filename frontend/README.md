@@ -235,8 +235,10 @@ panel now separates **Preview Quote** from **Get Live Payment Quote** so the app
 can prove live 1Click pricing without pretending a source payment is ready.
 Live execution requires a connected source wallet so refunds return to the
 wallet that pays. EVM source routes now support a lightweight browser-wallet
-connector for Ethereum/Base-style live quote readiness; NEAR and Solana source
-routes remain preview-only until their native connectors are wired.
+connector plus native/ERC-20 payment submission to the returned 1Click deposit
+address, including chain-switch prompts when the selected EVM route has a known
+chain id. NEAR and Solana source routes remain preview-only until their native
+connectors are wired.
 
 The Oracle tab is separate: it is a reputation and on-chain activity reader,
 not the swap proof or indexer dashboard.

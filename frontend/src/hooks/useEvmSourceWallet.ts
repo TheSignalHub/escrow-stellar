@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-interface Eip1193Provider {
+export interface Eip1193Provider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
   on?: (event: 'accountsChanged' | 'chainChanged', handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: 'accountsChanged' | 'chainChanged', handler: (...args: unknown[]) => void) => void;
@@ -12,6 +12,7 @@ interface Eip1193Provider {
 export interface EvmSourceWalletState {
   address: string;
   chainId: string;
+  provider?: Eip1193Provider;
   isAvailable: boolean;
   isConnected: boolean;
   isConnecting: boolean;
@@ -139,6 +140,7 @@ export function useEvmSourceWallet(): EvmSourceWalletState {
     () => ({
       address,
       chainId,
+      provider,
       isAvailable: Boolean(provider),
       isConnected: Boolean(address),
       isConnecting,

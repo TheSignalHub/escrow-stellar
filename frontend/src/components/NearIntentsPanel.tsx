@@ -47,6 +47,19 @@ const NEAR_QUOTE_DEMO_ASSET_ID = 'nep141:usdt.tether-token.near';
 const EVM_DRY_QUOTE_REFUND_ADDRESS = '0x1111111111111111111111111111111111111111';
 const SOLANA_DRY_QUOTE_REFUND_ADDRESS = '11111111111111111111111111111111';
 const EVM_CHAINS = new Set(['eth', 'base', 'arb', 'op', 'avax', 'bsc', 'pol', 'gnosis', 'bera', 'xlayer', 'monad', 'plasma', 'scroll']);
+const EVM_CHAIN_IDS: Record<string, string> = {
+  eth: '0x1',
+  base: '0x2105',
+  arb: '0xa4b1',
+  op: '0xa',
+  avax: '0xa86a',
+  bsc: '0x38',
+  pol: '0x89',
+  gnosis: '0x64',
+  bera: '0x138d5',
+  xlayer: '0xc4',
+  scroll: '0x82750',
+};
 const DRY_QUOTE_SOURCE_CHAINS = new Set(['near', 'sol', ...EVM_CHAINS]);
 const RECOMMENDED_SOURCE_ROUTES = [
   { chain: 'near', symbol: 'wNEAR' },
@@ -76,6 +89,29 @@ function shortText(value?: string): string {
   if (!value) return 'not available';
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}...${value.slice(-8)}`;
+}
+
+function isEvmAddress(value?: string): boolean {
+  return Boolean(value && /^0x[a-fA-F0-9]{40}$/.test(value));
+}
+
+function toHexQuantity(value: string): string {
+  return `0x${BigInt(value).toString(16)}`;
+}
+
+function padHexWord(value: string): string {
+  return value.replace(/^0x/, '').padStart(64, '0');
+}
+
+function encodeErc20Transfer(to: string, amount: string): string {
+  return `0xa9059cbb${padHexWord(to)}${padHexWord(toHexQuantity(amount))}`;
+}
+
+function isNativeEvmToken(token?: NearIntentsToken): boolean {
+  if (!token) return false;
+  const symbol = token.symbol.toUpperCase();
+  const assetId = token.assetId.toLowerCase();
+  return !token.contractAddress || assetId.startsWith('native:') || ['ETH', 'BNB', 'MATIC', 'AVAX'].includes(symbol);
 }
 
 function friendlySettlementAsset(assetId?: string): string {
@@ -369,6 +405,9 @@ export function NearIntentsPanel({
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [sendingSourcePayment, setSendingSourcePayment] = useState(false);
+  const [sourcePaymentTxHash, setSourcePaymentTxHash] = useState('');
+  const [sourcePaymentError, setSourcePaymentError] = useState('');
   const [error, setError] = useState<NearIntentsApiError | null>(null);
   const [stellarRecipientExists, setStellarRecipientExists] = useState<boolean | null>(null);
 
@@ -572,6 +611,11 @@ export function NearIntentsPanel({
     setSourceAmount(suggestedSourceAmount);
   }, [selectedOriginAsset, sourceAmountTouched, suggestedSourceAmount]);
 
+  useEffect(() => {
+    setSourcePaymentTxHash('');
+    setSourcePaymentError('');
+  }, [destinationAsset, originAsset, sourceAmount]);
+
   const sourceAssetAvailable = Boolean(selectedOriginAsset);
   const canRequestQuote = useMemo(() => {
     return Boolean(
@@ -606,9 +650,18 @@ export function NearIntentsPanel({
     quoteDetails?.timeWhenInactive ||
     nearIntent?.deadline;
   const quoteReference = nearIntent?.quoteId || quote?.externalPaymentIntent?.intentId;
+  const sourcePaymentAmount = nearIntent?.sourceAmount || quoteDetails?.amountIn || quoteRequestAmount;
+  const canSendEvmSourcePayment = Boolean(
+    liveSourceWalletReady &&
+    nearIntent?.depositAddress &&
+    !nearIntent.dry &&
+    selectedOriginAsset &&
+    sourcePaymentAmount &&
+    isEvmAddress(nearIntent.depositAddress)
+  );
 
   const hasQuote = Boolean(nearIntent);
-  const sourcePaymentSeen = ['KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS'].includes(providerStatus || '');
+  const sourcePaymentSeen = Boolean(sourcePaymentTxHash) || ['KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS'].includes(providerStatus || '');
   const routingStarted = ['PROCESSING', 'SUCCESS'].includes(providerStatus || '');
   const settlementReported = providerStatus === 'SUCCESS';
   const paymentSteps: Array<{ label: string; state: StepState }> = [
@@ -645,6 +698,8 @@ export function NearIntentsPanel({
         slippageTolerance: 100,
       });
       setQuote(result);
+      setSourcePaymentTxHash('');
+      setSourcePaymentError('');
       setRecentlyQuotedAssetIds((current) =>
         originAsset ? [originAsset, ...current.filter((assetId) => assetId !== originAsset)].slice(0, 12) : current
       );
@@ -680,6 +735,63 @@ export function NearIntentsPanel({
       toast(apiError.message, 'error');
     } finally {
       setLoadingStatus(false);
+    }
+  };
+
+  const sendEvmSourcePayment = async () => {
+    if (!canSendEvmSourcePayment || !nearIntent?.depositAddress || !selectedOriginAsset || !sourcePaymentAmount) return;
+    const provider = evmSourceWallet.provider;
+    if (!provider) {
+      setSourcePaymentError('Connect an EVM wallet before sending source-chain payment.');
+      return;
+    }
+    if (nearIntent.depositMemo) {
+      setSourcePaymentError('This route returned a memo requirement, so use manual payment instructions for this quote.');
+      return;
+    }
+
+    setSendingSourcePayment(true);
+    setSourcePaymentError('');
+    try {
+      const expectedChainId = EVM_CHAIN_IDS[selectedOriginAsset.blockchain];
+      if (expectedChainId && evmSourceWallet.chainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: expectedChainId }],
+        });
+      }
+
+      const amountHex = toHexQuantity(sourcePaymentAmount);
+      if (!isNativeEvmToken(selectedOriginAsset) && !isEvmAddress(selectedOriginAsset.contractAddress)) {
+        throw new Error('Selected source token is missing a valid EVM token contract.');
+      }
+      const txParams = isNativeEvmToken(selectedOriginAsset)
+        ? {
+            from: evmSourceWallet.address,
+            to: nearIntent.depositAddress,
+            value: amountHex,
+          }
+        : {
+            from: evmSourceWallet.address,
+            to: selectedOriginAsset.contractAddress,
+            value: '0x0',
+            data: encodeErc20Transfer(nearIntent.depositAddress, sourcePaymentAmount),
+          };
+
+      const txHash = await provider.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
+      });
+      const normalizedHash = typeof txHash === 'string' ? txHash : '';
+      setSourcePaymentTxHash(normalizedHash);
+      toast('Source payment submitted', 'success');
+      void refreshStatus();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Source payment was rejected or failed before submission.';
+      setSourcePaymentError(message);
+      toast(message, 'error');
+    } finally {
+      setSendingSourcePayment(false);
     }
   };
 
@@ -1216,6 +1328,33 @@ export function NearIntentsPanel({
                             <Copy size={16} />
                           </button>
                         </div>
+                      )}
+                      {canSendEvmSourcePayment && (
+                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 space-y-3">
+                          <p className="text-xs leading-relaxed text-blue-100/80">
+                            This sends the quoted {tokenLabel(selectedOriginAsset)} amount from your source wallet to 1Click. After it settles into Stellar, open Deals and fund escrow from the Stellar wallet.
+                          </p>
+                          <Button
+                            onClick={sendEvmSourcePayment}
+                            disabled={sendingSourcePayment}
+                            variant="primary"
+                            className="w-full py-3 text-xs"
+                            icon={sendingSourcePayment ? Loader2 : Wallet}
+                          >
+                            {sendingSourcePayment ? 'Opening Wallet...' : 'Send Source Payment'}
+                          </Button>
+                        </div>
+                      )}
+                      {sourcePaymentTxHash && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-1">Source tx submitted</p>
+                          <p className="break-all font-mono text-xs text-emerald-100">{sourcePaymentTxHash}</p>
+                        </div>
+                      )}
+                      {sourcePaymentError && (
+                        <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                          {sourcePaymentError}
+                        </p>
                       )}
                     </>
                   ) : (
