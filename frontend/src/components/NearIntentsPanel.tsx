@@ -1520,7 +1520,7 @@ export function NearIntentsPanel({
             </span>
           </div>
 
-          {status?.status.status === 'SUCCESS' && (
+          {providerStatus === 'SUCCESS' && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-xs text-emerald-200 leading-relaxed flex items-start gap-3">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
               <span>Settlement is reported complete. Reconcile Stellar events before showing the milestone as funded.</span>
