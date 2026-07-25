@@ -369,6 +369,19 @@ Routes:
 - `POST /api/marketplace-bindings/:bindingId/near-intents/reconcile` — protected per-binding Soroban event reconciliation
 - `POST /api/inngest` / `GET /api/inngest`
 
+Inspect deployed NEAR response shapes before frontend tracking changes:
+
+```bash
+BACKEND_BASE_URL=https://stellar.thesignal.directory \
+ADMIN_USERNAME=<admin-user> \
+ADMIN_PASSWORD=<admin-password> \
+npm run inspect:near-shapes
+```
+
+To include the deposit-tx response shape for an actual submitted source-chain
+payment, add `NEAR_INTENTS_SHAPE_TX_HASH=<source-tx-hash>`. The inspector prints
+JSON keys and value types only; it does not print configured secrets.
+
 After deployment, sync this URL in Inngest:
 
 ```txt

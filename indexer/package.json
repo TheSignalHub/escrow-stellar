@@ -10,6 +10,7 @@
     "seed:marketplace-bindings": "tsx src/seed-marketplace-bindings.ts",
     "smoke:backend": "tsx src/backend-readiness-smoke.ts",
     "smoke:near-live": "tsx src/near-intents-live-swap-smoke.ts",
+    "inspect:near-shapes": "tsx src/near-intents-shape-check.ts",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js"
   },
