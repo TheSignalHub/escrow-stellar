@@ -85,8 +85,21 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 > **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
 > Custom token pairs can be entered, but they only quote and execute when the configured broker/Soroswap route has liquidity for that pair.
 
-Cross-chain funding is not started from Wallet Prep. It starts from a pending
-milestone in the Deals tab so the quote is tied to a real deal and amount due.
+### Option C: Add Funds from Another Chain
+
+1. Choose a source chain and source asset from the live 1Click discovery list
+2. Enter a small source amount for quote preview, or connect the supported
+   source wallet when running a live top-up route
+3. Select the approved Stellar destination asset that matches the wallet balance
+   you want to prepare
+4. Click **Preview Quote** or **Get Live Payment Quote**
+5. After the top-up settles into the connected Stellar wallet, return to
+   **Deals** and click **Fund Deal** when the settlement balance is sufficient
+
+The Wallet Prep NEAR Intents panel is a general wallet top-up utility. The
+Deals tab also has a focused version that locks the selected deal, amount due,
+and settlement asset for reviewer checkout. In both places, cross-chain payment
+status is not escrow state; escrow locks only from Deals via **Fund Deal**.
 The Stellar conversion path is also wallet preparation, not escrow funding.
 
 ---

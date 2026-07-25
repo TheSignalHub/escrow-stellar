@@ -145,7 +145,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection
-- **Wallet Prep** — review wallet destinations, buy USDC with fiat through Privy-supported onramps, and convert supported Stellar assets through the configured AMM/broker route before funding the deal. Friendbot is shown only on testnet.
+- **Wallet Prep** — review wallet destinations, buy USDC with fiat through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -171,6 +171,11 @@ escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's
 fiat-to-crypto modal and sends purchased USDC to the Base/EVM wallet. It is a
 top-up path only: the deal is not escrow-funded until the user routes assets
 into Stellar when needed and confirms **Fund Deal** from the Stellar wallet.
+
+Wallet Prep also includes a general **Add Funds from Another Chain** NEAR
+Intents/1Click panel for wallet top-ups. The Deals tab keeps the deal-aware
+version where the remaining amount and settlement asset are locked from the
+selected pending deal.
 
 The first pending milestone in the Deals tab also exposes a NEAR Intents-backed
 cross-chain **Add Funds** entry. The panel locks to the selected deal and remaining
@@ -225,7 +230,7 @@ frontend/src/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
 │   ├── WalletPrepOverview.tsx # Stellar escrow wallet + Base/EVM funding wallet overview
 │   ├── PrivyFiatTopUpCard.tsx # Fiat-to-Base-USDC wallet top-up via Privy onramp
-│   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for deal funding
+│   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for wallet top-up and deal funding
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
 │   └── ui/Components.tsx      # Card, Button, Tag primitives

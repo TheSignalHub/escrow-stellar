@@ -17,7 +17,11 @@ import {
 } from '../lib/privyOnramp';
 import { Button, Card, Tag } from './ui/Components';
 
-export function PrivyFiatTopUpCard() {
+interface PrivyFiatTopUpCardProps {
+  stepNumber?: number;
+}
+
+export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) {
   const toast = useToast();
   const { authenticated } = usePrivy();
   const { wallets, ready } = useWallets();
@@ -87,7 +91,7 @@ export function PrivyFiatTopUpCard() {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-300 font-bold text-sm">3</div>
+            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-300 font-bold text-sm">{stepNumber}</div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Buy USDC with Fiat</h3>

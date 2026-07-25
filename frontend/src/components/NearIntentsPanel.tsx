@@ -35,6 +35,7 @@ interface NearIntentsPanelProps {
   amountDue?: string;
   settlementTokenAddress?: string;
   settlementTokenSymbol?: string;
+  stepNumber?: number;
   onClose?: () => void;
   onNavigateToFiatTopUp?: () => void;
 }
@@ -338,6 +339,7 @@ export function NearIntentsPanel({
   amountDue,
   settlementTokenAddress,
   settlementTokenSymbol,
+  stepNumber,
   onClose,
   onNavigateToFiatTopUp,
 }: NearIntentsPanelProps) {
@@ -586,7 +588,9 @@ export function NearIntentsPanel({
       state: settlementReported ? 'done' : routingStarted ? 'active' : 'pending',
     },
     {
-      label: quoteDemoDestination ? 'Escrow funding not included in quote demo' : 'Fund Deal after wallet top-up',
+      label: quoteDemoDestination
+        ? isDealFundingMode ? 'Escrow funding not included in quote demo' : 'Wallet top-up not included in quote demo'
+        : isDealFundingMode ? 'Fund Deal after wallet top-up' : 'Return to Deals after wallet top-up',
       state: quoteDemoDestination ? 'pending' : settlementReported ? 'active' : 'pending',
     },
   ];
@@ -658,7 +662,7 @@ export function NearIntentsPanel({
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300 font-bold text-sm">
-            {isDealFundingMode && milestoneIdx !== undefined ? milestoneIdx + 1 : 3}
+            {stepNumber ?? (isDealFundingMode && milestoneIdx !== undefined ? milestoneIdx + 1 : 4)}
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -694,7 +698,9 @@ export function NearIntentsPanel({
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Amount due</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  {isDealFundingMode ? 'Amount due' : 'Top-up target hint'}
+                </span>
                 <input
                   value={isDealFundingMode ? topUpAmountLabel : amount}
                   onChange={(event) => {
@@ -853,7 +859,7 @@ export function NearIntentsPanel({
                 />
               </label>
               <p className="text-xs leading-relaxed text-zinc-500">
-                Source assets come from live 1Click token discovery. Stellar direct funding stays in Fund Deal / Wallet Prep; this flow quotes cross-chain top-ups only.
+                Source assets come from live 1Click token discovery. This flow quotes cross-chain wallet top-ups only; escrow locks later from Deals.
               </p>
               {sourceAssetAvailable && (
                 <div className="flex flex-wrap gap-2">
@@ -958,7 +964,9 @@ export function NearIntentsPanel({
                 </div>
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">4. Escrow funding</p>
-                  <p className="mt-1 text-xs text-zinc-500">After top-up settles, click Fund Deal from the Stellar wallet.</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {isDealFundingMode ? 'After top-up settles, click Fund Deal from the Stellar wallet.' : 'After top-up settles, open Deals and fund escrow from the Stellar wallet.'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1125,7 +1133,7 @@ export function NearIntentsPanel({
                       `Destination locked to ${settlementLabel}`,
                       nearIntent.signatureVerified ? '1Click signature verified' : 'Signature verification pending',
                       paymentPreviewOnly ? 'Dry preview: no funds moved' : 'Live payment route requested',
-                      'Escrow still waits for Fund Deal',
+                      isDealFundingMode ? 'Escrow still waits for Fund Deal' : 'Wallet top-up is separate from escrow funding',
                     ].map((item) => (
                       <div key={item} className="flex items-start gap-2">
                         <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-300" />
@@ -1206,7 +1214,9 @@ export function NearIntentsPanel({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Payment status</h4>
-                <p className="mt-1 text-[10px] text-zinc-500">Escrow updates after Stellar settlement is indexed.</p>
+                <p className="mt-1 text-[10px] text-zinc-500">
+                  {isDealFundingMode ? 'Escrow updates after Stellar settlement is indexed.' : 'Wallet top-up status updates after the source payment route progresses.'}
+                </p>
               </div>
               {settlementReported && (
                 <Tag color="amber">Awaiting escrow event</Tag>
@@ -1222,7 +1232,9 @@ export function NearIntentsPanel({
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed flex items-start gap-3">
             <Timer size={16} className="mt-0.5 shrink-0 text-amber-300" />
             <span>
-              Cross-chain payment status is not escrow state. Funds count as locked only after the Stellar DealEscrow funded event is indexed.
+              {isDealFundingMode
+                ? 'Cross-chain payment status is not escrow state. Funds count as locked only after the Stellar DealEscrow funded event is indexed.'
+                : 'Cross-chain payment status is wallet top-up state, not escrow state. Funds count as locked only after you fund a deal from the Stellar wallet.'}
             </span>
           </div>
 

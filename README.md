@@ -108,13 +108,13 @@ NEAR Intents is now treated as a required final-tranche integration workstream,
 not an optional deferral. The current repo includes a feature-flagged adapter
 around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
 quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-deal-level cross-chain top-up entry for choosing source chain/asset,
-settlement asset, quote, payment instructions, and payment status against a
-selected pending milestone. The NEAR route prepares the connected Stellar
-wallet; the escrow is funded only when the user confirms **Fund Deal** and the
-frontend calls `fund_deal`. Wallet Prep remains a support surface for
-testnet funding and Stellar settlement-asset preparation, not the primary
-cross-chain top-up entry.
+cross-chain top-up entry for choosing source chain/asset, settlement asset,
+quote, payment instructions, and payment status. Wallet Prep now exposes the
+same reusable NEAR Intents panel as a general cross-chain wallet top-up surface,
+while the Deals tab keeps the deal-aware entry where the selected deal,
+remaining balance, and settlement asset are already locked. The NEAR route
+prepares the connected Stellar wallet; the escrow is funded only when the user
+confirms **Fund Deal** and the frontend calls `fund_deal`.
 Refund routing is managed through the source wallet in the production flow,
 with a server fallback reserved for internal quote QA. Soroban `funded` events
 remain the source of truth for escrow funding, even when NEAR Intents reports
@@ -142,7 +142,7 @@ supporting a fiat-to-crypto user entry. See
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
-- **Wallet Prep** — Review wallet destinations, buy source-wallet USDC through Privy, and convert supported Stellar assets through an AMM-style route before funding a deal. Mainnet XLM/Circle USDC uses Stellar DEX pathfinding with selectable slippage; Friendbot remains testnet-only.
+- **Wallet Prep** — Review wallet destinations, buy source-wallet USDC through Privy, convert supported Stellar assets through an AMM-style route, and quote cross-chain wallet top-ups through NEAR Intents before funding a deal. Mainnet XLM/Circle USDC uses Stellar DEX pathfinding with selectable slippage; Friendbot remains testnet-only.
 - **Fiat Top-Up via Privy** — Buy USDC with card/bank through Privy-supported onramp providers into a Base/EVM wallet, then route/top up into Stellar before calling Fund Deal.
 - **Cross-Chain Add Funds Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents/1Click top-up into the connected Stellar wallet before confirming Fund Deal. Deal-tied top-ups show human Stellar units, lock the destination to the deal's approved Stellar settlement asset, rank recommended 1Click routes first, and separate **Preview Quote** route evidence from the production-shaped **Get Live Payment Quote** flow. EVM source routes can connect a browser wallet so live quote refunds return to the source wallet; NEAR/Solana source wallets remain preview-only until their native connectors are wired.
 - **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
@@ -244,7 +244,7 @@ npm run dev
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
-4. Use **Wallet Prep** to swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
+4. Use **Wallet Prep** to buy source-wallet USDC, quote a NEAR Intents wallet top-up, or swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario
 6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM/USDC** when the wallet has enough balance or use **Prepare Wallet** / **Top Up from Another Chain** when it does not
 7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events

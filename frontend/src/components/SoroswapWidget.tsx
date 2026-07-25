@@ -16,6 +16,7 @@ import type { BrokerQuote } from '../lib/stellarBroker';
 import { Card, Button, Tag } from './ui/Components';
 import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { WalletPrepOverview } from './WalletPrepOverview';
+import { NearIntentsPanel } from './NearIntentsPanel';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
 type SwapMode = 'exact-in' | 'exact-out';
@@ -306,13 +307,13 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       </div>
 
       <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} />
-      <PrivyFiatTopUpCard />
+      <PrivyFiatTopUpCard stepNumber={1} />
 
       <div className={`grid grid-cols-1 gap-4 lg:gap-8 ${IS_TESTNET ? 'md:grid-cols-2' : ''}`}>
         {IS_TESTNET && (
           <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
             <div className="flex items-center gap-3 mb-4 lg:mb-6">
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">2</div>
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">
                 Initialize Vault
               </h3>
@@ -368,7 +369,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">{IS_TESTNET ? '2' : '1'}</div>
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">{IS_TESTNET ? '3' : '2'}</div>
               <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Convert on Stellar</h3>
             </div>
             <Tag color={IS_TESTNET ? 'zinc' : 'blue'}>{IS_TESTNET ? 'Testnet AMM' : 'AMM Route'}</Tag>
@@ -811,6 +812,13 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           )}
         </Card>
       </div>
+
+      <NearIntentsPanel
+        walletAddress={walletAddress}
+        mode="routePreview"
+        stepNumber={IS_TESTNET ? 4 : 3}
+        onNavigateToFiatTopUp={undefined}
+      />
     </div>
   );
 }
