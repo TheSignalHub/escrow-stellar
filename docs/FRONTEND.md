@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 02:47 BST | NEAR Intents panel overflow cleanup | Tightened the Wallet Prep/Deals NEAR Intents panel layout so long Stellar wallet labels, source asset labels, quote metrics, and payment-flow cards wrap or truncate inside narrow columns instead of overflowing. | `npm run build -- --logLevel warn` passed; Vite reported the existing large-chunk warning. |
 | 2026-07-25 01:41 BST | Wallet Prep route discovery cleanup | Removed the public diagnostic route-discovery block from Convert on Stellar so users go straight from route/amount/slippage selection to the executable **Calculate Route** quote. | `npm run build` passed in `frontend/`. |
 | 2026-07-25 01:35 BST | Wallet Prep exact-receive display | Corrected the Convert on Stellar exact-receive UI so the editable target field shows the receive asset and the estimate field shows the pay asset, matching Stellar DEX strict-receive quotes. | Horizon strict-receive check returned `88.4512391` USDC for `497` XLM; `npm run build` passed in `frontend/`. |
 | 2026-07-25 01:30 BST | Wallet Prep cross-chain top-up | Added the reusable NEAR Intents/1Click panel to Wallet Prep as a general cross-chain wallet top-up utility, while preserving the deal-aware top-up entry in Deals. Adjusted Wallet Prep copy/step numbering so cross-chain status is wallet top-up state, not escrow funded state. | `npm run build` passed in `frontend/`. |

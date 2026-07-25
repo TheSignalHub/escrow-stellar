@@ -178,6 +178,10 @@ function tokenLabel(token?: NearIntentsToken): string {
   return `${token.symbol} on ${chainLabel(token.blockchain)}`;
 }
 
+function tokenSelectLabel(token: NearIntentsToken): string {
+  return token.symbol;
+}
+
 function chainIdLabel(chainId?: string): string {
   const labels: Record<string, string> = {
     '0x1': 'Ethereum',
@@ -693,10 +697,10 @@ export function NearIntentsPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
+        <div className="min-w-0 space-y-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                   {isDealFundingMode ? 'Amount due' : 'Top-up target hint'}
@@ -790,7 +794,7 @@ export function NearIntentsPanel({
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-[0.85fr_1.15fr] gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source chain</span>
                   <select
@@ -803,7 +807,7 @@ export function NearIntentsPanel({
                       setError(null);
                     }}
                     disabled={loadingTokens || sourceChains.length === 0}
-                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                    className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
                   >
                     {sourceChains.length === 0 ? (
                       <option value="">{loadingTokens ? 'Loading chains...' : 'No source chains available'}</option>
@@ -828,15 +832,14 @@ export function NearIntentsPanel({
                       setError(null);
                     }}
                     disabled={loadingTokens || sourceTokensForChain.length === 0}
-                    className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                    className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
                   >
                     {sourceTokensForChain.length === 0 ? (
                       <option value="">{loadingTokens ? 'Loading assets...' : 'No assets available'}</option>
                     ) : (
                       sourceTokensForChain.map((token) => (
                         <option key={token.assetId} value={token.assetId}>
-                          {token.symbol}
-                          {token.contractAddress ? ` · ${shortText(token.contractAddress)}` : ''}
+                          {tokenSelectLabel(token)}
                         </option>
                       ))
                     )}
@@ -886,25 +889,25 @@ export function NearIntentsPanel({
             )}
 
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="h-9 w-9 rounded-lg border border-blue-500/20 bg-blue-500/10 flex items-center justify-center text-blue-300">
                     <Wallet size={17} />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-zinc-100">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-zinc-100">
                       {tokenLabel(selectedOriginAsset)}
                     </p>
                     <p className="text-xs text-zinc-500">Source payment</p>
                   </div>
                 </div>
-                <ArrowRightLeft size={18} className="hidden sm:block text-zinc-600" />
-                <div className="flex items-center gap-3">
+                <ArrowRightLeft size={18} className="hidden 2xl:block text-zinc-600" />
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="h-9 w-9 rounded-lg border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center text-emerald-300">
                     <ShieldCheck size={17} />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-zinc-100">{settlementLabel}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-zinc-100">{settlementLabel}</p>
                     <p className="text-xs text-zinc-500">
                       {quoteDemoDestination ? 'Quote evidence route' : 'Stellar escrow settlement'}
                     </p>
@@ -921,7 +924,7 @@ export function NearIntentsPanel({
             )}
 
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex flex-col 2xl:flex-row 2xl:items-start 2xl:justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest text-zinc-300">Production payment flow</p>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-500">
@@ -933,16 +936,16 @@ export function NearIntentsPanel({
                 </Tag>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="min-w-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">1. Stellar wallet</p>
-                  <p className="mt-1 text-xs text-emerald-100/80">{hasValidStellarRecipient ? `${shortText(walletAddress)} connected` : 'Connect Stellar wallet first'}</p>
+                  <p className="mt-1 break-words text-xs text-emerald-100/80">{hasValidStellarRecipient ? `${shortText(walletAddress)} connected` : 'Connect Stellar wallet first'}</p>
                 </div>
                 <div className={`rounded-lg border px-3 py-2 ${
                   sourceAssetAvailable ? 'border-blue-500/20 bg-blue-500/10' : 'border-zinc-800 bg-zinc-950/60'
                 }`}>
                   <p className={`text-[10px] font-black uppercase tracking-widest ${sourceAssetAvailable ? 'text-blue-200' : 'text-zinc-500'}`}>2. Source route</p>
-                  <p className={`mt-1 text-xs ${sourceAssetAvailable ? 'text-blue-100/80' : 'text-zinc-500'}`}>
+                  <p className={`mt-1 break-words text-xs ${sourceAssetAvailable ? 'text-blue-100/80' : 'text-zinc-500'}`}>
                     {sourceAssetAvailable ? tokenLabel(selectedOriginAsset) : 'Choose source chain and asset'}
                   </p>
                 </div>
@@ -950,7 +953,7 @@ export function NearIntentsPanel({
                   liveSourceWalletReady ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-amber-500/20 bg-amber-500/10'
                 }`}>
                   <p className={`text-[10px] font-black uppercase tracking-widest ${liveSourceWalletReady ? 'text-emerald-200' : 'text-amber-200'}`}>3. Source wallet</p>
-                  <p className={`mt-1 text-xs ${liveSourceWalletReady ? 'text-emerald-100/80' : 'text-amber-100/80'}`}>
+                  <p className={`mt-1 break-words text-xs ${liveSourceWalletReady ? 'text-emerald-100/80' : 'text-amber-100/80'}`}>
                     {liveSourceWalletReady
                       ? `${shortText(evmSourceWallet.address)} ready for live quote`
                       : sourceConnectorKind === 'evm'
@@ -964,7 +967,7 @@ export function NearIntentsPanel({
                 </div>
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">4. Escrow funding</p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 break-words text-xs text-zinc-500">
                     {isDealFundingMode ? 'After top-up settles, click Fund Deal from the Stellar wallet.' : 'After top-up settles, open Deals and fund escrow from the Stellar wallet.'}
                   </p>
                 </div>
@@ -1012,10 +1015,10 @@ export function NearIntentsPanel({
 
             {sourceUsesEvmWallet && (
               <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Source wallet</p>
-                    <p className="mt-1 text-sm text-zinc-300">
+                    <p className="mt-1 break-words text-sm text-zinc-300">
                       {evmSourceWallet.isConnected
                         ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
                         : `Connect an EVM wallet before requesting a live ${chainLabel(selectedOriginAsset?.blockchain)} quote.`}
@@ -1049,8 +1052,8 @@ export function NearIntentsPanel({
 
             {canFiatTopUpSelectedSource && (
               <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-black uppercase tracking-widest text-blue-200">Need source funds?</p>
                     <p className="mt-1 text-xs leading-relaxed text-blue-100/75">
                       Buy USDC with fiat in Wallet Prep, then return here to route it into Stellar with NEAR Intents.
@@ -1068,7 +1071,7 @@ export function NearIntentsPanel({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <Button
                 onClick={() => createQuote({ forceDry: true })}
                 disabled={loadingQuote || !canRequestQuote}
@@ -1104,7 +1107,7 @@ export function NearIntentsPanel({
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -1116,7 +1119,7 @@ export function NearIntentsPanel({
 
             {nearIntent ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <RouteMetric label="Send from" value={tokenLabel(selectedOriginAsset)} />
                   <RouteMetric label="Settle as" value={settlementLabel} />
                   <RouteMetric label="Estimated received" value={formatDestinationAmount(expectedSettlement, destinationAsset)} />
@@ -1127,7 +1130,7 @@ export function NearIntentsPanel({
 
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
                   <h5 className="text-xs font-black uppercase tracking-widest text-emerald-200">Quote evidence</h5>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-100/80">
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-emerald-100/80">
                     {[
                       `${tokenLabel(selectedOriginAsset)} selected from 1Click discovery`,
                       `Destination locked to ${settlementLabel}`,
