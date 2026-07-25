@@ -954,227 +954,188 @@ export function NearIntentsPanel({
               </label>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay from</span>
-              {recommendedTokens.length > 0 && (
-                <div className="space-y-2 rounded-lg border border-zinc-800 bg-black/30 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Recommended routes</span>
-                    <Tag color="blue">Live discovery</Tag>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {recommendedTokens.slice(0, 9).map((token) => {
-                      const selected = token.assetId === originAsset;
-                      const recentlyQuoted = recentlyQuotedAssetIds.includes(token.assetId);
-                      return (
-                        <button
-                          key={token.assetId}
-                          type="button"
-                          onClick={() => {
-                            setSourceChain(token.blockchain);
-                            setOriginAsset(token.assetId);
-                            setSourceAmountTouched(false);
-                            setQuote(null);
-                            setStatus(null);
-                            setError(null);
-                          }}
-                          className={`rounded-lg border px-3 py-2 text-left transition ${
-                            selected
-                              ? 'border-blue-400 bg-blue-500/15 text-blue-100'
-                              : 'border-zinc-800 bg-zinc-950/60 text-zinc-300 hover:border-blue-500/40 hover:text-blue-100'
-                          }`}
-                        >
-                          <span className="block text-sm font-black">{token.symbol}</span>
-                          <span className="block text-[10px] uppercase tracking-widest text-zinc-500">{chainLabel(token.blockchain)}</span>
-                          {recentlyQuoted && (
-                            <span className="mt-1 block text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                              Recently quoted
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-3">
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source chain</span>
-                  <select
-                    value={sourceChain}
-                    onChange={(event) => {
-                      setSourceChain(event.target.value);
-                      setSourceAmountTouched(false);
-                      setQuote(null);
-                      setStatus(null);
-                      setError(null);
-                    }}
-                    disabled={loadingTokens || sourceChains.length === 0}
-                    className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
-                  >
-                    {sourceChains.length === 0 ? (
-                      <option value="">{loadingTokens ? 'Loading chains...' : 'No source chains available'}</option>
-                    ) : (
-                      sourceChains.map((chain) => (
-                        <option key={chain} value={chain}>
-                          {chainLabel(chain)}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source asset</span>
-                  <select
-                    value={originAsset}
-                    onChange={(event) => {
-                      setOriginAsset(event.target.value);
-                      setSourceAmountTouched(false);
-                      setQuote(null);
-                      setStatus(null);
-                      setError(null);
-                    }}
-                    disabled={loadingTokens || sourceTokensForChain.length === 0}
-                    className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
-                  >
-                    {sourceTokensForChain.length === 0 ? (
-                      <option value="">{loadingTokens ? 'Loading assets...' : 'No assets available'}</option>
-                    ) : (
-                      sourceTokensForChain.map((token) => (
-                        <option key={token.assetId} value={token.assetId}>
-                          {tokenSelectLabel(token)}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-              </div>
-              <label className="block space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Source amount</span>
-                <input
-                  value={sourceAmount}
-                  onChange={(event) => {
-                    setSourceAmount(event.target.value.replace(/[^\d.]/g, ''));
-                    setSourceAmountTouched(true);
-                    setQuote(null);
-                    setStatus(null);
-                    setError(null);
-                  }}
-                  className="w-full bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2.5 text-sm text-zinc-100 font-mono outline-none"
-                  placeholder="1"
-                />
-              </label>
-              <p className="text-xs leading-relaxed text-zinc-500">
-                Source assets come from live 1Click token discovery. This flow quotes cross-chain wallet top-ups only; escrow locks later from Deals.
-              </p>
-              {sourceAssetAvailable && (
-                <div className="flex flex-wrap gap-2">
-                  <Tag color={selectedRouteRecommended ? 'blue' : 'zinc'}>
-                    {selectedRouteRecommended ? 'Recommended route' : 'Discovered route'}
-                  </Tag>
-                  {selectedRouteRecentlyQuoted && <Tag color="emerald">Recently quoted</Tag>}
-                  {!sourceAmountTouched && <Tag color="zinc">Amount estimated from live prices</Tag>}
-                </div>
-              )}
-              {loadingTokens && (
-                <p className="text-xs text-blue-300">Loading supported 1Click source assets...</p>
-              )}
-              {!loadingTokens && sourceTokens.length === 0 && (
-                <p className="text-xs text-amber-300">No source assets are available from token discovery right now.</p>
-              )}
-            </div>
-
-            {isDealFundingMode && sourceAssetAvailable && (
-              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-xs leading-relaxed text-blue-100/75">
-                Dry quote preview: {sourceAmount || '0'} {selectedOriginAsset?.symbol} from {chainLabel(selectedOriginAsset?.blockchain)} into {settlementLabel}.
-                Escrow still needs the full Stellar balance before Fund Deal.
-              </div>
-            )}
-
-            <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
-              <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg border border-blue-500/20 bg-blue-500/10 flex items-center justify-center text-blue-300">
-                    <Wallet size={17} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-zinc-100">
-                      {tokenLabel(selectedOriginAsset)}
-                    </p>
-                    <p className="text-xs text-zinc-500">Source payment</p>
-                  </div>
-                </div>
-                <ArrowRightLeft size={18} className="hidden 2xl:block text-zinc-600" />
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center text-emerald-300">
-                    <ShieldCheck size={17} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-zinc-100">{settlementLabel}</p>
-                    <p className="text-xs text-zinc-500">
-                      {quoteDemoDestination ? 'Quote evidence route' : 'Stellar escrow settlement'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {isDealFundingMode && (
-              <div className="rounded-lg border border-zinc-800 bg-black/30 px-3 py-3 text-xs leading-relaxed text-zinc-400">
-                Top-up destination is locked to the deal settlement asset. XLM deals top up Stellar XLM by default; USDC deals top up Stellar USDC only when the wallet and payout path are ready for issued assets.
-                The source asset is what the user pays from. Quote previews are wired for supported 1Click routes; live source-wallet execution is a next step.
-              </div>
-            )}
-
-            <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
-              <div className="flex flex-col 2xl:flex-row 2xl:items-start 2xl:justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-zinc-300">Production payment flow</p>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                    Preview quotes prove 1Click pricing. Live payment unlocks only after the selected source wallet is connected, so refunds return to the same wallet that pays.
-                  </p>
-                </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay from</span>
                 <Tag color={liveSourceWalletReady ? 'emerald' : 'amber'}>
-                  {liveSourceWalletReady ? 'Live route ready' : 'Preview mode'}
+                  {liveSourceWalletReady ? 'Ready' : 'Preview'}
                 </Tag>
               </div>
 
-              <div className="grid grid-cols-1 gap-2">
-                <div className="min-w-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">1. Stellar wallet</p>
-                  <p className="mt-1 break-words text-xs text-emerald-100/80">{hasValidStellarRecipient ? `${shortText(walletAddress)} connected` : 'Connect Stellar wallet first'}</p>
+              {recommendedTokens.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {recommendedTokens.slice(0, 9).map((token) => {
+                    const selected = token.assetId === originAsset;
+                    return (
+                      <button
+                        key={token.assetId}
+                        type="button"
+                        onClick={() => {
+                          setSourceChain(token.blockchain);
+                          setOriginAsset(token.assetId);
+                          setSourceAmountTouched(false);
+                          setQuote(null);
+                          setStatus(null);
+                          setError(null);
+                        }}
+                        className={`shrink-0 rounded-lg border px-3 py-2 text-left transition ${
+                          selected
+                            ? 'border-blue-400 bg-blue-500/15 text-blue-100'
+                            : 'border-zinc-800 bg-zinc-950/60 text-zinc-300 hover:border-blue-500/40 hover:text-blue-100'
+                        }`}
+                      >
+                        <span className="block text-xs font-black">{token.symbol}</span>
+                        <span className="block text-[9px] uppercase tracking-widest text-zinc-500">{chainLabel(token.blockchain)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className={`rounded-lg border px-3 py-2 ${
-                  sourceAssetAvailable ? 'border-blue-500/20 bg-blue-500/10' : 'border-zinc-800 bg-zinc-950/60'
-                }`}>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${sourceAssetAvailable ? 'text-blue-200' : 'text-zinc-500'}`}>2. Source route</p>
-                  <p className={`mt-1 break-words text-xs ${sourceAssetAvailable ? 'text-blue-100/80' : 'text-zinc-500'}`}>
-                    {sourceAssetAvailable ? tokenLabel(selectedOriginAsset) : 'Choose source chain and asset'}
-                  </p>
+              )}
+
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">You pay</span>
+                  {sourceAssetAvailable && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                      {selectedRouteRecommended ? 'recommended' : '1Click route'}
+                    </span>
+                  )}
                 </div>
-                <div className={`rounded-lg border px-3 py-2 ${
-                  liveSourceWalletReady ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-amber-500/20 bg-amber-500/10'
-                }`}>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${liveSourceWalletReady ? 'text-emerald-200' : 'text-amber-200'}`}>3. Source wallet</p>
-                  <p className={`mt-1 break-words text-xs ${liveSourceWalletReady ? 'text-emerald-100/80' : 'text-amber-100/80'}`}>
-                    {liveSourceWalletReady
-                      ? `${shortText(evmSourceWallet.address)} ready for live quote`
-                      : sourceConnectorKind === 'evm'
-                        ? 'Connect EVM wallet to unlock live payment'
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(9.5rem,14rem)] gap-3">
+                  <input
+                    value={sourceAmount}
+                    onChange={(event) => {
+                      setSourceAmount(event.target.value.replace(/[^\d.]/g, ''));
+                      setSourceAmountTouched(true);
+                      setQuote(null);
+                      setStatus(null);
+                      setError(null);
+                    }}
+                    className="min-w-0 bg-transparent text-3xl font-mono text-zinc-100 outline-none"
+                    placeholder="0"
+                  />
+                  <div className="grid grid-cols-1 gap-2">
+                    <select
+                      value={sourceChain}
+                      onChange={(event) => {
+                        setSourceChain(event.target.value);
+                        setSourceAmountTouched(false);
+                        setQuote(null);
+                        setStatus(null);
+                        setError(null);
+                      }}
+                      disabled={loadingTokens || sourceChains.length === 0}
+                      className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2 text-xs font-bold text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                    >
+                      {sourceChains.length === 0 ? (
+                        <option value="">{loadingTokens ? 'Loading chains...' : 'No chains'}</option>
+                      ) : (
+                        sourceChains.map((chain) => (
+                          <option key={chain} value={chain}>
+                            {chainLabel(chain)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <select
+                      value={originAsset}
+                      onChange={(event) => {
+                        setOriginAsset(event.target.value);
+                        setSourceAmountTouched(false);
+                        setQuote(null);
+                        setStatus(null);
+                        setError(null);
+                      }}
+                      disabled={loadingTokens || sourceTokensForChain.length === 0}
+                      className="w-full min-w-0 bg-[#09090b] border border-zinc-800 focus:border-blue-500/50 rounded-lg px-3 py-2 text-xs font-bold text-zinc-100 outline-none disabled:cursor-not-allowed disabled:text-zinc-600"
+                    >
+                      {sourceTokensForChain.length === 0 ? (
+                        <option value="">{loadingTokens ? 'Loading assets...' : 'No assets'}</option>
+                      ) : (
+                        sourceTokensForChain.map((token) => (
+                          <option key={token.assetId} value={token.assetId}>
+                            {tokenSelectLabel(token)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative flex justify-center">
+                <div className="absolute inset-x-0 top-1/2 border-t border-zinc-800" />
+                <div className="relative h-9 w-9 rounded-full border border-zinc-700 bg-zinc-950 flex items-center justify-center text-zinc-400">
+                  <ArrowRightLeft size={16} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200/80">You receive</span>
+                  <Tag color="emerald">Stellar wallet</Tag>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-2xl font-black text-emerald-100">{settlementLabel}</p>
+                    <p className="mt-1 text-xs text-emerald-100/60">
+                      {quoteDemoDestination ? 'Quote evidence only' : `To ${shortText(walletAddress)}`}
+                    </p>
+                  </div>
+                  <ShieldCheck className="shrink-0 text-emerald-300" size={24} />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-black/30 p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Source wallet</p>
+                    <p className="mt-1 break-words text-sm text-zinc-300">
+                      {sourceUsesEvmWallet
+                        ? evmSourceWallet.isConnected
+                          ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
+                          : `Connect wallet for ${chainLabel(selectedOriginAsset?.blockchain)} live payment`
                         : sourceConnectorKind === 'near'
                           ? 'NEAR wallet connector is next; preview quote works now'
                           : sourceConnectorKind === 'solana'
                             ? 'Solana wallet connector is next; preview quote works now'
                             : 'Live connector not available for this source yet'}
-                  </p>
+                    </p>
+                  </div>
+                  {sourceUsesEvmWallet && (
+                  <Button
+                      onClick={evmSourceWallet.isConnected ? evmSourceWallet.disconnect : evmSourceWallet.connect}
+                      variant={evmSourceWallet.isConnected ? 'secondary' : 'primary'}
+                      className="w-full sm:w-auto py-3 text-xs"
+                      icon={evmSourceWallet.isConnecting ? Loader2 : Wallet}
+                    >
+                      {evmSourceWallet.isConnecting
+                        ? 'Connecting...'
+                        : evmSourceWallet.isConnected
+                          ? 'Disconnect'
+                          : evmSourceWallet.isAvailable
+                            ? 'Connect'
+                            : 'Detect Wallet'}
+                    </Button>
+                  )}
                 </div>
-                <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">4. Escrow funding</p>
-                  <p className="mt-1 break-words text-xs text-zinc-500">
-                    {isDealFundingMode ? 'After top-up settles, click Fund Deal from the Stellar wallet.' : 'After top-up settles, open Deals and fund escrow from the Stellar wallet.'}
-                  </p>
-                </div>
+                {evmSourceWallet.error && (
+                  <p className="mt-3 text-xs leading-relaxed text-red-300">{evmSourceWallet.error}</p>
+                )}
               </div>
+
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Source assets come from live 1Click discovery. This tops up your Stellar wallet; escrow locks later when you click Fund Deal.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {sourceAssetAvailable && <Tag color={selectedRouteRecommended ? 'blue' : 'zinc'}>{selectedRouteRecommended ? 'Recommended route' : 'Discovered route'}</Tag>}
+                {selectedRouteRecentlyQuoted && <Tag color="emerald">Recently quoted</Tag>}
+                {!sourceAmountTouched && <Tag color="zinc">Estimated from live prices</Tag>}
+              </div>
+              {loadingTokens && <p className="text-xs text-blue-300">Loading supported 1Click source assets...</p>}
+              {!loadingTokens && sourceTokens.length === 0 && (
+                <p className="text-xs text-amber-300">No source assets are available from token discovery right now.</p>
+              )}
             </div>
 
             {settlementRouteMismatch && (
@@ -1219,43 +1180,6 @@ export function NearIntentsPanel({
             {sourceAssetAvailable && !hasSourceRefundRoute && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 Quote preview only: live source payment requires the source wallet connection so failed routes can refund there automatically.
-              </div>
-            )}
-
-            {sourceUsesEvmWallet && (
-              <div className="rounded-xl border border-zinc-800 bg-black/30 p-4 space-y-3">
-                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Source wallet</p>
-                    <p className="mt-1 break-words text-sm text-zinc-300">
-                      {evmSourceWallet.isConnected
-                        ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
-                        : `Connect an EVM wallet before requesting a live ${chainLabel(selectedOriginAsset?.blockchain)} quote.`}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={evmSourceWallet.isConnected ? evmSourceWallet.disconnect : evmSourceWallet.connect}
-                    variant={evmSourceWallet.isConnected ? 'secondary' : 'primary'}
-                    className="py-3 text-xs"
-                    icon={evmSourceWallet.isConnecting ? Loader2 : Wallet}
-                  >
-                    {evmSourceWallet.isConnecting
-                      ? 'Connecting...'
-                      : evmSourceWallet.isConnected
-                        ? 'Disconnect Source'
-                        : evmSourceWallet.isAvailable
-                          ? 'Connect EVM Wallet'
-                          : 'Detect EVM Wallet'}
-                  </Button>
-                </div>
-                {evmSourceWallet.error && (
-                  <p className="text-xs leading-relaxed text-red-300">{evmSourceWallet.error}</p>
-                )}
-                {evmSourceWallet.isConnected && (
-                  <p className="text-xs leading-relaxed text-emerald-200/80">
-                    Live quote refunds will return to this source wallet. Before manually sending payment, switch the wallet to {chainLabel(selectedOriginAsset?.blockchain)} if needed.
-                  </p>
-                )}
               </div>
             )}
 
