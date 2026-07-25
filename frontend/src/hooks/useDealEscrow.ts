@@ -215,22 +215,23 @@ export function useDealEscrow(
           signedXdr,
           NETWORK_PASSPHRASE
         );
+        const submittedTxHash = signedTx.hash().toString('hex');
         const sendResult = await sorobanServer.sendTransaction(signedTx);
 
         if (sendResult.status === 'ERROR') {
           throw new Error(`${capitalize(OP_LABELS[opName])} submission failed. The network may be congested — please try again.`);
         }
-        options.onSubmitted?.(sendResult.hash);
+        options.onSubmitted?.(sendResult.hash || submittedTxHash);
 
         // Wait for confirmation with timeout
         let getResult: any;
         let retries = 0;
         do {
           if (retries >= MAX_TX_POLL_RETRIES) {
-            throw new Error(`${capitalize(OP_LABELS[opName])} confirmation timed out. The transaction may still succeed — check Stellar Explorer: ${getExplorerTxLink(sendResult.hash)}`);
+            throw new Error(`${capitalize(OP_LABELS[opName])} confirmation timed out. The transaction may still succeed — check Stellar Explorer: ${getExplorerTxLink(sendResult.hash || submittedTxHash)}`);
           }
           await new Promise((r) => setTimeout(r, 2000));
-          getResult = await sorobanServer.getTransaction(sendResult.hash);
+          getResult = await sorobanServer.getTransaction(sendResult.hash || submittedTxHash);
           retries++;
         } while (getResult.status === rpc.Api.GetTransactionStatus.NOT_FOUND);
 
@@ -239,7 +240,7 @@ export function useDealEscrow(
         }
 
         // Attach the hash from sendResult (getTransaction doesn't always include it)
-        getResult._txHash = sendResult.hash;
+        getResult._txHash = sendResult.hash || submittedTxHash;
 
         // Immediately refresh wallet balance after a confirmed transaction
         if (getResult.status === rpc.Api.GetTransactionStatus.SUCCESS) {
