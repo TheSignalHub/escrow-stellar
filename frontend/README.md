@@ -46,6 +46,9 @@ VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_STELLAR_EXPLORER_URL=https://stellar.expert/explorer/testnet
 VITE_FRIENDBOT_URL=https://friendbot.stellar.org
+# Optional override. By default the app derives native XLM SAC by network:
+# testnet CDLZFC3S...HHGCYSC, mainnet CAS3J7GY...XOWMA.
+VITE_XLM_SAC_ADDRESS=
 
 # Optional public preset payout addresses for mainnet smoke deals.
 # Leave blank to use the pilot ops wallet fallback; set to separate funded

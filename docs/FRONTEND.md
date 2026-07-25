@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 20:15 BST | Mainnet XLM SAC selection | Made native XLM SAC selection network-aware so mainnet XLM deals use `CAS3J7GY...XOWMA` instead of the testnet SAC. Added a funding guard/error for already-created mainnet deals that reference the testnet XLM SAC. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet native SAC `CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA`. |
 | 2026-07-25 19:29 BST | NEAR Intents completed badge | Changed the terminal 1Click settlement badge from the internal **Awaiting escrow event** amber state to a green **Swap completed** state while keeping the separate Fund Deal reminder below. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:24 BST | NEAR Intents settlement success copy | Replaced internal reconcile/indexing language in the top-up success banner with a user-facing next step: funds reached the Stellar wallet, then open Deals and fund escrow. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:18 BST | NEAR Intents pay-card responsive fix | Changed the Add Funds **You pay** card so source amount and source selectors stack cleanly in narrow columns, preventing the chain/asset dropdowns from overlapping the amount field. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -355,7 +356,7 @@ Core Stellar SDK configuration and utilities:
 | `HORIZON_URL` | From `VITE_STELLAR_HORIZON_URL`; defaults to Stellar public testnet Horizon in testnet mode |
 | `EXPLORER_URL` | From `VITE_STELLAR_EXPLORER_URL`; defaults to Stellar Expert testnet/public URL by network |
 | `FRIENDBOT_URL` | Testnet-only; empty outside testnet |
-| `XLM_SAC_ADDRESS` | Native XLM as Stellar Asset Contract |
+| `XLM_SAC_ADDRESS` | Native XLM as Stellar Asset Contract, derived by network unless `VITE_XLM_SAC_ADDRESS` overrides it |
 | `DEAL_ESCROW_CONTRACT` | From `VITE_DEAL_ESCROW_CONTRACT` |
 | `DEMO_ACCOUNTS` | Pre-generated provider/connector testnet addresses |
 | `MAINNET_PILOT_ACCOUNTS` | Public mainnet preset provider/connector addresses from `VITE_MAINNET_DEMO_PROVIDER_ADDRESS` / `VITE_MAINNET_DEMO_CONNECTOR_ADDRESS`, with pilot ops-wallet fallback |

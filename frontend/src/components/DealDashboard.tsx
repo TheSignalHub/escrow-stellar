@@ -10,6 +10,7 @@ import {
   SETTLEMENT_TOKEN_SYMBOL,
   USDC_TOKEN_ADDRESS,
   XLM_SAC_ADDRESS,
+  TESTNET_XLM_SAC_ADDRESS,
   IS_TESTNET,
   accountExists,
   getKnownTrustlineAsset,
@@ -304,6 +305,9 @@ export function DealDashboard({
   };
 
   const getWalletSettlementBalance = (deal: DealData) => {
+    if (!IS_TESTNET && deal.token === TESTNET_XLM_SAC_ADDRESS) {
+      return { label: 'invalid testnet XLM token', available: null, known: false, invalidNetworkToken: true };
+    }
     if (deal.token === USDC_TOKEN_ADDRESS) {
       return { label: SETTLEMENT_TOKEN_SYMBOL, available: parseFloat(usdcBalance), known: true };
     }
@@ -324,6 +328,15 @@ export function DealDashboard({
 
     const settlementBalance = getWalletSettlementBalance(selectedDeal);
     const available = settlementBalance.available;
+
+    if (settlementBalance.invalidNetworkToken) {
+      setError('This deal was created with the testnet XLM token on mainnet and cannot be funded.');
+      setErrorContext({
+        title: 'Deal Funding Failed',
+        suggestion: 'Create a new XLM deal after the latest deployment. New mainnet XLM deals use the correct native XLM contract.',
+      });
+      return;
+    }
 
     if (available !== null && available < requiredAmount) {
       setError(`Insufficient balance: need ${requiredAmount.toFixed(2)} ${settlementBalance.label}, have ${available.toFixed(2)} ${settlementBalance.label}.`);

@@ -129,6 +129,9 @@ function friendlyError(simResult: any, operation: EscrowOperation): string {
 
   // 2. Fallback to generic simulation error checks, enriched with operation label
   const label = OP_LABELS[operation];
+  if (operation === 'fund_deal' && raw.includes('transfer') && raw.includes('non-existing value for contract instance')) {
+    return 'This deal uses a token contract that is not active on the current Stellar network. Recreate the deal with the current settlement asset.';
+  }
   if (raw.includes('Budget')) return `Transaction too expensive for ${label}. Try a smaller amount.`;
   if (raw.includes('Storage')) return 'Contract data not found. The deal may not exist on-chain.';
   if (raw.includes('Expired')) return `Transaction expired while attempting ${label}. Please try again.`;

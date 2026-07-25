@@ -30,8 +30,13 @@ export const EXPLORER_URL =
   import.meta.env.VITE_STELLAR_EXPLORER_URL ||
   (IS_TESTNET ? 'https://stellar.expert/explorer/testnet' : 'https://stellar.expert/explorer/public');
 
-// XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban
-export const XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+// XLM Native SAC (Stellar Asset Contract) — wraps native XLM for Soroban.
+// The native SAC id is network-specific; never reuse the testnet id on mainnet.
+export const TESTNET_XLM_SAC_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+export const MAINNET_XLM_SAC_ADDRESS = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA';
+export const XLM_SAC_ADDRESS =
+  import.meta.env.VITE_XLM_SAC_ADDRESS ||
+  (IS_TESTNET ? TESTNET_XLM_SAC_ADDRESS : MAINNET_XLM_SAC_ADDRESS);
 export const CIRCLE_USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 export interface ClassicTrustlineAsset {
   symbol: string;
