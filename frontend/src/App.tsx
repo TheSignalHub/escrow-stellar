@@ -515,6 +515,7 @@ export default function App() {
                   walletAddress={wallet.address}
                   onCreateDeal={escrow.createDeal}
                   onDealCreated={handleDealCreated}
+                  onOpenDeals={() => setActiveTab('dashboard')}
                 />
               )}
 

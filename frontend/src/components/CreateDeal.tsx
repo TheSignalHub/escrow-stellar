@@ -79,9 +79,10 @@ interface Props {
     options?: { onSubmitted?: (txHash: string) => void }
   ) => Promise<{ dealId: number; txHash: string }>;
   onDealCreated?: (dealId: number) => void;
+  onOpenDeals?: () => void;
 }
 
-export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props) {
+export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated, onOpenDeals }: Props) {
   const toast = useToast();
   const [dealTitle, setDealTitle] = useState('');
   const [dealDescription, setDealDescription] = useState('');
@@ -100,6 +101,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
   const [validating, setValidating] = useState(false);
   const [txStep, setTxStep] = useState<'signing' | 'submitting' | 'confirming' | null>(null);
   const [submittedTxHash, setSubmittedTxHash] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ txHash: string; message: string } | null>(null);
   const [result, setResult] = useState<{ dealId: number; txHash: string } | null>(null);
   const [error, setError] = useState('');
   const [showReview, setShowReview] = useState(false);
@@ -133,6 +135,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
     setConnectorShare(scenario.connectorShare);
     setMilestones(scenario.milestones.map((m) => ({ ...m })));
     setError('');
+    setPendingConfirmation(null);
   };
 
   const updateMilestonePercentage = (index: number, value: number) => {
@@ -221,7 +224,9 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
     setLoading(true);
     setError('');
     setSubmittedTxHash('');
+    setPendingConfirmation(null);
     setTxStep('signing');
+    let lastSubmittedHash = '';
     try {
       const milestoneAmounts = milestones.map((m) =>
         toContractAmount((totalAmount * m.percentage) / 100)
@@ -237,6 +242,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
         milestoneAmounts,
         {
           onSubmitted: (txHash) => {
+            lastSubmittedHash = txHash;
             setSubmittedTxHash(txHash);
             setTxStep('confirming');
           },
@@ -259,8 +265,20 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
     } catch (err: any) {
       console.error('[CreateDeal] Failed:', err);
       const msg = err.message || 'Failed to create deal';
-      setError(msg);
-      toast(`Deal creation failed: ${msg.slice(0, 80)}`, 'error');
+      const explorerHash = msg.match(/\/tx\/([a-fA-F0-9]{64})/)?.[1];
+      const recoveryHash = explorerHash || lastSubmittedHash || submittedTxHash;
+      const timedOut = msg.toLowerCase().includes('confirmation timed out');
+
+      if (timedOut && recoveryHash) {
+        setPendingConfirmation({
+          txHash: recoveryHash,
+          message: 'Confirmation was not returned before timeout. The transaction may still land, or it may not have been accepted by the network.',
+        });
+        toast('Deal creation is unconfirmed. Check Deals or wallet activity before retrying.', 'info');
+      } else {
+        setError(msg);
+        toast(`Deal creation failed: ${msg.slice(0, 80)}`, 'error');
+      }
     } finally {
       setLoading(false);
       setTxStep(null);
@@ -427,6 +445,42 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                   </div>
                 )}
 
+                {pendingConfirmation && (
+                  <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-300" />
+                      <div className="space-y-3">
+                        <div>
+                          <p className="font-bold text-amber-100">Transaction not confirmed yet</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
+                            {pendingConfirmation.message} Check your wallet activity or the explorer before submitting again.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={getExplorerTxLink(pendingConfirmation.txHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 font-mono text-[11px] font-bold text-amber-100 hover:border-amber-300/60"
+                          >
+                            View tx {pendingConfirmation.txHash.slice(0, 10)}...
+                            <ArrowRight size={13} />
+                          </a>
+                          {onOpenDeals && (
+                            <button
+                              type="button"
+                              onClick={onOpenDeals}
+                              className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-200 hover:border-emerald-500/50 hover:text-emerald-300"
+                            >
+                              Check Deals
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {txStep && (
                   <div className="mb-6 space-y-3 font-mono text-sm">
                     <div className={`flex items-center gap-3 ${txStep === 'signing' ? 'text-emerald-400' : 'text-zinc-500'}`}>
@@ -467,7 +521,7 @@ export function CreateDeal({ walletAddress, onCreateDeal, onDealCreated }: Props
                     className="w-full py-4 text-base"
                     icon={ShieldCheck}
                   >
-                    {loading ? 'Creating Deal...' : 'Create Deal on Stellar'}
+                    {loading ? 'Creating Deal...' : pendingConfirmation ? 'Retry Create Deal' : 'Create Deal on Stellar'}
                   </Button>
                   <Button
                     onClick={() => setShowReview(false)}

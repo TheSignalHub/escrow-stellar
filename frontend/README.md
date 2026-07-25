@@ -199,6 +199,10 @@ Stellar before a browser-signed trustline can be created. Inactive wallets show
 an XLM activation reminder first; active wallets missing Circle USDC show the
 one-click USDC trustline action.
 
+On slower mainnet RPC responses, Create Deal may stop polling before finality.
+In that case the review panel keeps the submitted hash, links to Stellar
+Explorer, and lets the user check Deals/wallet activity before retrying.
+
 Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
 card when Privy onramps are enabled. The wallet overview separates the Stellar
 escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's

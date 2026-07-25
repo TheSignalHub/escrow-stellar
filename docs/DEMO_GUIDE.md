@@ -172,6 +172,11 @@ Total:               100.0%
 5. On success, see the animated checkmark with your **Deal ID** and **transaction hash**
 6. Click **View Deal Dashboard** to navigate to the Deals tab
 
+If mainnet confirmation takes too long, the review panel keeps the submitted
+hash and shows **Transaction not confirmed yet** with an Explorer link. Check
+the wallet activity or Deals list before retrying, because a delayed
+transaction may still land after the browser stops polling.
+
 **What happens on-chain**: The `create_deal` contract function stores the deal with all participants, fee parameters, and milestone amounts. Each milestone starts in `Pending` status. The deal counter increments.
 
 Payment preparation does not run during Create Deal. If the client needs to swap
