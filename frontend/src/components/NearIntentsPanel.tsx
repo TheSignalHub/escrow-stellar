@@ -1398,7 +1398,9 @@ export function NearIntentsPanel({
               <div>
                 <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Payment status</h4>
                 <p className="mt-1 text-[10px] text-zinc-500">
-                  {isDealFundingMode ? 'Escrow updates after Stellar settlement is indexed.' : 'Wallet top-up status updates after the source payment route progresses.'}
+                  {isDealFundingMode
+                    ? 'Escrow updates after Stellar settlement is indexed. This can take a few minutes.'
+                    : 'Wallet top-up status updates as 1Click detects and routes payment. This can take a few minutes.'}
                 </p>
               </div>
               {settlementReported && (

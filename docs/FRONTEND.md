@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-25 19:12 BST | NEAR Intents status wait guidance | Added concise waiting-time guidance to the payment status copy so users understand that 1Click detection, routing, and Stellar settlement can take a few minutes after source payment submission. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:05 BST | NEAR Intents warning copy | Shortened the preview-only and source-wallet-required warning text in the Add Funds panel so the swap flow reads less like internal documentation while preserving the live-payment gate. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 18:50 BST | NEAR Intents swap panel polish | Reworked the Add Funds NEAR Intents input side into a cleaner swap-style surface with route chips, a larger **You pay** amount field, locked **You receive** settlement card, and compact source-wallet connection state. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 18:34 BST | NEAR Intents post-swap crash fix | Replaced the last unsafe nested status read in the settlement-complete banner with the normalized provider status so successful source swaps cannot crash the route tracking UI. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
