@@ -168,8 +168,8 @@ for disputed funds; those remain in the protected `/admin` dispute-operations
 console and admin-signed contract path. Dispute reasons are stored off-chain in
 the indexer/support database, not in public Soroban events.
 
-Final-tranche unhappy-path QA coverage and remaining evidence tasks are tracked
-in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-2026-07-01.md).
+QA should cover dispute filing, role mismatches, insufficient balances, signing
+cancellation, and provider failures before any public release.
 
 ---
 

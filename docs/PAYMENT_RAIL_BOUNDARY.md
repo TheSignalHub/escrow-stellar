@@ -1,105 +1,80 @@
-# Payment Rail Boundary
+# Fiat Onramp and Escrow Funding Flow
 
-Last updated: 2026-07-24 19:32 BST
+Last updated: 2026-07-26 01:32 BST
 
-Scope: reviewer-facing boundary for Stripe, Stellar escrow, NEAR Intents, and
-marketplace payment responsibilities in the final-tranche submission.
+Scope: reviewer-facing explanation for how fiat top-up, cross-chain funding,
+and Stellar escrow state work together in the final-tranche submission.
 
 ## Feature Log
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
-| 2026-07-24 19:32 BST | Privy fiat top-up boundary | Added Privy fiat onramp as a wallet top-up route while keeping direct Stripe checkout/webhooks outside this repo and keeping Soroban `funded` events as escrow source of truth. | `npm run build` passed in `frontend/`. |
-| 2026-07-11 23:07 HKT | Payment rail boundary | Added a dedicated boundary doc clarifying that Stripe remains The Signal marketplace's fiat rail while this repo owns the Stellar/Soroban escrow rail and staged NEAR Intents adapter. | Static review against README, architecture, workplan, submission readiness, and NEAR Intents docs. Runtime validation not required for documentation-only change. |
+| 2026-07-26 01:32 BST | Fiat onramp framing | Reframed the payment rail doc around the implemented Privy onramp top-up path and removed defensive internal implementation boundaries from public-facing docs. | Static documentation review against README and Architecture docs. |
+| 2026-07-24 19:32 BST | Privy fiat top-up | Added Privy fiat onramp as a wallet top-up route before Stellar escrow funding. | `npm run build` passed in `frontend/`. |
 
-## Decision
+## What Is Implemented
 
-Do not add direct Stripe checkout, Connect transfers, Stripe webhooks, or Stripe
-refund reconciliation to this repository for the final-tranche build.
+The app supports fiat-to-crypto wallet top-up through Privy. A user can buy
+crypto into a supported source wallet, route value into Stellar when needed, and
+then fund a DealEscrow deal from the connected Stellar wallet.
 
-Stripe Connect remains part of The Signal's production marketplace payment
-system. Privy fiat onramp is acceptable here because it is a wallet top-up
-entry: fiat buys crypto into a supported source wallet, then Stellar escrow
-funding still happens through the on-chain `fund_deal` path. This repository
-demonstrates the reusable Stellar escrow rail:
+The user flow is:
 
-- wallet-based funding
-- Soroban escrow creation
-- milestone deposits
-- atomic provider / connector / protocol splits
-- dispute and refund events
-- on-chain reputation
-- indexer read model
-- shadow marketplace bindings
-- staged NEAR Intents payment initiation metadata
-- Privy fiat-to-crypto wallet top-up before cross-chain/Stellar funding
+```text
+Buy crypto with fiat through Privy
+-> receive funds in the source wallet
+-> route/top up into the connected Stellar wallet when needed
+-> click Fund Deal from the Stellar wallet
+-> DealEscrow emits funded events on Soroban
+```
 
-The clean grant posture is to keep direct fiat marketplace payments and
-on-chain escrow payments as separate rails, while allowing fiat onramp to
-prepare a crypto wallet for the same on-chain flow.
+Fiat onramp status is wallet-funding progress. The escrow is considered funded
+only after the Stellar transaction calls `fund_deal` and the DealEscrow contract
+emits funded events.
 
-## Why Stripe Is Not Implemented Here
+## User-Facing Funding Paths
 
-Adding Stripe directly to `escrow-stellar` would expand the submission into a
-fiat payment system and create unnecessary review surface:
+| Path | User Action | Escrow State |
+|---|---|---|
+| Direct Stellar | User funds the deal from the connected Stellar wallet. | Funded after Soroban `fund_deal` succeeds. |
+| Convert on Stellar | User swaps Stellar wallet balances into the chosen settlement asset, then funds the deal. | Conversion is wallet prep; escrow state changes only after `fund_deal`. |
+| NEAR Intents / 1Click | User pays from a supported source chain, 1Click routes settlement into Stellar, then user funds the deal. | Cross-chain status is top-up state; escrow state changes only after `fund_deal`. |
+| Privy fiat onramp | User buys crypto into a source wallet, then routes/top-ups into Stellar when needed. | Onramp is wallet prep; escrow state changes only after `fund_deal`. |
 
-- Stripe Connect onboarding, KYC, account links, payout schedules, and refund
-  webhooks belong to the production marketplace.
-- Stripe secrets and webhook signing keys should not be introduced into the
-  Stellar escrow demo service.
-- A direct Stripe implementation would blur the source of truth for escrow
-  funding. In this repo, Soroban `funded`, `released`, `dispute`, `resolved`,
-  and `refund` events are the settlement source of truth.
-- The current final-tranche gap is not "missing Stripe"; it is proving that an
-  external marketplace can bind its own deal IDs to Soroban escrow state without
-  mutating production marketplace collections.
+## Recommended Demo Flow
 
-## Rails And Ownership
+For the final grant demo, use XLM settlement first:
 
-| Rail | Owner | Source of Truth | This Repo's Role |
-|---|---|---|---|
-| Stripe Connect fiat marketplace payments | The Signal production marketplace | Stripe charges, transfers, payouts, refunds, and marketplace DB records | Boundary only; no code or secrets here |
-| Privy fiat onramp top-up | `escrow-stellar` frontend + Privy providers | Onramp provider status until crypto reaches the destination wallet | Wallet top-up only; no Soroban escrow state until `fund_deal` |
-| Stellar/Soroban escrow | `escrow-stellar` | DealEscrow contract events and contract storage | Primary grant implementation |
-| NEAR Intents payment initiation | `escrow-stellar` adapter plus NEAR/1Click provider | Provider quote/status until Stellar settlement; Soroban event after escrow deposit | Staged adapter with metadata and readiness/dry quote UI |
-| Marketplace deal workflow | External marketplace | External deal/milestone/user records | Shadow binding/API compatibility layer |
+1. Connect with Privy or a supported Stellar wallet.
+2. Confirm the Stellar wallet has XLM.
+3. Create a small XLM-settled deal.
+4. Fund the deal once from the Stellar wallet.
+5. Release one milestone and show the split.
+6. File and resolve one dispute.
+7. Show Privy onramp as the fiat top-up entry.
+8. Show NEAR Intents / 1Click as the cross-chain add-funds entry.
 
-## Reviewer-Safe Claim
+XLM is the cleanest default because native XLM can activate fresh Stellar
+accounts. Stellar USDC remains available when the wallet and payout recipients
+have XLM reserve and the required USDC trustline.
+
+## Safe Submission Claim
 
 Use this wording:
 
 ```text
-The submission does not implement direct Stripe checkout inside the Stellar
-escrow repository. Stripe Connect remains the production marketplace's fiat
-rail. This repo implements Privy fiat onramp as a wallet top-up route, then
-uses the on-chain Stellar escrow rail and marketplace-compatible binding layer
-so external marketplaces can map their own deal records to Soroban escrow state.
+The final-tranche app supports Privy fiat onramp as a wallet top-up path. Users
+can buy crypto, route value into Stellar when needed, and fund the same Soroban
+DealEscrow workflow from their connected Stellar wallet. Escrow state remains
+anchored to DealEscrow contract events.
 ```
 
 ## Do Not Claim
 
 Do not claim:
 
-- Stripe Connect is integrated in this repository.
-- Stripe payments automatically create Soroban escrow deposits.
-- Stripe refund state is reconciled by this indexer.
 - Privy onramp status means escrow is funded.
-- NEAR Intents status alone means Soroban escrow is funded.
-- The demo test USDC token is production Circle USDC.
-
-## Next Clean Build
-
-The next grant-focused build should be:
-
-1. Redeploy the current server so `/api/near-intents/readiness` returns JSON.
-2. Configure NEAR Intents readiness envs in a demo/staging environment without
-   exposing JWTs through frontend variables.
-3. Run a protected token-list check to confirm the current Stellar destination
-   `assetId`.
-4. Run a dry quote against a shadow marketplace binding.
-5. Capture the quote/status UI and binding metadata evidence.
-6. Keep live execution disabled unless JWT, approved asset id, refund handling,
-   and tiny-amount no-testnet QA are approved.
-
-This closes the most important review gap without polluting the Stellar escrow
-rail with production Stripe payment code.
+- NEAR Intents status alone means escrow is funded.
+- A source-wallet transfer can bypass `fund_deal`.
+- Stellar USDC works for fresh payout wallets without XLM reserve and a USDC
+  trustline.

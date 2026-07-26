@@ -2,14 +2,15 @@
 
 ## System Overview
 
-The Signal's Stellar integration follows a dual-rail architecture: the production marketplace runs on traditional payment rails (Stripe Connect), while this Soroban implementation provides a trustless, on-chain alternative for the same escrow flow. Both systems implement identical business logic — the same 3-party split math, the same milestone lifecycle, and the same reputation tracking.
+The Signal's Stellar integration provides a trustless, on-chain escrow rail for
+milestone deals. The app supports native Stellar funding, Stellar asset
+conversion, NEAR Intents cross-chain top-ups, and Privy fiat onramp top-ups that
+can feed the same DealEscrow lifecycle. The contract owns the escrow source of
+truth: create, fund, release, dispute, resolve, and reputation events all land
+on Soroban.
 
-Stripe Connect is a production marketplace rail, not a dependency of this
-repository. The final-tranche submission keeps Stripe out of `escrow-stellar`
-and proves the on-chain rail through shadow marketplace bindings, Soroban
-events, and the NEAR Intents staged adapter. See
-[`PAYMENT_RAIL_BOUNDARY.md`](PAYMENT_RAIL_BOUNDARY.md) for the reviewer-facing
-ownership split.
+See [`PAYMENT_RAIL_BOUNDARY.md`](PAYMENT_RAIL_BOUNDARY.md) for the fiat onramp
+and cross-chain funding flow.
 
 ## Design Principles
 

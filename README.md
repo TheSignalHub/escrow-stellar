@@ -34,21 +34,11 @@ Mainnet contract:     https://stellar.expert/explorer/public/contract/CDZSYODEHR
 Testnet contract:     https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 ```
 
-Coolify deployment env and operations are documented in
-[`docs/COOLIFY_DEMO_DEPLOYMENT.md`](docs/COOLIFY_DEMO_DEPLOYMENT.md). Keep live
-server secrets in Coolify or a secrets manager, not in git.
-
 `/market_dashboard` is intentionally public and read-only for review. `/admin`
 is a protected dispute-operations console with open-dispute evidence,
 resolution/refund actions, and manual indexer controls. It is protected by
-`ADMIN_USERNAME` / `ADMIN_PASSWORD`. By default it generates admin-ready
-commands without holding signing keys; a testnet/operator deployment can enable
-server-side admin execution with `ADMIN_RESOLUTION_EXECUTION_ENABLED=true`,
-`ADMIN_STELLAR_SECRET_KEY`, and, for mainnet only,
-`ADMIN_RESOLUTION_ALLOW_MAINNET=true`. Mainnet server execution defaults to a
-`10000` stroop inclusion fee; override with
-`ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS` if the RPC/provider policy requires a
-different value.
+operator authentication. Resolution actions require the configured admin wallet
+to sign on Stellar.
 
 Backend readiness can be checked before frontend QA from `indexer/`:
 
@@ -57,8 +47,8 @@ BACKEND_BASE_URL=https://stellar.thesignal.directory npm run smoke:backend
 ```
 
 The smoke command checks health, NEAR readiness, indexer/dashboard state,
-dispute-event evidence, shadow bindings, and optional protected NEAR dry-quote
-or indexer actions when admin credentials are supplied.
+dispute-event evidence, and optional protected NEAR quote or indexer actions
+when admin credentials are supplied.
 
 Reference testnet funding configuration:
 
@@ -103,52 +93,16 @@ exporting private keys.
 Settlement asset policy, precision, minimum amount, and trustline notes are in
 [`docs/SETTLEMENT_ASSET_POLICY.md`](docs/SETTLEMENT_ASSET_POLICY.md).
 
-## Marketplace Integration Positioning
+NEAR Intents / 1Click is integrated as a cross-chain add-funds path. A user can
+choose a supported source chain and asset, request a live route, send the source
+payment from a connected browser wallet, track routing progress, and then fund
+the Stellar escrow from the connected Stellar wallet after settlement arrives.
+Escrow state remains anchored to the Soroban DealEscrow contract and its funded
+events. See [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
-This repo deliberately keeps the Stellar settlement rail isolated from The
-Signal's production marketplace database. That is a product and safety choice:
-the live marketplace remains responsible for discovery, KYB, matching, client
-qualification, and commercial workflow, while this repo proves the reusable
-escrow rail.
-
-For final-tranche validation, the intended path is a marketplace-compatible
-binding layer rather than direct writes into production marketplace
-collections. A marketplace can map its own external deal IDs, milestone IDs,
-provider wallets, connector wallets, and client wallets to Soroban `deal_id`
-values through an adapter/API model. The Signal is the reference marketplace,
-but the rail is designed to be reusable by other service marketplaces.
-
-NEAR Intents is now treated as a required final-tranche integration workstream,
-not an optional deferral. The current repo includes a feature-flagged adapter
-around the official `@defuse-protocol/one-click-sdk-typescript` SDK, protected
-quote/status/deposit/reconcile APIs, binding metadata persistence, and a
-cross-chain top-up entry for choosing source chain/asset, settlement asset,
-quote, payment instructions, and payment status. Wallet Prep now exposes the
-same reusable NEAR Intents panel as a general cross-chain wallet top-up surface,
-while the Deals tab keeps the deal-aware entry where the selected deal,
-remaining balance, and settlement asset are already locked. The NEAR route
-prepares the connected Stellar wallet; the escrow is funded only when the user
-confirms **Fund Deal** and the frontend calls `fund_deal`.
-Refund routing is managed through the source wallet in the production flow,
-with a server fallback reserved for controlled operational testing. Soroban `funded` events
-remain the source of truth for escrow funding, even when NEAR Intents reports
-that a cross-chain payment is moving. Stellar issued assets such as USDC require
-the destination recipient to exist on Stellar and hold the asset trustline
-before a quote can be treated as production-ready; the backend preflights this
-before calling 1Click. When 1Click has no current liquidity for the Stellar
-settlement asset, an explicitly flagged quote-evidence destination can be
-enabled to prove SDK quote creation and signature verification without claiming
-Stellar escrow funding. Live NEAR execution has browser-wallet submission for
-supported EVM native and ERC-20 source routes; NEAR/Solana source execution
-still needs native wallet connectors for direct NEAR/Solana source-wallet execution. See
-[`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
-
-Stripe Connect remains The Signal production marketplace's direct fiat payment
-rail and is not implemented inside this repository. This repo now supports
-Privy fiat onramp as a wallet top-up path: fiat buys crypto into a supported
-source wallet, then escrow funding still happens on-chain through Stellar
-`fund_deal`. This keeps Stripe checkout/webhooks out of the grant repo while
-supporting a fiat-to-crypto user entry. See
+Privy fiat onramp is integrated as a wallet top-up path. A user can buy crypto
+into a supported source wallet, route value into Stellar when needed, and then
+fund the same DealEscrow workflow from the Stellar wallet. See
 [`docs/PAYMENT_RAIL_BOUNDARY.md`](docs/PAYMENT_RAIL_BOUNDARY.md).
 
 ## Key Features
@@ -157,10 +111,10 @@ supporting a fiat-to-crypto user entry. See
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
-- **Wallet Prep** — Review wallet destinations, send native XLM through the connected wallet signer, buy source-wallet USDC through Privy, convert supported Stellar assets through an AMM-style route, and quote cross-chain wallet top-ups through NEAR Intents before funding a deal. XLM is the default top-up target for generic wallet preparation because native XLM activates fresh Stellar accounts. Mainnet XLM/Circle USDC uses Stellar DEX pathfinding with selectable slippage, selected-asset balance display, and exact-pay Max; it first warns when the connected Stellar wallet still needs XLM activation, and then prompts active wallets to create required trustlines for known issued receive assets such as Circle USDC; Friendbot remains testnet-only.
-- **Mainnet Wallet Readiness** — Production flows require the connected client Stellar wallet to be active before creating, funding, or receiving NEAR Intents top-ups. Create Deal accepts valid provider payout addresses and optional connector payout addresses, including fresh Stellar payout addresses. When no connector is entered, the connector share routes to the provider at release. XLM settlement is the recommended default for the mainnet pilot and can release native XLM directly; USDC settlement remains available but requires each payout wallet to be active with XLM reserve and opted into Stellar USDC before release, because that is when funds actually move to recipients.
-- **Fiat Top-Up via Privy** — Buy USDC with card/bank through Privy-supported onramp providers into a Base/EVM wallet, then route/top up into Stellar before calling Fund Deal. For fresh Stellar wallets, the clearest production path is to route into native XLM first so the Stellar account is activated; Stellar USDC remains available after the wallet has XLM reserve and a USDC trustline.
-- **Cross-Chain Add Funds Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents/1Click top-up into the connected Stellar wallet before confirming Fund Deal. Deal-tied top-ups show human Stellar units, lock the destination to the deal's approved Stellar settlement asset, rank recommended 1Click routes first, and separate **Preview Quote** route evidence from the production-shaped **Get Live Payment Quote** flow. EVM source routes can connect a browser wallet, request a live quote, switch to the selected EVM chain, and submit the quoted native/ERC-20 payment to the 1Click deposit address so refunds return to the wallet that paid. After source submission, the UI links to the source-chain transaction, links to NEAR Intents Explorer by deposit address, and polls 1Click status until success/refund/failure. NEAR/Solana source wallets remain preview-only until their native connectors are wired.
+- **Wallet Prep** — Review wallet destinations, send native XLM through the connected wallet signer, buy source-wallet USDC through Privy, convert supported Stellar assets, and prepare cross-chain top-ups before funding a deal.
+- **Mainnet Wallet Readiness** — XLM is the recommended default settlement asset because native XLM can activate fresh Stellar accounts. Stellar USDC remains available for wallets with XLM reserve and a USDC trustline.
+- **Fiat Top-Up via Privy** — Buy crypto through Privy-supported onramp providers into a source wallet, route value into Stellar when needed, and then fund DealEscrow from the connected Stellar wallet.
+- **Cross-Chain Add Funds Entry** — Choose a supported source chain and asset, request a NEAR Intents / 1Click route, send the source payment from a connected browser wallet, track routing progress, and fund the Stellar escrow after settlement arrives.
 - **Privy Wallet Path** — Embedded Stellar wallet flow, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded DealEscrow lifecycle events into an isolated MongoDB read model and exposes `/market_dashboard`. NEAR Intents / 1Click top-up events are separate wallet-funding evidence and are not counted as escrow state until `fund_deal` emits DealEscrow `funded` events.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
@@ -400,16 +354,8 @@ cargo test
 - [Frontend Architecture](docs/FRONTEND.md) — Component structure, hooks, design system
 - [Demo Guide](docs/DEMO_GUIDE.md) — Step-by-step walkthrough test
 - [Near Intents Integration Plan](docs/NEAR_INTENTS_BOUNDARY.md) — Required cross-chain payment adapter plan and source-of-truth rules
-- [Payment Rail Boundary](docs/PAYMENT_RAIL_BOUNDARY.md) — Stripe, Stellar escrow, NEAR Intents, and marketplace ownership boundaries
+- [Fiat Onramp Flow](docs/PAYMENT_RAIL_BOUNDARY.md) — Privy onramp wallet top-up, NEAR Intents routing, and Stellar escrow source-of-truth rules
 - [Settlement Asset Policy](docs/SETTLEMENT_ASSET_POLICY.md) — Demo/mainnet asset policy, precision, minimums, and trustline notes
-- [Operations and Security](docs/OPERATIONS_SECURITY.md) — Admin authority, dispute operations, secrets, monitoring, and production hardening gaps
-- [Mainnet Contract Audit Gate](docs/scf/mainnet-contract-audit-2026-07-24.md) — Focused pre-mainnet contract review, artifact hash, residual risks, and deployment blockers
-- [Mainnet Deployment Runbook](docs/scf/mainnet-deployment-runbook-2026-07-24.md) — Production wallet decisions, deploy/init commands, mainnet env, tiny real-deal smoke, and evidence capture
-- [NEAR Intents Source Wallet Flow](docs/scf/near-intents-source-wallet-flow-2026-07-24.md) — Production dual-wallet top-up flow, live execution gates, and remaining source-wallet connector checklist
-- [UI Unhappy-Path QA](docs/scf/unhappy-path-qa-2026-07-01.md) — Dispute, role, wallet failure, and operator-resolution evidence plan
-- [Submission Readiness](docs/scf/submission-readiness-2026-07-02.md) — Upload order, safe claims, final smoke checks, and remaining evidence gate
-- [Final Tranche Evidence](docs/scf/final-tranche-evidence-2026-07-01.md) — Current test/build results, reviewer links, boundaries, and remaining capture tasks
-- [Final Tranche Work Plan](docs/scf/final-tranche-workplan-2026-07-01.md) — Gap-by-gap execution plan for marketplace adapter, production readiness, unhappy-path QA, and evidence packaging
 
 ## License
 

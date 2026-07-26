@@ -411,10 +411,9 @@ The repo root `Dockerfile` builds both:
 - `frontend` Vite static assets
 - `indexer` Express API server
 
-The deployment env runbook lives in
-[`../docs/COOLIFY_DEMO_DEPLOYMENT.md`](../docs/COOLIFY_DEMO_DEPLOYMENT.md).
-Do not commit live `DATABASE_URI`, API keys, Inngest keys, Payload secrets, or
-admin credentials.
+Set deployment environment variables in the hosting platform or a secrets
+manager. Do not commit live `DATABASE_URI`, API keys, Inngest keys, Payload
+secrets, or admin credentials.
 
 The runtime server exposes:
 
