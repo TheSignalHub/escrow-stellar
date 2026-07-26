@@ -16,7 +16,7 @@ import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
-import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, getExplorerContractLink } from './lib/stellar';
+import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, STELLAR_NETWORK, getExplorerContractLink } from './lib/stellar';
 import { SignalLogo, GlowingBackground } from './components/ui/Branding';
 import { Button, Card } from './components/ui/Components';
 
@@ -152,14 +152,17 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 
 // --- 1. Landing Page View (Replaces connect-prompt) ---
 // Note: Kept the onConnect prop slightly different as it handles the logic
-const LandingView = ({ onConnect }: { onConnect: () => void }) => (
+const LandingView = ({ onConnect }: { onConnect: () => void }) => {
+  const networkLabel = STELLAR_NETWORK === 'mainnet' ? 'Stellar Soroban Mainnet' : 'Stellar Soroban Testnet';
+
+  return (
   <div className="flex flex-col items-center justify-center min-h-[85vh] text-center px-2 sm:px-4 animate-fade-in relative z-10 pt-6 lg:pt-10">
     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-8 lg:mb-12 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
       <span className="relative flex h-2.5 w-2.5 lg:h-3 lg:w-3 mr-1">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-2.5 w-2.5 lg:h-3 lg:w-3 bg-emerald-500"></span>
       </span>
-      <span className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] lg:tracking-[0.3em] uppercase">Stellar Soroban Testnet</span>
+      <span className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] lg:tracking-[0.3em] uppercase">{networkLabel}</span>
     </div>
 
     <div className="glitch-wrapper relative mb-6 lg:mb-10">
@@ -207,7 +210,8 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => (
       ))}
     </div>
   </div>
-);
+  );
+};
 
 
 export default function App() {

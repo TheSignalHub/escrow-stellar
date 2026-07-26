@@ -2,7 +2,7 @@
 
 ## Overview
 
-The frontend is a React 19 single-page application built with TypeScript 5.9, Vite 8, and Tailwind CSS v4. It provides a complete interface for interacting with the DealEscrow smart contract on Stellar Testnet — from the landing page through wallet connection, deal creation, milestone management, and reputation lookup.
+The frontend is a React 19 single-page application built with TypeScript 5.9, Vite 8, and Tailwind CSS v4. It provides a complete interface for interacting with the DealEscrow smart contract on the configured Stellar network — from the landing page through wallet connection, deal creation, milestone management, and reputation lookup.
 
 Most signed escrow interactions happen directly between the browser and Stellar's Soroban RPC via `@stellar/stellar-sdk`. The deployed review stack can also run the small `indexer` backend for `/market_dashboard`, Inngest indexing, and the optional server-side Soroswap public aggregator quote check. The executable broker-style demo route in the frontend uses the on-chain Soroswap router adapter, not the public aggregator proxy.
 
@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-26 12:43 BST | Landing network badge | Made the public landing badge read from `VITE_STELLAR_NETWORK` so production displays **Stellar Soroban Mainnet** instead of hardcoded testnet copy. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:36 BST | Mainnet inclusion fee default | Added a frontend `VITE_STELLAR_INCLUSION_FEE_STROOPS` override and defaulted mainnet escrow transactions to `10000` stroops after mainnet create/admin retries showed base inclusion fees can timeout without landing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:14 BST | Create Deal finality recovery | Added a recoverable unconfirmed-transaction state when Create Deal polling times out after submission. The review panel now keeps the submitted hash, links to Stellar Explorer, lets the user check Deals/wallet activity, and allows an explicit retry instead of freezing on awaiting finality. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:06 BST | Deal metadata storage scope | Namespaced browser-local deal metadata and event ledger entries by Stellar network and DealEscrow contract address so same numeric deal IDs from testnet, mainnet, or older deployments no longer mix in the Deals tab. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
