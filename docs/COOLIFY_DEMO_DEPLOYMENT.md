@@ -1,10 +1,10 @@
-# Coolify Demo Deployment Runbook
+# Coolify Deployment Runbook
 
-Last updated: 2026-07-23 14:50 BST
+Last updated: 2026-07-26 00:52 BST
 
-Scope: single-service Coolify deployment for the SCF testnet demo at
-`stellar.thesignal.directory`. This runbook records the required environment
-shape without committing live secrets.
+Scope: single-service Coolify deployment for the public Stellar escrow app at
+`stellar.thesignal.directory`. This runbook records mainnet/testnet environment
+profiles without committing live secrets.
 
 ## Feature Log
 
@@ -19,6 +19,7 @@ shape without committing live secrets.
 | 2026-07-21 15:09 BST | Hardened contract release candidate | Updated Coolify env examples to point at the hardened testnet release-candidate contract. | Release-candidate contract deployed and CLI smoke passed for create/deposit/release/provider-win/client-refund/partial-settlement. Coolify redeploy still required. |
 | 2026-07-23 14:50 BST | Full-deal funding contract RC | Updated Coolify env examples to point at the `fund_deal` testnet release-candidate contract. | Contract deployed/initialized as `CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`; CLI live smoke passed create/fund/release/refund/readback; Coolify env switch and redeploy still required. |
 | 2026-07-25 00:36 BST | Mainnet frontend build args | Added all public `VITE_*` network, settlement, broker, and Privy onramp variables to the Docker frontend build stage so Coolify mainnet env is baked into the Vite bundle during rebuild. | Dockerfile patch; frontend build validation required before deploy. |
+| 2026-07-26 00:52 BST | Submission-safe deployment docs | Redacted public app-specific values from reusable env examples and reframed the runbook around mainnet/testnet deployment profiles instead of internal demo capture. | Static documentation cleanup. No runtime behavior changed. |
 
 ## Security Note
 
@@ -62,10 +63,10 @@ Coolify should expose port `3000`.
 
 ## Required Environment
 
-### Current Demo Env Profile
+### Current Testnet Env Profile
 
 This is the redacted version of the environment used for the current Coolify
-demo. Public `VITE_*` values are safe to document because they are bundled into
+testnet profile. Public `VITE_*` values are safe to document because they are bundled into
 the browser app. Server-side secrets are intentionally placeholders here.
 
 ```env
@@ -73,7 +74,7 @@ NIXPACKS_NODE_VERSION=22.16.0
 PORT=3000
 
 # Public frontend config
-VITE_PRIVY_APP_ID=cmms8z22d03cv0dihy31etezu
+VITE_PRIVY_APP_ID=<privy-app-id>
 VITE_DEAL_ESCROW_CONTRACT=CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 VITE_USDC_TOKEN_ADDRESS=CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
@@ -123,13 +124,13 @@ STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 INDEXER_OVERLAP_LEDGERS=5
 ```
 
-The current demo can run with only the shorter set of `VITE_*` values shown
-above because the frontend has safe testnet defaults. For repeatable reviewer
+The testnet profile can run with only the shorter set of `VITE_*` values shown
+above because the frontend has safe testnet defaults. For repeatable validation
 deploys, keep the explicit recommended network/profile values as well.
 
-### Pasted Demo Env Snapshot - Redacted
+### Legacy Testnet Env Snapshot - Redacted
 
-This section mirrors the shorter Coolify env shape used for the demo. Public
+This section mirrors the shorter Coolify env shape previously used for testnet. Public
 frontend values are kept as-is; private values are redacted and must be set
 only in Coolify or a secrets manager.
 
@@ -138,7 +139,7 @@ NIXPACKS_NODE_VERSION=22.16.0
 PORT=3000
 
 # Public frontend config
-VITE_PRIVY_APP_ID=cmms8z22d03cv0dihy31etezu
+VITE_PRIVY_APP_ID=<privy-app-id>
 VITE_DEAL_ESCROW_CONTRACT=CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 VITE_USDC_TOKEN_ADDRESS=CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
 VITE_SOROSWAP_ROUTER_ADDRESS=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
@@ -166,7 +167,7 @@ INDEXER_OVERLAP_LEDGERS=5
 Because the private values were pasted into chat, treat them as exposed. Rotate
 the MongoDB Atlas password, Soroswap key, Inngest keys, Payload secret, and
 admin password before relying on this deployment for anything beyond a temporary
-demo.
+validation environment.
 
 ### Public Frontend Config
 
@@ -300,12 +301,12 @@ curl -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
   -X POST https://stellar.thesignal.directory/api/indexer/run-once
 ```
 
-7. For final-tranche marketplace proof, seed or create shadow bindings and run
+7. For marketplace-adapter proof, seed or create shadow bindings and run
    reconciliation through the protected API or the indexer CLI.
 
-## Demo Boundary
+## Network Boundary
 
-This deployment is a Stellar testnet demo:
+When running the testnet profile:
 
 - The settlement asset is demo test USDC, not production Circle USDC.
 - Friendbot/testnet funding assumptions are not production behavior.

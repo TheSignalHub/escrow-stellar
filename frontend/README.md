@@ -110,7 +110,7 @@ recipient onboarding during agreement creation. The connector address is
 optional; when omitted, the frontend submits the provider as the connector
 recipient so the connector share is paid to the provider at milestone release.
 XLM settlement is the
-recommended default for the grant demo and fresh payout addresses; USDC
+recommended default for the mainnet pilot and fresh payout addresses; USDC
 settlement remains available as an optional issued-asset path. USDC payout
 addresses must be active with XLM reserve and opted into Stellar USDC before
 release, because release is the step that actually sends issued assets to
@@ -181,7 +181,7 @@ in [`../docs/scf/unhappy-path-qa-2026-07-01.md`](../docs/scf/unhappy-path-qa-202
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
-For the SCF #42 Tranche 2 demo, Create Deal selects the escrow settlement
+Create Deal selects the escrow settlement
 asset, while the Deals funding step decides whether the connected wallet can
 fund directly. The first pending milestone acts as the checkout entry and shows
 the remaining pending deal amount plus the matching wallet balance for XLM or
@@ -241,7 +241,7 @@ settlement assets remain backend-approved. The demo test USDC token is not
 Circle-issued production USDC, and
 NEAR/payment status never marks escrow funded. After the Stellar wallet is
 topped up, the user confirms **Fund Deal**, and only Stellar DealEscrow
-`funded` events mark escrow funded. If the backend exposes a quote-only demo destination
+`funded` events mark escrow funded. If the backend exposes a quote-evidence destination
 because Stellar-route liquidity is unavailable, the panel labels it as quote
 evidence rather than escrow settlement. For deal-tied top-ups, the amount is
 shown in human Stellar units and the destination route is constrained to the
@@ -251,7 +251,8 @@ user-selectable from supported non-Stellar 1Click routes; recommended discovered
 routes are ranked first, source amounts are estimated from live token prices
 when available, and successful dry quotes show a quote-evidence checklist. The
 panel now separates **Preview Quote** from **Get Live Payment Quote** so the app
-can prove live 1Click pricing without pretending a source payment is ready.
+can prove live 1Click pricing while clearly separating preview state from
+source-payment readiness.
 Live execution requires a connected source wallet so refunds return to the
 wallet that pays. EVM source routes now support a lightweight browser-wallet
 connector plus native/ERC-20 payment submission to the returned 1Click deposit

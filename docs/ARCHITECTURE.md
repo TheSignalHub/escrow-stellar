@@ -214,12 +214,12 @@ The frontend translates Soroban errors into user-friendly messages:
 
 The Signal's production marketplace manages the business workflow (discovery, matching, negotiation). When parties agree on a deal:
 
-**Traditional Flow (Current)**:
+**Traditional Fiat Flow**:
 ```
 Deal Agreement → Stripe Checkout → Milestone Tracking → Stripe Connect Payout
 ```
 
-**Stellar Flow (This Demo)**:
+**Stellar Flow**:
 ```
 Deal Agreement → Soroban fund_deal() → Milestone Tracking → Soroban release_milestone()
 ```

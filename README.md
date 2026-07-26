@@ -1,10 +1,10 @@
-# The Signal — Stellar Escrow Demo
+# The Signal — Stellar Escrow
 
 Milestone-based escrow with atomic 3-way payment splits on Soroban. Built for the [Stellar Community Fund (SCF) Integration Track](https://communityfund.stellar.org/).
 
 ## What This Is
 
-A fully functional implementation of The Signal's deal escrow system on Stellar's Soroban smart contract platform. It demonstrates how a real-world B2B marketplace handles milestone-based payments with three-party atomic splits — the exact logic running in production at [thesignal.directory](https://thesignal.directory).
+A fully functional implementation of The Signal's deal escrow system on Stellar's Soroban smart contract platform. It demonstrates how a real-world B2B marketplace handles milestone-based payments with three-party atomic splits, production wallet funding, cross-chain top-ups, and admin dispute resolution.
 
 **Contract on Testnet**: [`CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP`](https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP)
 
@@ -12,15 +12,17 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
-## SCF #42 Tranche 2 Testnet Notes
+## SCF #42 Submission Status
 
-This repository is configured for the Tranche 2 testnet review:
+This repository includes both the original Tranche 2 testnet environment and a
+mainnet pilot contract for final-tranche validation:
 
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
 - **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
-- **Final-tranche cross-chain adapter**: NEAR Intents is integrated as a feature-flagged server adapter for cross-chain Stellar wallet top-up, not direct escrow funding. The first pending milestone can request a NEAR Intents quote from the Deals tab using the remaining pending deal balance, while Wallet Prep remains available for testnet funding and Stellar settlement-asset preparation. After the Stellar wallet is topped up, the user must confirm **Fund Deal**, which calls `fund_deal` and keeps escrow funding gated on Soroban `funded` events. Quotes use live 1Click token discovery for user-selected source chain/source asset/source amount, constrain the destination to the deal's approved Stellar settlement asset, and verify 1Click quote signatures server-side. EVM source routes can submit native/ERC-20 payments from a connected browser wallet to the 1Click deposit address; NEAR/Solana source execution remains preview-only until native connectors are wired and tiny-amount evidence is complete.
-- **Production proof path**: `indexer` includes `npm run smoke:near-live` for final-tranche NEAR Intents evidence. It creates signed dry quotes by default, requires explicit `--live` for executable 1Click deposit instructions, enforces a tiny source-amount USD cap, and polls 1Click status after a tester manually sends the source-chain payment.
+- **Mainnet DealEscrow pilot**: The audited `fund_deal` contract is deployed on Stellar Mainnet and supports create, fund-once, release, dispute, and admin resolution flows.
+- **NEAR Intents cross-chain top-up**: NEAR Intents / 1Click is integrated as a server-side cross-chain Stellar wallet top-up path. The user chooses source chain, source asset, and source amount; the destination is constrained to the approved Stellar settlement asset for the deal. EVM source routes can submit native/ERC-20 payments from a connected browser wallet to the 1Click deposit address. After the Stellar wallet is topped up, the user confirms **Fund Deal**, which calls `fund_deal`; escrow state remains gated on Soroban `funded` events.
+- **Fiat onramp path**: Privy fiat onramp can buy Base USDC into the user's source wallet, then NEAR Intents can route value into the connected Stellar wallet before escrow funding.
 
 Reviewer links:
 
@@ -28,8 +30,8 @@ Reviewer links:
 Frontend:             https://stellar.thesignal.directory
 Event dashboard:      https://stellar.thesignal.directory/market_dashboard
 Internal admin:       https://stellar.thesignal.directory/admin
-Contract explorer:    https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 Mainnet contract:     https://stellar.expert/explorer/public/contract/CDZSYODEHRJPMN63RDARHEH5NUOXWC76MFM67MEAZYOWY2YJC34OS2Z4
+Testnet contract:     https://stellar.expert/explorer/testnet/contract/CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
 ```
 
 Coolify deployment env and operations are documented in
@@ -58,7 +60,7 @@ The smoke command checks health, NEAR readiness, indexer/dashboard state,
 dispute-event evidence, shadow bindings, and optional protected NEAR dry-quote
 or indexer actions when admin credentials are supplied.
 
-Current testnet funding configuration:
+Reference testnet funding configuration:
 
 ```text
 DealEscrow:        CCUOZRSDISJOF66YPNEGY7FDH7WTUZHI5TB55F4MOGED2UEKZXYRP6AP
@@ -89,10 +91,10 @@ Soroban contract remains the source of truth; the isolated MongoDB indexer
 database is a read model for marketplace-style status sync and reviewer
 visibility.
 
-Network endpoints are environment-driven. The app defaults to testnet for SCF
-review, but `VITE_STELLAR_NETWORK`, `VITE_STELLAR_RPC_URL`,
-`VITE_STELLAR_HORIZON_URL`, and `VITE_STELLAR_EXPLORER_URL` can be set for a
-mainnet/staging profile. Friendbot is testnet-only and hidden outside testnet.
+Network endpoints are environment-driven. Set `VITE_STELLAR_NETWORK`,
+`VITE_STELLAR_RPC_URL`, `VITE_STELLAR_HORIZON_URL`, and
+`VITE_STELLAR_EXPLORER_URL` for a mainnet, staging, or testnet profile.
+Friendbot is testnet-only and hidden outside testnet.
 Mainnet browser-signed escrow transactions default to a `10000` stroop
 inclusion fee; override with `VITE_STELLAR_INCLUSION_FEE_STROOPS` if needed.
 Wallet Prep includes browser-signed native XLM transfer and fresh-account
@@ -128,7 +130,7 @@ remaining balance, and settlement asset are already locked. The NEAR route
 prepares the connected Stellar wallet; the escrow is funded only when the user
 confirms **Fund Deal** and the frontend calls `fund_deal`.
 Refund routing is managed through the source wallet in the production flow,
-with a server fallback reserved for internal quote QA. Soroban `funded` events
+with a server fallback reserved for controlled operational testing. Soroban `funded` events
 remain the source of truth for escrow funding, even when NEAR Intents reports
 that a cross-chain payment is moving. Stellar issued assets such as USDC require
 the destination recipient to exist on Stellar and hold the asset trustline
@@ -138,7 +140,7 @@ settlement asset, an explicitly flagged quote-evidence destination can be
 enabled to prove SDK quote creation and signature verification without claiming
 Stellar escrow funding. Live NEAR execution has browser-wallet submission for
 supported EVM native and ERC-20 source routes; NEAR/Solana source execution
-still needs native wallet connectors and tiny-amount no-testnet evidence. See
+still needs native wallet connectors for direct NEAR/Solana source-wallet execution. See
 [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
 Stripe Connect remains The Signal production marketplace's direct fiat payment
@@ -156,10 +158,10 @@ supporting a fiat-to-crypto user entry. See
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
 - **Wallet Prep** — Review wallet destinations, send native XLM through the connected wallet signer, buy source-wallet USDC through Privy, convert supported Stellar assets through an AMM-style route, and quote cross-chain wallet top-ups through NEAR Intents before funding a deal. XLM is the default top-up target for generic wallet preparation because native XLM activates fresh Stellar accounts. Mainnet XLM/Circle USDC uses Stellar DEX pathfinding with selectable slippage, selected-asset balance display, and exact-pay Max; it first warns when the connected Stellar wallet still needs XLM activation, and then prompts active wallets to create required trustlines for known issued receive assets such as Circle USDC; Friendbot remains testnet-only.
-- **Mainnet Wallet Readiness** — Production flows require the connected client Stellar wallet to be active before creating, funding, or receiving NEAR Intents top-ups. Create Deal accepts valid provider payout addresses and optional connector payout addresses, including fresh Stellar payout addresses. When no connector is entered, the connector share routes to the provider at release. XLM settlement is the recommended default for the grant demo and can release native XLM directly; USDC settlement remains available but requires each payout wallet to be active with XLM reserve and opted into Stellar USDC before release, because that is when funds actually move to recipients.
+- **Mainnet Wallet Readiness** — Production flows require the connected client Stellar wallet to be active before creating, funding, or receiving NEAR Intents top-ups. Create Deal accepts valid provider payout addresses and optional connector payout addresses, including fresh Stellar payout addresses. When no connector is entered, the connector share routes to the provider at release. XLM settlement is the recommended default for the mainnet pilot and can release native XLM directly; USDC settlement remains available but requires each payout wallet to be active with XLM reserve and opted into Stellar USDC before release, because that is when funds actually move to recipients.
 - **Fiat Top-Up via Privy** — Buy USDC with card/bank through Privy-supported onramp providers into a Base/EVM wallet, then route/top up into Stellar before calling Fund Deal. For fresh Stellar wallets, the clearest production path is to route into native XLM first so the Stellar account is activated; Stellar USDC remains available after the wallet has XLM reserve and a USDC trustline.
 - **Cross-Chain Add Funds Entry** — From the first pending milestone, review the wallet's settlement-asset balance, fund the remaining deal balance directly when enough balance is available, or choose a source chain/asset and quote a NEAR Intents/1Click top-up into the connected Stellar wallet before confirming Fund Deal. Deal-tied top-ups show human Stellar units, lock the destination to the deal's approved Stellar settlement asset, rank recommended 1Click routes first, and separate **Preview Quote** route evidence from the production-shaped **Get Live Payment Quote** flow. EVM source routes can connect a browser wallet, request a live quote, switch to the selected EVM chain, and submit the quoted native/ERC-20 payment to the 1Click deposit address so refunds return to the wallet that paid. After source submission, the UI links to the source-chain transaction, links to NEAR Intents Explorer by deposit address, and polls 1Click status until success/refund/failure. NEAR/Solana source wallets remain preview-only until their native connectors are wired.
-- **Privy Wallet Path** — Embedded Stellar wallet flow for the Tranche 2 demo, with Stellar Wallets Kit support retained in the codebase.
+- **Privy Wallet Path** — Embedded Stellar wallet flow, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded DealEscrow lifecycle events into an isolated MongoDB read model and exposes `/market_dashboard`. NEAR Intents / 1Click top-up events are separate wallet-funding evidence and are not counted as escrow state until `fund_deal` emits DealEscrow `funded` events.
 - **Live Network Ticker** — Real-time on-chain contract data displayed on the homepage marquee (read-only, no wallet required).
 
@@ -183,7 +185,7 @@ supporting a fiat-to-crypto user entry. See
 └─────────────────────┼────────────────────────────────┘
                       │ Soroban RPC
 ┌─────────────────────┼────────────────────────────────┐
-│              Stellar Testnet                          │
+│              Stellar Network                          │
 │  ┌──────────────────┴────────────────────────────┐   │
 │  │         DealEscrow Smart Contract              │   │
 │  │                                                │   │
@@ -201,7 +203,7 @@ supporting a fiat-to-crypto user entry. See
 │          Off-chain Indexer / Read Model               │
 │  Soroban RPC getEvents → decode DealEscrow topics     │
 │  → MongoDB escrow-transfers + indexer checkpoint      │
-│  → /market_dashboard reviewer dashboard               │
+│  → /market_dashboard read-only dashboard              │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -264,7 +266,7 @@ npm run dev
 7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`
-10. For final-tranche marketplace proof, run `npm run seed:marketplace-bindings` from `indexer/` to create shadow Signal-style bindings, then reconcile through the protected binding API
+10. For marketplace-adapter proof, run `npm run seed:marketplace-bindings` from `indexer/` to create Signal-style bindings, then reconcile through the protected binding API
 11. Check the provider's on-chain reputation in the Oracle tab
 
 ## Project Structure
@@ -306,7 +308,7 @@ escrow-stellar/
     ├── SMART_CONTRACT.md           # Contract API reference
     ├── FRONTEND.md                 # Frontend architecture details
     ├── EVENT_SCHEMA.md             # Published DealEscrow event schema
-    └── DEMO_GUIDE.md              # Step-by-step demo walkthrough
+    └── DEMO_GUIDE.md              # Step-by-step QA walkthrough
 ```
 
 ## Smart Contract API
@@ -375,38 +377,21 @@ cargo test
 | Icons | Lucide React | 0.577+ |
 | Fonts | Space Grotesk, JetBrains Mono | Google Fonts |
 | Stellar SDK | @stellar/stellar-sdk | 14.6.1 |
-| Wallet | Privy + Stellar Wallets Kit fallback | Testnet |
-| Broker route | Broker-style adapter + Soroswap router testnet route | Testnet |
-| Indexer | Express + Inngest + MongoDB | Testnet read model |
-| Network | Stellar Testnet | Soroban RPC |
+| Wallet | Privy + Stellar Wallets Kit fallback | Mainnet/Testnet |
+| Broker route | Stellar DEX pathfinding on mainnet; Soroswap router adapter on testnet | Mainnet/Testnet |
+| Indexer | Express + Inngest + MongoDB | Read model |
+| Network | Stellar Mainnet/Testnet | Soroban RPC |
 
 ## Production Parity
 
-| Feature | Production (The Signal) | This Demo (Soroban) |
+| Feature | Marketplace Rail | Stellar Escrow Rail |
 |---------|------------------------|---------------------|
 | 3-party split | `approveMilestone()` in Node.js | `release_milestone()` in Rust |
 | Milestone lifecycle | Pending → Funded → Released / Resolved / Refunded | Same states, on-chain |
 | BD connector tiers | 40–65% of platform fee | Parameterized per deal |
 | Dispute escalation | Admin dashboard + Stripe | Smart contract + admin auth |
 | Reputation | Database counter | Persistent storage on-chain |
-| Payment | Stripe Connect | SAC token transfers |
-
-## Tranche 2 Demo Positioning
-
-For SCF review, describe the demo as:
-
-```text
-The Tranche 2 testnet deployment demonstrates a complete Soroban B2B escrow
-lifecycle with Privy wallet connection, testnet deal creation, milestone
-funding/release with automatic multi-party payout split, Soroban RPC event
-indexing into an isolated backend dashboard, and XLM-to-demo-test-USDC
-multi-asset funding through a seeded Soroswap testnet route.
-```
-
-Avoid overclaiming the testnet route as production Circle USDC or a live
-multi-venue aggregator path. The demo token and seeded pool are intentionally
-testnet-only so reviewers can reproduce the flow even when public testnet
-liquidity is empty.
+| Payment | Stripe Connect / fiat marketplace payments | SAC token transfers, Stellar DEX conversion, NEAR Intents top-up |
 
 ## Documentation
 

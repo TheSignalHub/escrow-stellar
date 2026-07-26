@@ -300,7 +300,7 @@ export async function requestNearIntentQuote(
 
   if (isDemoDestination && !config.nearIntents.defaultRefundAccount) {
     throw new NearIntentsProviderError(
-      'NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required for quote-only demo destinations.',
+      'NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT is required for quote-evidence destinations.',
       503
     );
   }
