@@ -270,7 +270,6 @@ app.get('/api/near-intents/tokens', async (_req, res) => {
 
 app.post(
   '/api/marketplace-bindings/:bindingId/near-intents/quote',
-  requireAdminAuth,
   async (req, res) => {
     const indexerDb = await connectIndexerDb(config.databaseUri);
     try {
@@ -319,7 +318,6 @@ app.post(
 
 app.get(
   '/api/marketplace-bindings/:bindingId/near-intents/status',
-  requireAdminAuth,
   async (req, res) => {
     const indexerDb = await connectIndexerDb(config.databaseUri);
     try {
@@ -382,7 +380,6 @@ app.get(
 
 app.post(
   '/api/marketplace-bindings/:bindingId/near-intents/deposit-tx',
-  requireAdminAuth,
   async (req, res) => {
     const indexerDb = await connectIndexerDb(config.databaseUri);
     try {

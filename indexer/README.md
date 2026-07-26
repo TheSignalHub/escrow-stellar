@@ -370,16 +370,16 @@ Routes:
 - `POST /api/admin/disputes/resolve` — protected optional server-side `resolve_dispute` execution, disabled unless `ADMIN_RESOLUTION_EXECUTION_ENABLED=true` and `ADMIN_STELLAR_SECRET_KEY` are configured
 - `POST /api/admin/disputes/refund` — protected optional server-side emergency `refund` execution, disabled unless the same admin execution envs are configured
 - `GET /api/near-intents/readiness` — public non-secret NEAR Intents feature/config readiness
-- `GET /api/near-intents/tokens` — protected SDK-backed token list for confirming asset IDs
+- `GET /api/near-intents/tokens` — public SDK-backed token list for user-facing source asset discovery
 - `POST /api/marketplace-bindings` — protected shadow binding creation
 - `GET /api/marketplace-bindings` — protected list of recent bindings
 - `GET /api/marketplace-bindings/:bindingId` — protected binding lookup
 - `GET /api/marketplace-bindings/:bindingId/events` — protected mapped binding events
 - `GET /api/marketplace-bindings/by-external/:externalMarketplaceId/:externalDealId` — protected external deal lookup
 - `POST /api/marketplace-bindings/reconcile` — protected reconciliation from `escrow-transfers` into binding events
-- `POST /api/marketplace-bindings/:bindingId/near-intents/quote` — protected NEAR Intents quote creation; disabled unless `NEAR_INTENTS_ENABLED=true`
-- `GET /api/marketplace-bindings/:bindingId/near-intents/status` — protected status polling by stored deposit address/memo
-- `POST /api/marketplace-bindings/:bindingId/near-intents/deposit-tx` — protected deposit transaction hash submission to 1Click
+- `POST /api/marketplace-bindings/:bindingId/near-intents/quote` — public user-facing NEAR Intents quote creation; disabled unless `NEAR_INTENTS_ENABLED=true`
+- `GET /api/marketplace-bindings/:bindingId/near-intents/status` — public user-facing status polling by stored deposit address/memo
+- `POST /api/marketplace-bindings/:bindingId/near-intents/deposit-tx` — public user-facing source transaction hash submission to 1Click
 - `POST /api/marketplace-bindings/:bindingId/near-intents/reconcile` — protected per-binding Soroban event reconciliation
 - `POST /api/inngest` / `GET /api/inngest`
 
@@ -425,7 +425,7 @@ The runtime server exposes:
 - `/api/indexer/run-once` — protected manual indexer tick
 - `/api/marketplace-bindings*` — protected shadow marketplace binding and reconciliation APIs
 - `/api/near-intents/readiness` — public non-secret NEAR Intents readiness for the frontend panel
-- `/api/near-intents/tokens` and `/api/marketplace-bindings/:bindingId/near-intents/*` — protected SDK-backed NEAR Intents APIs, disabled by default
+- `/api/near-intents/tokens` and `/api/marketplace-bindings/:bindingId/near-intents/quote|status|deposit-tx` — public user-facing NEAR Intents APIs, disabled unless configured
 - `/api/soroswap/quote` — server-side Soroswap public aggregator quote proxy
 - `/api/market-dashboard/summary` — indexer status, deal summary, and recent events
 - `/api/market-dashboard/escrow-events` — recent decoded escrow events

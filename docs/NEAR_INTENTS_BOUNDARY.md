@@ -1,6 +1,6 @@
 # Near Intents Integration Plan
 
-Last updated: 2026-07-14 11:11 HKT
+Last updated: 2026-07-26 13:58 BST
 
 Scope: final-tranche integration plan for NEAR Intents as a required
 cross-chain payment initiation path for the reusable Stellar escrow rail.
@@ -15,6 +15,7 @@ funds are actually locked in DealEscrow.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-26 13:58 BST | Public user quote/status routes | Removed admin Basic Auth from the user-facing 1Click quote, status, and source transaction submission endpoints so NEAR Intents wallet top-up can be used from the public app without an operator login prompt. Admin reconciliation remains protected. | `npm run build` passed in `indexer/`. |
 | 2026-07-23 16:34 BST | Source-wallet refund routing | Tightened the quote path so production-style cross-chain routes require an explicit connected source-wallet refund address. The server default refund account remains available only for dry/internal QA or quote-evidence destinations. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:25 HKT | Near Intents boundary | Documented NEAR Intents as an external payment initiation boundary and added optional marketplace binding metadata for cross-chain intent tracking. | Superseded by 10:28 HKT validation. |
 | 2026-07-01 10:28 HKT | Near Intents boundary validation | Confirmed the optional binding metadata compiles in the indexer type model and kept executable payment flow explicitly out of scope for this tranche. | Superseded by 10:40 HKT direction change. |
