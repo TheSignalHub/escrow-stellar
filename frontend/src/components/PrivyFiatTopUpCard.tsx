@@ -16,12 +16,14 @@ import {
   shortOnrampAddress,
 } from '../lib/privyOnramp';
 import { Button, Card, Tag } from './ui/Components';
+import type { WalletSource } from '../hooks/useUnifiedWallet';
 
 interface PrivyFiatTopUpCardProps {
   stepNumber?: number;
+  activeSource?: WalletSource;
 }
 
-export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) {
+export function PrivyFiatTopUpCard({ stepNumber = 1, activeSource }: PrivyFiatTopUpCardProps) {
   const toast = useToast();
   const { authenticated } = usePrivy();
   const { wallets, ready } = useWallets();
@@ -38,6 +40,7 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
   );
 
   const canStart = PRIVY_FIAT_ONRAMP_ENABLED && authenticated && ready;
+  const isPrivyFlow = activeSource === 'privy';
   const destinationLabel = onrampChainLabel(PRIVY_FIAT_ONRAMP_DESTINATION_CHAIN);
 
   const ensureDestinationWallet = async (): Promise<string> => {
@@ -53,7 +56,7 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
   };
 
   const startOnramp = async () => {
-    if (!canStart || funding || creatingWallet) return;
+    if (!isPrivyFlow || !canStart || funding || creatingWallet) return;
 
     setFunding(true);
     setError('');
@@ -99,12 +102,16 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
                   {PRIVY_FIAT_ONRAMP_ENVIRONMENT}
                 </Tag>
               </div>
-              <p className="mt-1 text-xs text-zinc-500">Privy onramp top-up for the source wallet.</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {isPrivyFlow ? 'Privy onramp top-up for the source wallet.' : 'Available after signing in with Privy.'}
+              </p>
             </div>
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-400">
-            Buy USDC into a {destinationLabel} wallet, then use <span className="text-zinc-200">Add Funds from Another Chain</span> to route it into the connected Stellar wallet before funding escrow. For fresh Stellar wallets, route into XLM first because native XLM activates the account; use Stellar USDC when the wallet already has XLM reserve and a USDC trustline.
+            {isPrivyFlow
+              ? <>Buy USDC into a {destinationLabel} wallet, then use <span className="text-zinc-200">Add Funds from Another Chain</span> to route it into the connected Stellar wallet before funding escrow. For fresh Stellar wallets, route into XLM first because native XLM activates the account; use Stellar USDC when the wallet already has XLM reserve and a USDC trustline.</>
+              : <>For Freighter and other external Stellar wallets, fund the Stellar address from your exchange, treasury, or preferred onramp. Privy card/bank onramp is shown when the active wallet path is Privy.</>}
           </p>
 
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -119,7 +126,11 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Destination</p>
               <p className="mt-1 truncate font-mono text-sm font-bold text-emerald-300">
-                {destinationWallet?.address ? shortOnrampAddress(destinationWallet.address) : 'Privy EVM wallet'}
+                {isPrivyFlow
+                  ? destinationWallet?.address
+                    ? shortOnrampAddress(destinationWallet.address)
+                    : 'Privy EVM wallet'
+                  : 'Privy only'}
               </p>
             </div>
           </div>
@@ -146,12 +157,12 @@ export function PrivyFiatTopUpCard({ stepNumber = 1 }: PrivyFiatTopUpCardProps) 
         <div className="lg:w-64 space-y-3">
           <Button
             onClick={startOnramp}
-            disabled={!canStart || funding || creatingWallet || !PRIVY_FIAT_ONRAMP_ENABLED}
+            disabled={!isPrivyFlow || !canStart || funding || creatingWallet || !PRIVY_FIAT_ONRAMP_ENABLED}
             variant="primary"
             className="w-full py-4"
             icon={funding || creatingWallet ? Loader2 : CreditCard}
           >
-            {creatingWallet ? 'Creating Wallet...' : funding ? 'Opening Onramp...' : 'Buy USDC'}
+            {!isPrivyFlow ? 'Use Privy for Card Top-Up' : creatingWallet ? 'Creating Wallet...' : funding ? 'Opening Onramp...' : 'Buy USDC'}
           </Button>
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs leading-relaxed text-zinc-500">
             <div className="mb-2 flex items-center gap-2 text-zinc-300 font-bold">

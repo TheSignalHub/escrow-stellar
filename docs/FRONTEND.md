@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-27 21:52 BST | Wallet Prep source-wallet clarity | Scoped the Privy Base funding wallet and card/bank onramp CTA to the active Privy wallet path. External Stellar wallet users now see generic source-wallet guidance instead of a stale Privy EVM address while connected through Freighter/SWK. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-27 21:25 BST | Header wallet network label | Made the connected-wallet header label and Stellar Wallets Kit initialization follow `VITE_STELLAR_NETWORK`, so Privy and extension-wallet paths show/use Mainnet on the production build instead of testnet copy/config. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 12:43 BST | Landing network badge | Made the public landing badge read from `VITE_STELLAR_NETWORK` so production displays **Stellar Soroban Mainnet** instead of hardcoded testnet copy. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:36 BST | Mainnet inclusion fee default | Added a frontend `VITE_STELLAR_INCLUSION_FEE_STROOPS` override and defaulted mainnet escrow transactions to `10000` stroops after mainnet create/admin retries showed base inclusion fees can timeout without landing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |

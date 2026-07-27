@@ -22,6 +22,7 @@ import { PrivyFiatTopUpCard } from './PrivyFiatTopUpCard';
 import { WalletPrepOverview } from './WalletPrepOverview';
 import { NearIntentsPanel } from './NearIntentsPanel';
 import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets, Send } from 'lucide-react';
+import type { WalletSource } from '../hooks/useUnifiedWallet';
 
 type SwapMode = 'exact-in' | 'exact-out';
 type SwapAssetKey = 'xlm' | 'usdc';
@@ -59,9 +60,10 @@ interface Props {
   onBalanceRefresh?: () => void;
   xlmBalance?: string;
   usdcBalance?: string;
+  activeSource?: WalletSource;
 }
 
-export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete, onFundComplete, onBalanceRefresh, xlmBalance, usdcBalance }: Props) {
+export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete, onFundComplete, onBalanceRefresh, xlmBalance, usdcBalance, activeSource }: Props) {
   const toast = useToast();
   // Friendbot section
   const [fundingLoading, setFundingLoading] = useState(false);
@@ -413,7 +415,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         )}
       </div>
 
-      <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} />
+      <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} activeSource={activeSource} />
 
       <Card className="p-4 sm:p-6 bg-[#02040a]" glowOnHover>
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -510,7 +512,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         )}
       </Card>
 
-      <PrivyFiatTopUpCard stepNumber={1} />
+      <PrivyFiatTopUpCard stepNumber={1} activeSource={activeSource} />
 
       <div className={`grid grid-cols-1 gap-4 lg:gap-8 ${IS_TESTNET ? 'md:grid-cols-2' : ''}`}>
         {IS_TESTNET && (

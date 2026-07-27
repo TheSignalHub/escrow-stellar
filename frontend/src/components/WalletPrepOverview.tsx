@@ -10,20 +10,23 @@ import {
 } from '../lib/privyOnramp';
 import { accountExists, IS_TESTNET, SETTLEMENT_TOKEN_SYMBOL } from '../lib/stellar';
 import { Card, Tag } from './ui/Components';
+import type { WalletSource } from '../hooks/useUnifiedWallet';
 
 interface WalletPrepOverviewProps {
   stellarAddress: string;
   xlmBalance?: string;
+  activeSource?: WalletSource;
 }
 
 function truncateStellar(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOverviewProps) {
+export function WalletPrepOverview({ stellarAddress, xlmBalance, activeSource }: WalletPrepOverviewProps) {
   const toast = useToast();
   const [stellarAccountExists, setStellarAccountExists] = useState<boolean | null>(null);
   const { wallets } = useWallets();
+  const isPrivyFlow = activeSource === 'privy';
   const evmWallet = useMemo(
     () => findEmbeddedEvmWallet(wallets as Array<{ address: string; walletClientType?: string }>),
     [wallets]
@@ -109,27 +112,37 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOve
                   <Wallet size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-blue-100">{destinationLabel} funding wallet</p>
+                  <p className="text-sm font-black text-blue-100">
+                    {isPrivyFlow ? `${destinationLabel} funding wallet` : 'External funding wallets'}
+                  </p>
                   <p className="mt-1 font-mono text-sm text-blue-300 truncate">
-                    {evmWallet?.address ? shortOnrampAddress(evmWallet.address) : 'Created when needed'}
+                    {isPrivyFlow
+                      ? evmWallet?.address
+                        ? shortOnrampAddress(evmWallet.address)
+                        : 'Created when needed'
+                      : 'Connect only when adding funds'}
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-blue-100/70">
-                    Used for fiat USDC top-up and as a source wallet for NEAR Intents routes.
+                    {isPrivyFlow
+                      ? 'Used for fiat USDC top-up and as a source wallet for NEAR Intents routes.'
+                      : 'Freighter signs Stellar escrow actions. Fiat and cross-chain top-ups use a separate source wallet only when you choose that funding path.'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => copyAddress(`${destinationLabel} wallet`, evmWallet?.address)}
-                disabled={!evmWallet?.address}
+                disabled={!isPrivyFlow || !evmWallet?.address}
                 className="h-8 w-8 rounded-lg border border-blue-500/20 bg-black/30 text-blue-300 hover:border-blue-400/50 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                title={`Copy ${destinationLabel} wallet`}
+                title={isPrivyFlow ? `Copy ${destinationLabel} wallet` : 'Source wallet is connected during top-up'}
               >
                 <Copy size={14} />
               </button>
             </div>
             <div className="mt-3 rounded-lg border border-blue-500/10 bg-black/20 px-3 py-2 text-xs font-mono text-blue-100/80">
-              Receives USDC on {destinationLabel}; then route to Stellar {SETTLEMENT_TOKEN_SYMBOL}/XLM before escrow funding.
+              {isPrivyFlow
+                ? `Receives USDC on ${destinationLabel}; then route to Stellar ${SETTLEMENT_TOKEN_SYMBOL}/XLM before escrow funding.`
+                : `Use your own exchange, onramp, EVM wallet, or NEAR Intents source wallet to top up this Stellar wallet before escrow funding.`}
             </div>
           </div>
         </div>

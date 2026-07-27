@@ -513,6 +513,7 @@ export default function App() {
                   onBalanceRefresh={() => wallet.refreshBalances()}
                   xlmBalance={wallet.xlmBalance}
                   usdcBalance={wallet.usdcBalance}
+                  activeSource={wallet.activeSource}
                 />
               )}
 
