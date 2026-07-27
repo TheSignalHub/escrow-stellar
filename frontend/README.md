@@ -1,6 +1,6 @@
 # The Signal — Stellar Escrow Demo
 
-Decentralized escrow frontend on **Stellar Soroban Testnet**.
+Decentralized escrow frontend on the configured **Stellar Soroban** network.
 Milestone-based contracts, atomic fee routing, on-chain reputation, embedded wallets.
 
 ---
@@ -11,7 +11,7 @@ Milestone-based contracts, atomic fee routing, on-chain reputation, embedded wal
 | --- | --- |
 | UI | React 19 + TypeScript + Vite |
 | Styling | Tailwind CSS v4 (`@theme` block) |
-| Chain | Stellar / Soroban Testnet |
+| Chain | Stellar / Soroban Testnet or Mainnet |
 | Stellar SDK | `@stellar/stellar-sdk` |
 | Extension wallets | `@creit.tech/stellar-wallets-kit` — Freighter, Albedo |
 | Embedded wallets | `@privy-io/react-auth` — Email OTP, Google, Twitter, Discord |
@@ -37,10 +37,10 @@ Create a `.env` file at the root of the `frontend/` folder:
 # Required for email/social login (embedded wallets)
 VITE_PRIVY_APP_ID=your-privy-app-id-here
 
-# Set after deploying the contract to Testnet
+# Set after deploying the DealEscrow contract
 VITE_DEAL_ESCROW_CONTRACT=
 
-# Network profile. Leave as testnet for the SCF demo.
+# Network profile. Use mainnet for production deployments.
 VITE_STELLAR_NETWORK=testnet
 VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org

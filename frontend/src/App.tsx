@@ -150,6 +150,8 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: 'reputation', label: 'Oracle', icon: Award },
 ];
 
+const walletNetworkLabel = STELLAR_NETWORK === 'mainnet' ? 'Mainnet' : 'Testnet';
+
 // --- 1. Landing Page View (Replaces connect-prompt) ---
 // Note: Kept the onConnect prop slightly different as it handles the logic
 const LandingView = ({ onConnect }: { onConnect: () => void }) => {
@@ -410,7 +412,7 @@ export default function App() {
                       {parseFloat(wallet.xlmBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM
                     </span>
                     <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
-                      {wallet.activeSource === 'privy' ? 'Privy · Testnet' : 'Testnet'}
+                      {wallet.activeSource === 'privy' ? `Privy · ${walletNetworkLabel}` : walletNetworkLabel}
                     </span>
                   </div>
                   {/* Address chip — click address to copy, click × to disconnect */}

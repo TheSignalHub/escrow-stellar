@@ -9,7 +9,7 @@ import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 // xBullModule removed: xBull always reports isAvailable=true but its web popup
 // (wallet.xbull.app/connect) is blocked by Firefox popup blocker when opened
 // from an async context, causing silent "nothing happens" with no error feedback.
-import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS, NETWORK_PASSPHRASE } from '../lib/stellar';
+import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS, NETWORK_PASSPHRASE, STELLAR_NETWORK } from '../lib/stellar';
 
 // FreighterModule detection uses window.postMessage with a 2s timeout.
 // If the extension content script hasn't injected yet when the modal opens,
@@ -34,6 +34,8 @@ class CachedFreighterModule extends FreighterModule {
 
 // Module-level singleton so cache persists across re-renders
 const freighterModule = new CachedFreighterModule();
+const walletKitNetwork = STELLAR_NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
+const expectedNetworkLabel = STELLAR_NETWORK === 'mainnet' ? 'Mainnet' : 'Testnet';
 
 export interface WalletState {
   address: string;
@@ -61,7 +63,7 @@ export function useStellarWallet(): WalletState {
     initialized.current = true;
 
     StellarWalletsKit.init({
-      network: Networks.TESTNET,
+      network: walletKitNetwork,
       modules: [
         // Albedo first: web-based, no extension, no popup blocker issues
         new AlbedoModule(),
@@ -212,8 +214,8 @@ export function useStellarWallet(): WalletState {
     try {
       const net = await StellarWalletsKit.getNetwork();
       if (net?.networkPassphrase && net.networkPassphrase !== NETWORK_PASSPHRASE) {
-        const name = net.networkPassphrase.includes('Public') ? 'Mainnet' : 'an unknown network';
-        setNetworkWarning(`Wrong network: your wallet is connected to ${name}. Switch to Testnet in your wallet settings.`);
+        const name = net.networkPassphrase.includes('Public') ? 'Mainnet' : 'Testnet';
+        setNetworkWarning(`Wrong network: your wallet is connected to ${name}. Switch to ${expectedNetworkLabel} in your wallet settings.`);
       } else {
         setNetworkWarning(null);
       }
