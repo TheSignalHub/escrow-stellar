@@ -577,6 +577,13 @@ export function NearIntentsPanel({
   const hasValidStellarRecipient = StrKey.isValidEd25519PublicKey(walletAddress);
   const hasActivatedStellarRecipient = IS_TESTNET || stellarRecipientExists === true;
   const sourceUsesEvmWallet = Boolean(selectedOriginAsset && EVM_CHAINS.has(selectedOriginAsset.blockchain));
+  const selectedEvmChainId = selectedOriginAsset ? EVM_CHAIN_IDS[selectedOriginAsset.blockchain] : undefined;
+  const connectedEvmChainMatches = Boolean(
+    !sourceUsesEvmWallet ||
+      !evmSourceWallet.isConnected ||
+      !selectedEvmChainId ||
+      evmSourceWallet.chainId.toLowerCase() === selectedEvmChainId.toLowerCase()
+  );
   const sourceConnectorKind = sourceUsesEvmWallet
     ? 'evm'
     : selectedOriginAsset?.blockchain === 'near'
@@ -595,7 +602,8 @@ export function NearIntentsPanel({
     !quoteDemoDestination &&
     sourceUsesEvmWallet &&
     evmSourceWallet.isConnected &&
-    sourceRefundAddress
+    sourceRefundAddress &&
+    connectedEvmChainMatches
   );
   const quoteSourceAmount = selectedOriginAsset ? decimalToBaseUnits(sourceAmount, selectedOriginAsset.decimals) : '';
   const quoteRequestAmount = quoteSourceAmount;
@@ -808,10 +816,11 @@ export function NearIntentsPanel({
     try {
       const expectedChainId = EVM_CHAIN_IDS[selectedOriginAsset.blockchain];
       if (expectedChainId && evmSourceWallet.chainId.toLowerCase() !== expectedChainId.toLowerCase()) {
-        await provider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: expectedChainId }],
-        });
+        await evmSourceWallet.switchChain(expectedChainId);
+        const refreshedChainId = await provider.request({ method: 'eth_chainId' }).catch(() => '');
+        if (typeof refreshedChainId === 'string' && refreshedChainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+          throw new Error(`Switch your source wallet to ${chainLabel(selectedOriginAsset.blockchain)} before sending payment.`);
+        }
       }
 
       const amountHex = toHexQuantity(sourcePaymentAmount);
@@ -1092,7 +1101,7 @@ export function NearIntentsPanel({
                     <p className="mt-1 break-words text-sm text-zinc-300">
                       {sourceUsesEvmWallet
                         ? evmSourceWallet.isConnected
-                          ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
+                          ? `${shortText(evmSourceWallet.address)} · wallet on ${chainIdLabel(evmSourceWallet.chainId)}`
                           : `Connect wallet for ${chainLabel(selectedOriginAsset?.blockchain)} live payment`
                         : sourceConnectorKind === 'near'
                           ? 'NEAR source wallet support coming soon'
@@ -1102,15 +1111,23 @@ export function NearIntentsPanel({
                     </p>
                   </div>
                   {sourceUsesEvmWallet && (
-                  <Button
-                      onClick={evmSourceWallet.isConnected ? evmSourceWallet.disconnect : evmSourceWallet.connect}
+                    <Button
+                      onClick={
+                        evmSourceWallet.isConnected && sourceUsesEvmWallet && selectedEvmChainId && !connectedEvmChainMatches
+                          ? () => evmSourceWallet.switchChain(selectedEvmChainId)
+                          : evmSourceWallet.isConnected
+                            ? evmSourceWallet.disconnect
+                            : evmSourceWallet.connect
+                      }
                       variant={evmSourceWallet.isConnected ? 'secondary' : 'primary'}
                       className="w-full sm:w-auto py-3 text-xs"
                       icon={evmSourceWallet.isConnecting ? Loader2 : Wallet}
                     >
                       {evmSourceWallet.isConnecting
                         ? 'Connecting...'
-                        : evmSourceWallet.isConnected
+                        : evmSourceWallet.isConnected && sourceUsesEvmWallet && selectedEvmChainId && !connectedEvmChainMatches
+                          ? `Switch to ${chainLabel(selectedOriginAsset?.blockchain)}`
+                          : evmSourceWallet.isConnected
                           ? 'Disconnect'
                           : evmSourceWallet.isAvailable
                             ? 'Connect'
@@ -1179,6 +1196,12 @@ export function NearIntentsPanel({
             {sourceAssetAvailable && !hasSourceRefundRoute && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
                 Connect the source wallet to unlock live payment and automatic refunds.
+              </div>
+            )}
+
+            {sourceUsesEvmWallet && evmSourceWallet.isConnected && !connectedEvmChainMatches && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-200">
+                Your source wallet is on {chainIdLabel(evmSourceWallet.chainId)}. Switch it to {chainLabel(selectedOriginAsset?.blockchain)} before requesting a live payment quote.
               </div>
             )}
 

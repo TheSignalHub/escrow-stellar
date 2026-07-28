@@ -17,6 +17,8 @@ export interface EvmSourceWalletState {
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
+  refresh: () => Promise<void>;
+  switchChain: (chainId: string) => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => void;
 }
@@ -130,6 +132,51 @@ export function useEvmSourceWallet(): EvmSourceWalletState {
     }
   }, [detectProvider, provider]);
 
+  const switchChain = useCallback(
+    async (nextChainId: string) => {
+      const currentProvider = provider || detectProvider();
+      if (!currentProvider) {
+        setError('No EVM wallet was detected. Unlock MetaMask, refresh the page, or check that the extension is enabled for this site.');
+        return;
+      }
+      setIsConnecting(true);
+      setError(null);
+      try {
+        await currentProvider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: nextChainId }],
+        });
+        const [accounts, chain] = await Promise.all([
+          currentProvider.request({ method: 'eth_accounts' }),
+          currentProvider.request({ method: 'eth_chainId' }).catch(() => ''),
+        ]);
+        setAddress(normalizeAccount(accounts));
+        setChainId(normalizeChainId(chain));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Network switch was rejected.');
+      } finally {
+        setIsConnecting(false);
+      }
+    },
+    [detectProvider, provider]
+  );
+
+  useEffect(() => {
+    const handleFocus = () => {
+      void refresh();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [refresh]);
+
   const disconnect = useCallback(() => {
     setAddress('');
     setChainId('');
@@ -145,9 +192,11 @@ export function useEvmSourceWallet(): EvmSourceWalletState {
       isConnected: Boolean(address),
       isConnecting,
       error,
+      refresh,
+      switchChain,
       connect,
       disconnect,
     }),
-    [address, chainId, connect, disconnect, error, isConnecting, provider]
+    [address, chainId, connect, disconnect, error, isConnecting, provider, refresh, switchChain]
   );
 }
