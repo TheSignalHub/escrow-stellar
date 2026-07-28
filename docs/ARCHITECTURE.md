@@ -4,7 +4,7 @@
 
 The Signal's Stellar integration provides a trustless, on-chain escrow rail for
 milestone deals. The app supports native Stellar funding, Stellar asset
-conversion, NEAR Intents cross-chain top-ups, and Privy fiat onramp top-ups that
+conversion, NEAR Intents cross-chain top-ups, and fiat onramp top-ups that
 can feed the same DealEscrow lifecycle. The contract owns the escrow source of
 truth: create, fund, release, dispute, resolve, and reputation events all land
 on Soroban.
@@ -215,9 +215,9 @@ The frontend translates Soroban errors into user-friendly messages:
 
 The Signal's production marketplace manages the business workflow (discovery, matching, negotiation). When parties agree on a deal:
 
-**Traditional Fiat Flow**:
+**Fiat Top-Up Flow**:
 ```
-Deal Agreement → Stripe Checkout → Milestone Tracking → Stripe Connect Payout
+Deal Agreement → Stripe hosted XLM top-up → Soroban fund_deal() → Milestone Tracking
 ```
 
 **Stellar Flow**:
@@ -227,11 +227,11 @@ Deal Agreement → Soroban fund_deal() → Milestone Tracking → Soroban releas
 
 The smart contract replaces the payment processor while the marketplace handles everything else (user profiles, deal discovery, communication, content).
 
-For grant review, this repository does not write to Stripe, Stripe webhooks, or
-The Signal production marketplace payment records. External marketplaces map
-their deal and milestone IDs into the isolated shadow binding layer, then
-reconcile status from Soroban events. This preserves production marketplace
-safety while proving a reusable escrow adapter contract.
+Fiat top-up is wallet preparation, not escrow state. The app can create a
+Stripe hosted onramp session for the connected Stellar wallet, but the
+DealEscrow contract changes state only after the user signs `fund_deal()`.
+External marketplaces can map their deal and milestone IDs into the isolated
+binding layer, then reconcile status from Soroban events.
 
 ### BD Connector Tier System
 

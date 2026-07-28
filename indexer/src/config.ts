@@ -27,6 +27,17 @@ export interface IndexerConfig {
     allowMainnet: boolean;
     inclusionFeeStroops: string;
   };
+  stripeOnramp: {
+    enabled: boolean;
+    secretKey?: string;
+    apiBaseUrl: string;
+    defaultSourceCurrency: string;
+    defaultSourceAmount: string;
+    destinationCurrency: string;
+    destinationNetwork: string;
+    lockWalletAddress: boolean;
+    finishUrl?: string;
+  };
   enabled: boolean;
   overlapLedgers: number;
   startLedger?: number;
@@ -108,6 +119,17 @@ export function getConfig(): IndexerConfig {
       inclusionFeeStroops:
         process.env.ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS ||
         (network === 'mainnet' ? '10000' : '100'),
+    },
+    stripeOnramp: {
+      enabled: process.env.STRIPE_ONRAMP_ENABLED === 'true',
+      secretKey: process.env.STRIPE_SECRET_KEY,
+      apiBaseUrl: process.env.STRIPE_API_BASE_URL || 'https://api.stripe.com',
+      defaultSourceCurrency: (process.env.STRIPE_ONRAMP_SOURCE_CURRENCY || 'usd').toLowerCase(),
+      defaultSourceAmount: process.env.STRIPE_ONRAMP_DEFAULT_AMOUNT || '10',
+      destinationCurrency: (process.env.STRIPE_ONRAMP_DESTINATION_CURRENCY || 'xlm').toLowerCase(),
+      destinationNetwork: (process.env.STRIPE_ONRAMP_DESTINATION_NETWORK || 'stellar').toLowerCase(),
+      lockWalletAddress: process.env.STRIPE_ONRAMP_LOCK_WALLET_ADDRESS !== 'false',
+      finishUrl: process.env.STRIPE_ONRAMP_FINISH_URL,
     },
     enabled: process.env.INDEXER_ENABLED !== 'false',
     overlapLedgers: readOptionalInt('INDEXER_OVERLAP_LEDGERS') ?? 5,

@@ -122,6 +122,15 @@ NEAR_INTENTS_STELLAR_HORIZON_URL=https://horizon.stellar.org
 NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT=<operator-controlled-qa-refund-address>
 NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED=false
 NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST=<quote-only-asset-id>
+
+# Optional Stripe hosted XLM onramp adapter
+STRIPE_ONRAMP_ENABLED=false
+STRIPE_SECRET_KEY=<server-only-stripe-secret-key>
+STRIPE_ONRAMP_SOURCE_CURRENCY=usd
+STRIPE_ONRAMP_DEFAULT_AMOUNT=10
+STRIPE_ONRAMP_DESTINATION_CURRENCY=xlm
+STRIPE_ONRAMP_DESTINATION_NETWORK=stellar
+STRIPE_ONRAMP_LOCK_WALLET_ADDRESS=true
 ```
 
 `NEAR_INTENTS_DEFAULT_REFUND_ACCOUNT` is a dry quote/smoke fallback. Production
@@ -426,6 +435,7 @@ The runtime server exposes:
 - `/api/marketplace-bindings*` — protected shadow marketplace binding and reconciliation APIs
 - `/api/near-intents/readiness` — public non-secret NEAR Intents readiness for the frontend panel
 - `/api/near-intents/tokens` and `/api/marketplace-bindings/:bindingId/near-intents/quote|status|deposit-tx` — public user-facing NEAR Intents APIs, disabled unless configured
+- `/api/stripe/onramp/readiness` and `/api/stripe/onramp/session` — public Stripe hosted onramp adapter for XLM wallet top-ups; requires server-side `STRIPE_SECRET_KEY`
 - `/api/soroswap/quote` — server-side Soroswap public aggregator quote proxy
 - `/api/market-dashboard/summary` — indexer status, deal summary, and recent events
 - `/api/market-dashboard/escrow-events` — recent decoded escrow events

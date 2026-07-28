@@ -10,7 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
-| 2026-07-27 21:52 BST | Wallet Prep source-wallet clarity | Scoped the Privy Base funding wallet and card/bank onramp CTA to the active Privy wallet path. External Stellar wallet users now see generic source-wallet guidance instead of a stale Privy EVM address while connected through Freighter/SWK. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-28 02:41 BST | Stripe hosted XLM onramp | Added a Wallet Prep Stripe hosted onramp card and `/stripe_onramp_test` surface for connected Stellar wallets. The card creates server-side Stripe sessions for XLM delivery to the connected G-address and keeps escrow funding separate from onramp settlement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; `npm run build` passed in `indexer/`. |
 | 2026-07-27 21:25 BST | Header wallet network label | Made the connected-wallet header label and Stellar Wallets Kit initialization follow `VITE_STELLAR_NETWORK`, so Privy and extension-wallet paths show/use Mainnet on the production build instead of testnet copy/config. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 12:43 BST | Landing network badge | Made the public landing badge read from `VITE_STELLAR_NETWORK` so production displays **Stellar Soroban Mainnet** instead of hardcoded testnet copy. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:36 BST | Mainnet inclusion fee default | Added a frontend `VITE_STELLAR_INCLUSION_FEE_STROOPS` override and defaulted mainnet escrow transactions to `10000` stroops after mainnet create/admin retries showed base inclusion fees can timeout without landing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -39,7 +39,6 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-25 15:44 BST | Wallet Prep top-up amount units | Changed standalone NEAR Intents Wallet Prep top-up amount from raw Stellar base-unit display to human Stellar units, defaulting to `10` and converting to base units only for quote estimation. Deal-aware Add Funds still displays the locked deal amount from contract units. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 15:27 BST | Wallet Prep swap balances | Added selected XLM/USDC wallet balances to the Convert on Stellar route and amount fields, plus a Max action for exact-pay swaps that leaves a small XLM fee buffer. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 15:15 BST | XLM-first settlement default | Kept Stellar USDC available as an optional settlement asset, but made the public Create Deal copy and generic Wallet Prep cross-chain top-up default to Stellar XLM first. Deal-specific Add Funds remains locked to the selected deal token. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 11:55 BST | Privy fiat top-up routing guidance | Updated the Wallet Prep fiat onramp card and docs to explain the production sequence: buy Base USDC first, route into Stellar XLM for fresh wallets to activate the account, or route into Stellar USDC only after XLM reserve and USDC trustline are ready. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 11:54 BST | Wallet Prep inactive-account trustline state | Split the Convert on Stellar issued-asset readiness check into inactive account versus missing trustline states. Fresh mainnet wallets now show an XLM activation reminder and block conversion before the USDC trustline action is offered. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 11:48 BST | Create Deal settlement-specific payout readiness | Refined Create Deal participant and settlement-asset copy so fresh payout addresses are allowed at creation, XLM deals are described as the simplest native payout path, and USDC deals warn that recipients need XLM reserve plus a USDC trustline before release. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 04:03 BST | Create Deal fresh payout address clarity | Added Create Deal participant copy clarifying that provider/connector payout addresses can be fresh at agreement creation and only need activation/asset receivability before milestone release. Functional validation already accepts address format only for payout recipients. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -62,7 +61,6 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-24 23:52 BST | Wallet Prep custom Stellar routes | Generalized **Convert on Stellar** so users can paste Stellar token contract addresses for pay/receive assets, use XLM/USDC presets, flip direction, choose exact pay or exact receive, and run route checks against the selected pair. Escrow funding remains in Deals. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 23:41 BST | Wallet Prep conversion wording | Renamed the Wallet Prep broker section from funding language to **Convert on Stellar**, clarified that the swap prepares the connected Stellar wallet, and kept escrow funding anchored to Deals / Fund Deal. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 20:21 BST | Add Funds production flow split | Split the Add Funds NEAR Intents UI into an explicit **Preview Quote** path for live 1Click route evidence and a **Get Live Payment Quote** path gated by source-wallet readiness. Added a production payment flow panel that shows the connected Stellar wallet, selected source route, source-wallet connector state, and final Fund Deal handoff. | `npm run build` passed in `frontend/`. |
-| 2026-07-24 19:32 BST | Privy fiat top-up rail | Added a Wallet Prep fiat onramp card using Privy's `useFiatOnramp`, upgraded Privy React SDK for Stripe-onramp support, configured fiat purchases as Base USDC source-wallet top-ups rather than direct Stellar escrow funding, linked EVM USDC Add Funds routes back to the fiat top-up card, and added a wallet overview that shows the Stellar escrow wallet beside the Base/EVM funding wallet. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 18:54 BST | Create Deal settlement labels | Aligned Create Deal settlement choices to production-directed Stellar XLM and Stellar USDC labels while retaining testnet demo USDC-compatible asset disclosures in docs/env policy. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:08 BST | Dispute UI contract alignment | Removed the disputed-milestone client release override from the Deals UI because `release_milestone` only accepts funded milestones. Disputed milestones now point to operator/admin `resolve_dispute` for provider win, client refund, or partial split. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:38 BST | Admin dispute operations surface | Added the protected `/admin` console in the indexer service for open dispute evidence, resolution/refund command generation, and manual indexer refresh. The public Deals UI remains user-side only and does not expose admin split controls. | `npm run build` passed in `indexer/`. |
@@ -267,21 +265,16 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 
 Wallet connection button displayed in the header when disconnected. Opens the unified connect modal with Privy as the primary path and extension wallets as fallback.
 
-### PrivyFiatTopUpCard
+### StripeXlmOnrampCard
 
-**File**: `src/components/PrivyFiatTopUpCard.tsx`
+**File**: `src/components/StripeXlmOnrampCard.tsx`
 
-Wallet Prep includes a fiat-to-crypto top-up card powered by Privy's
-`useFiatOnramp` hook. The default configuration buys USDC on Base into a
-Privy/EVM wallet. This is intentionally not an escrow funding transaction:
-after fiat settlement, the user still routes/top-ups into Stellar when needed
-and confirms **Fund Deal** from the connected Stellar wallet.
-
-Why Base/EVM first: Privy's current React onramp API expects a destination
-chain/asset/address shape for supported onramp providers. This build does not
-claim direct Stellar onramp delivery unless Privy exposes Stellar as a supported
-destination. The Stellar DealEscrow source of truth remains Soroban `funded`
-events.
+Wallet Prep includes a Stripe hosted onramp card for native XLM wallet top-ups.
+It sends the connected Stellar G-address to the backend, which creates the
+Stripe session with `STRIPE_SECRET_KEY` and returns a hosted Link redirect URL.
+This path works for Privy and extension-wallet users because the purchase
+destination is the connected Stellar wallet. It does not fund escrow directly;
+users still click **Fund Deal** after XLM arrives.
 
 ### SoroswapWidget
 
@@ -295,7 +288,7 @@ Wallet support interface (Wallet Prep tab):
 
 **Convert on Stellar**: Quote -> Sign -> Convert through the configured AMM/broker route. Users select common XLM/USDC routes from dropdowns, can open advanced mode to paste pay/receive SAC contract addresses, flip direction, choose exact pay or exact receive, and set slippage presets/custom tolerance. On mainnet, the common XLM <-> Circle USDC route uses Stellar Horizon pathfinding / SDEX liquidity. The current testnet adapter executes against the seeded Soroswap router pool, so custom pairs require available route liquidity. This prepares the connected Stellar wallet only; escrow funding happens later from Deals via `fund_deal`.
 
-**NEAR Intents wallet top-up**: Wallet Prep renders the reusable `NearIntentsPanel` as a general cross-chain wallet top-up utility where the user chooses source chain, source asset, source amount, and an approved Stellar destination. The first pending client milestone also opens the same panel in a focused deal-aware modal, where the deal and remaining pending balance are already selected and locked. The NEAR route is not the escrow funding transaction: it prepares the connected Stellar wallet, then the user confirms **Fund Deal** to call `fund_deal`. Browser code calls local backend APIs through `src/lib/nearIntents.ts`; the NEAR JWT, refund fallback, and binding id stay server-side or internal. Source chain/token options come from public 1Click token discovery, while deal-tied destination assets remain limited to the backend-approved Stellar settlement allowlist. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. Quote/status routes require the protected session, while `/api/near-intents/readiness` is public and returns only non-secret availability booleans plus approved settlement asset labels/defaults. Refund routing is managed through the connected source wallet in the production flow; the server fallback exists only for internal quote QA. Quote-only demo destinations remain forced dry previews and never show executable payment instructions. The panel shows signature-verified quote state in product terms and explicitly warns that payment/top-up status does not mark escrow funded until the user confirms `fund_deal` and Stellar DealEscrow `funded` events exist.
+**NEAR Intents wallet top-up**: Wallet Prep renders the reusable `NearIntentsPanel` as a general cross-chain wallet top-up utility where the user chooses source chain, source asset, source amount, and an approved Stellar destination. The first pending client milestone also opens the same panel in a focused deal-aware modal, where the deal and remaining pending balance are already selected and locked. The NEAR route is not the escrow funding transaction: it prepares the connected Stellar wallet, then the user confirms **Fund Deal** to call `fund_deal`. Source chain/token options come from public 1Click token discovery, while deal-tied destination assets remain limited to the backend-approved Stellar settlement allowlist. EVM routes use the browser's injected wallet connector; NEAR and Solana source-wallet connectors remain separately gated. Quote requests require a connected Stellar G-address so the settlement recipient is real before the server calls 1Click. The panel shows signature-verified quote state in product terms and explicitly warns that payment/top-up status does not mark escrow funded until the user confirms `fund_deal` and Stellar DealEscrow `funded` events exist.
 
 ### CreateDeal
 
@@ -457,9 +450,16 @@ Only active when wallet is connected.
 | `VITE_STELLAR_BROKER_SLIPPAGE_BPS` | No | Swap slippage tolerance in basis points; defaults to `100` |
 | `VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS` | No | Quote/deadline window; defaults to `3600` |
 | `VITE_SOROSWAP_ROUTER_ADDRESS` | No | Soroswap router used by the Stellar Broker testnet adapter |
+| `VITE_STRIPE_ONRAMP_ENABLED` | No | Enables the Stripe hosted XLM onramp card; defaults to `true` |
+| `VITE_STRIPE_ONRAMP_MODE` | No | Display mode for the Stripe card, usually `test` or `production` |
+| `VITE_STRIPE_ONRAMP_SOURCE_CURRENCY` | No | Fiat currency default sent to the backend; defaults to `usd` |
+| `VITE_STRIPE_ONRAMP_DEFAULT_AMOUNT` | No | Fiat amount default for the hosted onramp session; defaults to `10` |
+| `VITE_STRIPE_ONRAMP_DESTINATION_CURRENCY` | No | Display destination currency; defaults to `xlm` |
+| `VITE_STRIPE_ONRAMP_DESTINATION_NETWORK` | No | Display destination network; defaults to `stellar` |
 
 The public aggregator API key belongs on the backend as `SOROSWAP_API_KEY`,
-not as a `VITE_` variable.
+not as a `VITE_` variable. Stripe hosted onramp sessions are also created by
+the backend; keep `STRIPE_SECRET_KEY` out of frontend env.
 
 When `VITE_STELLAR_NETWORK=mainnet`, Friendbot UI is hidden and seeded
 testnet pool language is replaced with generic provider/broker copy. The

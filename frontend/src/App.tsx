@@ -16,6 +16,7 @@ import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
+import { StripeXlmOnrampCard } from './components/StripeXlmOnrampCard';
 import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, STELLAR_NETWORK, getExplorerContractLink } from './lib/stellar';
 import { SignalLogo, GlowingBackground } from './components/ui/Branding';
 import { Button, Card } from './components/ui/Components';
@@ -218,6 +219,8 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const stripeOnrampTestPath =
+    typeof window !== 'undefined' && window.location.pathname === '/stripe_onramp_test';
   const [lastCreatedDealId, setLastCreatedDealId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem('parity-banner-dismissed') === '1'
@@ -504,7 +507,19 @@ export default function App() {
                 </div>
               )}
 
-              {activeTab === 'fund' && (
+              {stripeOnrampTestPath && (
+                <div className="max-w-4xl mx-auto space-y-6">
+                  <div>
+                    <h1 className="text-3xl lg:text-5xl font-black text-white tracking-tight">Stripe XLM Onramp Test</h1>
+                    <p className="mt-3 text-sm lg:text-base text-zinc-400 max-w-2xl">
+                      Create a hosted Stripe onramp session that delivers XLM to the connected Stellar wallet. Escrow funding remains a separate Fund Deal transaction.
+                    </p>
+                  </div>
+                  <StripeXlmOnrampCard walletAddress={wallet.address} compact />
+                </div>
+              )}
+
+              {!stripeOnrampTestPath && activeTab === 'fund' && (
                 <SoroswapWidget
                   walletAddress={wallet.address}
                   signTransaction={wallet.signTransaction}
@@ -513,11 +528,10 @@ export default function App() {
                   onBalanceRefresh={() => wallet.refreshBalances()}
                   xlmBalance={wallet.xlmBalance}
                   usdcBalance={wallet.usdcBalance}
-                  activeSource={wallet.activeSource}
                 />
               )}
 
-              {activeTab === 'create' && (
+              {!stripeOnrampTestPath && activeTab === 'create' && (
                 <CreateDeal
                   walletAddress={wallet.address}
                   onCreateDeal={escrow.createDeal}
@@ -526,7 +540,7 @@ export default function App() {
                 />
               )}
 
-              {activeTab === 'dashboard' && (
+              {!stripeOnrampTestPath && activeTab === 'dashboard' && (
                 <DealDashboard
                   getDeal={escrow.getDeal}
                   getDealCount={escrow.getDealCount}
@@ -542,7 +556,7 @@ export default function App() {
                 />
               )}
 
-              {activeTab === 'reputation' && (
+              {!stripeOnrampTestPath && activeTab === 'reputation' && (
                 <ReputationBadge
                   getReputation={escrow.getReputation}
                   getDealCount={escrow.getDealCount}

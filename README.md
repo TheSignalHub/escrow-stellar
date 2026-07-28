@@ -22,7 +22,7 @@ mainnet pilot contract for final-tranche validation:
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
 - **Mainnet DealEscrow pilot**: The audited `fund_deal` contract is deployed on Stellar Mainnet and supports create, fund-once, release, dispute, and admin resolution flows.
 - **NEAR Intents cross-chain top-up**: NEAR Intents / 1Click is integrated as a server-side cross-chain Stellar wallet top-up path. The user chooses source chain, source asset, and source amount; the destination is constrained to the approved Stellar settlement asset for the deal. EVM source routes can submit native/ERC-20 payments from a connected browser wallet to the 1Click deposit address. After the Stellar wallet is topped up, the user confirms **Fund Deal**, which calls `fund_deal`; escrow state remains gated on Soroban `funded` events.
-- **Fiat onramp path**: Privy fiat onramp can buy Base USDC into the user's source wallet, then NEAR Intents can route value into the connected Stellar wallet before escrow funding.
+- **Fiat onramp path**: Stripe hosted crypto onramp can create an XLM top-up session for the connected Stellar wallet. The user completes the fiat purchase with Stripe/Link, then funds the same DealEscrow workflow from the Stellar wallet after XLM arrives.
 
 Reviewer links:
 
@@ -100,9 +100,9 @@ the Stellar escrow from the connected Stellar wallet after settlement arrives.
 Escrow state remains anchored to the Soroban DealEscrow contract and its funded
 events. See [`docs/NEAR_INTENTS_BOUNDARY.md`](docs/NEAR_INTENTS_BOUNDARY.md).
 
-Privy fiat onramp is integrated as a wallet top-up path. A user can buy crypto
-into a supported source wallet, route value into Stellar when needed, and then
-fund the same DealEscrow workflow from the Stellar wallet. See
+Stripe hosted crypto onramp is integrated as an XLM wallet top-up path. A user
+can buy native XLM into the connected Stellar wallet, then fund the same
+DealEscrow workflow from that wallet. See
 [`docs/PAYMENT_RAIL_BOUNDARY.md`](docs/PAYMENT_RAIL_BOUNDARY.md).
 
 ## Key Features
@@ -111,9 +111,9 @@ fund the same DealEscrow workflow from the Stellar wallet. See
 - **Atomic 3-Way Splits** — Every release executes three transfers in one atomic transaction: Provider, Connector (BD), and Protocol.
 - **On-Chain Reputation** — Providers accumulate a verifiable deal completion counter on-chain. Cannot be faked.
 - **Dispute Resolution** — Either party raises a dispute with an off-chain reason note to freeze funds. Admin resolution supports provider win, client refund, or partial split outcomes with explicit on-chain states, and the protected `/admin` console shows open dispute evidence, notes, and admin resolution actions.
-- **Wallet Prep** — Review wallet destinations, send native XLM through the connected wallet signer, buy source-wallet USDC through Privy, convert supported Stellar assets, and prepare cross-chain top-ups before funding a deal.
+- **Wallet Prep** — Review wallet destinations, send native XLM through the connected wallet signer, buy XLM through Stripe hosted onramp, convert supported Stellar assets, and prepare cross-chain top-ups before funding a deal.
 - **Mainnet Wallet Readiness** — XLM is the recommended default settlement asset because native XLM can activate fresh Stellar accounts. Stellar USDC remains available for wallets with XLM reserve and a USDC trustline.
-- **Fiat Top-Up via Privy** — Buy crypto through Privy-supported onramp providers into a source wallet, route value into Stellar when needed, and then fund DealEscrow from the connected Stellar wallet.
+- **Fiat Top-Up via Stripe** — Buy native XLM through Stripe hosted onramp into the connected Stellar wallet, then fund DealEscrow from that wallet after settlement arrives.
 - **Cross-Chain Add Funds Entry** — Choose a supported source chain and asset, request a NEAR Intents / 1Click route, send the source payment from a connected browser wallet, track routing progress, and fund the Stellar escrow after settlement arrives.
 - **Privy Wallet Path** — Embedded Stellar wallet flow, with Stellar Wallets Kit support retained in the codebase.
 - **Indexer Dashboard** — Soroban RPC event reader writes decoded DealEscrow lifecycle events into an isolated MongoDB read model and exposes `/market_dashboard`. NEAR Intents / 1Click top-up events are separate wallet-funding evidence and are not counted as escrow state until `fund_deal` emits DealEscrow `funded` events.
@@ -214,7 +214,7 @@ npm run dev
 1. Open `http://localhost:5173` — the landing page shows "Trust Engine." with a live glitch effect
 2. Click **Connect Wallet** and use Privy or a Stellar testnet wallet
 3. Fund your wallet with 10,000 XLM via Friendbot
-4. Use **Wallet Prep** to buy source-wallet USDC, quote a NEAR Intents wallet top-up, or swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
+4. Use **Wallet Prep** to buy XLM through Stripe hosted onramp, quote a NEAR Intents wallet top-up, or swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario; the financial setup defaults to Stellar XLM, with Stellar USDC still available as an optional issued-asset settlement path
 6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM** for the clean grant smoke or use **Prepare Wallet** / **Top Up from Another Chain** when the wallet needs more XLM first
 7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events
@@ -345,7 +345,7 @@ cargo test
 | BD connector tiers | 40–65% of platform fee | Parameterized per deal |
 | Dispute escalation | Admin dashboard + Stripe | Smart contract + admin auth |
 | Reputation | Database counter | Persistent storage on-chain |
-| Payment | Stripe Connect / fiat marketplace payments | SAC token transfers, Stellar DEX conversion, NEAR Intents top-up |
+| Payment | Fiat top-up + Stellar escrow funding | SAC token transfers, Stellar DEX conversion, NEAR Intents top-up |
 
 ## Documentation
 

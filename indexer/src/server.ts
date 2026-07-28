@@ -15,6 +15,10 @@ import {
   submitNearIntentDepositTx,
 } from './nearIntentsProvider.js';
 import { runStellarIndexerOnce } from './runStellarIndexerOnce.js';
+import {
+  createStripeOnrampSession,
+  StripeOnrampProviderError,
+} from './stripeOnrampProvider.js';
 import type { CrossChainPaymentStatus, MarketplaceBinding } from './types.js';
 
 const config = getConfig();
@@ -97,6 +101,38 @@ app.get('/api/near-intents/readiness', (_req, res) => {
     quoteTtlSeconds: config.nearIntents.quoteTtlSeconds,
     pollIntervalSeconds: config.nearIntents.pollIntervalSeconds,
   });
+});
+
+app.get('/api/stripe/onramp/readiness', (_req, res) => {
+  res.json({
+    enabled: config.stripeOnramp.enabled,
+    configured: {
+      secretKey: Boolean(config.stripeOnramp.secretKey),
+    },
+    mode: config.stripeOnramp.secretKey?.startsWith('sk_live_') ? 'live' : 'test',
+    defaults: {
+      sourceCurrency: config.stripeOnramp.defaultSourceCurrency,
+      sourceAmount: config.stripeOnramp.defaultSourceAmount,
+      destinationCurrency: config.stripeOnramp.destinationCurrency,
+      destinationNetwork: config.stripeOnramp.destinationNetwork,
+      lockWalletAddress: config.stripeOnramp.lockWalletAddress,
+    },
+  });
+});
+
+app.post('/api/stripe/onramp/session', async (req, res) => {
+  try {
+    const session = await createStripeOnrampSession(config, req.body || {});
+    res.status(201).json(session);
+  } catch (error) {
+    if (error instanceof StripeOnrampProviderError) {
+      res.status(error.statusCode).json({ error: error.message, detail: error.detail });
+      return;
+    }
+    res.status(500).json({
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 app.post('/api/indexer/run-once', requireAdminAuth, async (_req, res) => {

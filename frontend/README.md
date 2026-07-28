@@ -72,19 +72,20 @@ VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS=3600
 # Soroswap router used by the Broker-style testnet route
 VITE_SOROSWAP_ROUTER_ADDRESS=
 
-# Optional Privy fiat onramp top-up. Defaults buy Base USDC into a Privy/EVM
-# wallet; Stellar escrow is funded later from the Stellar wallet after routing.
-VITE_PRIVY_FIAT_ONRAMP_ENABLED=true
-VITE_PRIVY_FIAT_ONRAMP_ENVIRONMENT=sandbox
-VITE_PRIVY_FIAT_ONRAMP_DESTINATION_CHAIN=eip155:8453
-VITE_PRIVY_FIAT_ONRAMP_DESTINATION_ASSET=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-VITE_PRIVY_FIAT_ONRAMP_DEFAULT_AMOUNT=50
-VITE_PRIVY_FIAT_ONRAMP_SOURCE_ASSETS=usd,eur,gbp
-VITE_PRIVY_FIAT_ONRAMP_DEFAULT_SOURCE_ASSET=usd
+# Optional Stripe hosted XLM onramp. The backend creates the hosted session
+# with STRIPE_SECRET_KEY; the frontend only controls display defaults.
+VITE_STRIPE_ONRAMP_ENABLED=true
+VITE_STRIPE_ONRAMP_MODE=test
+VITE_STRIPE_ONRAMP_SOURCE_CURRENCY=usd
+VITE_STRIPE_ONRAMP_DEFAULT_AMOUNT=10
+VITE_STRIPE_ONRAMP_DESTINATION_CURRENCY=xlm
+VITE_STRIPE_ONRAMP_DESTINATION_NETWORK=stellar
 ```
 
 The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
 For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
+Stripe hosted onramp sessions are also created by the backend. Keep
+`STRIPE_SECRET_KEY` server-only; do not expose it as a `VITE_` variable.
 NEAR Intents keys and approved settlement asset lists are also backend-only.
 Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
 live execution flags; the frontend uses local `/api/near-intents/*` routes so
@@ -177,7 +178,7 @@ cancellation, and provider failures before any public release.
 
 - **Deals** — browse all on-chain escrows, filter by status, search by ID / address, and fund/release/dispute milestones, including settlement-balance checks and cross-chain quote initiation from pending milestones
 - **Create Deal** — create milestone-based escrow deals with custom splits and escrow settlement-asset selection; Stellar XLM is selected by default, while Stellar USDC remains available as an optional issued-asset path
-- **Wallet Prep** — review wallet destinations, send native XLM through the connected wallet signer, buy USDC with fiat through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
+- **Wallet Prep** — review wallet destinations, send native XLM through the connected wallet signer, buy XLM with Stripe hosted onramp, optionally buy source-wallet USDC through Privy-supported onramps, convert supported Stellar assets through the configured AMM/broker route, and quote cross-chain wallet top-ups through NEAR Intents before funding the deal. Friendbot is shown only on testnet.
 - **Oracle** — scan any public key's on-chain reputation + on-chain leaderboard (top clients / providers)
 - **Live Ticker** — real-time feed of recent contract activity on the homepage
 
@@ -206,12 +207,12 @@ On slower mainnet RPC responses, Create Deal may stop polling before finality.
 In that case the review panel keeps the submitted hash, links to Stellar
 Explorer, and lets the user check Deals/wallet activity before retrying.
 
-Wallet Prep also shows a **Your Wallets** section and a **Buy USDC with Fiat**
-card when Privy onramps are enabled. The wallet overview separates the Stellar
-escrow wallet from the Base/EVM funding wallet. The fiat card starts Privy's
-fiat-to-crypto modal and sends purchased USDC to the Base/EVM wallet. It is a
-top-up path only: the deal is not escrow-funded until the user routes assets
-into Stellar when needed and confirms **Fund Deal** from the Stellar wallet.
+Wallet Prep also shows a **Your Wallets** section and a **Buy XLM with Stripe**
+card. The Stripe card requests a hosted onramp session from the backend and
+locks delivery to the connected Stellar wallet. It is a top-up path only: the
+deal is not escrow-funded until the user confirms **Fund Deal** from the Stellar
+wallet.
+
 For fresh Stellar wallets, the default route target is native XLM first,
 because XLM activates the Stellar account and can fund XLM-settled escrow
 directly. Stellar USDC is appropriate after the Stellar wallet has XLM reserve
@@ -277,15 +278,15 @@ frontend/src/
 ├── lib/
 │   ├── stellar.ts             # RPC URLs, Stellar SDK helpers
 │   ├── stellarBroker.ts       # Broker-facing adapter for the testnet route
-│   ├── privyOnramp.ts         # Privy fiat top-up env/config helpers
+│   ├── stripeOnramp.ts        # Browser client for server-side Stripe hosted XLM sessions
 │   ├── nearIntents.ts         # Browser client for local NEAR Intents adapter APIs
 │   ├── soroswapOnchain.ts     # Direct seeded Soroswap router path
 │   ├── privy-stellar.ts       # Signing bridge: XDR ↔ Privy raw hash
 │   └── dealMetadata.ts        # Local event log
 ├── components/
 │   ├── WalletConnectModal.tsx # 2-tab modal (Privy + SWK)
-│   ├── WalletPrepOverview.tsx # Stellar escrow wallet + Base/EVM funding wallet overview
-│   ├── PrivyFiatTopUpCard.tsx # Fiat-to-Base-USDC wallet top-up via Privy onramp
+│   ├── StripeXlmOnrampCard.tsx # Hosted Stripe XLM wallet top-up
+│   ├── WalletPrepOverview.tsx # Stellar escrow wallet + funding route overview
 │   ├── NearIntentsPanel.tsx   # Reusable cross-chain quote/status panel for wallet top-up and deal funding
 │   ├── DealDashboard.tsx      # Split-panel deal management UI
 │   ├── ReputationBadge.tsx    # Oracle scanner + leaderboard
