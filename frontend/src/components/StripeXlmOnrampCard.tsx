@@ -116,8 +116,7 @@ export function StripeXlmOnrampCard({
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-400">
-            Buy native XLM directly into this Stellar wallet, then fund escrow from the same wallet in Deals.
-            XLM is the default top-up asset because it activates fresh Stellar accounts and avoids issued-asset trustline setup.
+            Add XLM to this Stellar wallet, then fund your escrow from Deals.
           </p>
 
           <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/85 flex items-start gap-2">
