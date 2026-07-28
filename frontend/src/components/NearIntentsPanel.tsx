@@ -1095,10 +1095,10 @@ export function NearIntentsPanel({
                           ? `${shortText(evmSourceWallet.address)} · ${chainIdLabel(evmSourceWallet.chainId)}`
                           : `Connect wallet for ${chainLabel(selectedOriginAsset?.blockchain)} live payment`
                         : sourceConnectorKind === 'near'
-                          ? 'NEAR wallet connector is next; preview quote works now'
+                          ? 'NEAR source wallet support coming soon'
                           : sourceConnectorKind === 'solana'
-                            ? 'Solana wallet connector is next; preview quote works now'
-                            : 'Live connector not available for this source yet'}
+                            ? 'Solana source wallet support coming soon'
+                            : 'Source wallet support coming soon'}
                     </p>
                   </div>
                   {sourceUsesEvmWallet && (
