@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-28 12:14 BST | Stripe onramp header label | Removed the Stripe readiness mode pill from the user-facing Wallet Prep card so the header does not show test/production implementation labels. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 12:08 BST | Stripe onramp copy trim | Removed the extra Stripe top-up body sentence so the card keeps only the hosted-flow XLM-on-Stellar guardrail before the destination summary. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 12:03 BST | Stripe onramp user-facing copy | Shortened the Stripe top-up description so the production Wallet Prep card explains the user action without implementation details. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:55 BST | Stripe onramp card simplification | Hid the in-app fiat amount/currency row from the Stripe hosted onramp card and kept only the locked XLM-on-Stellar destination summary. Payment currency selection remains inside Stripe/Link where supported. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |

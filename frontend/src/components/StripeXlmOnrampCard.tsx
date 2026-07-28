@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, CreditCard, ExternalLink, Loader2, Wallet } from 'lucide-react';
 import { useToast } from '../App';
 import {
@@ -6,12 +6,10 @@ import {
   STRIPE_ONRAMP_DESTINATION_CURRENCY,
   STRIPE_ONRAMP_DESTINATION_NETWORK,
   STRIPE_ONRAMP_ENABLED,
-  STRIPE_ONRAMP_MODE,
   stripeOnrampClient,
-  type StripeOnrampReadiness,
   type StripeOnrampSession,
 } from '../lib/stripeOnramp';
-import { Button, Card, Tag } from './ui/Components';
+import { Button, Card } from './ui/Components';
 
 interface StripeXlmOnrampCardProps {
   walletAddress: string;
@@ -31,7 +29,6 @@ export function StripeXlmOnrampCard({
   embedded = false,
 }: StripeXlmOnrampCardProps) {
   const toast = useToast();
-  const [readiness, setReadiness] = useState<StripeOnrampReadiness | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [session, setSession] = useState<StripeOnrampSession | null>(null);
@@ -39,26 +36,13 @@ export function StripeXlmOnrampCard({
 
   const destinationLabel = `${STRIPE_ONRAMP_DESTINATION_CURRENCY.toUpperCase()} on ${STRIPE_ONRAMP_DESTINATION_NETWORK}`;
   const canStart = STRIPE_ONRAMP_ENABLED && Boolean(walletAddress);
-  const modeLabel = readiness?.mode === 'live' || STRIPE_ONRAMP_MODE === 'production' ? 'production' : 'test';
-
-  const readyLabel = useMemo(() => {
-    if (!STRIPE_ONRAMP_ENABLED) return 'disabled';
-    if (!readiness) return modeLabel;
-    if (!readiness.enabled || !readiness.configured.secretKey) return 'not configured';
-    return modeLabel;
-  }, [modeLabel, readiness]);
 
   useEffect(() => {
     let cancelled = false;
     setChecking(true);
     stripeOnrampClient
       .readiness()
-      .then((value) => {
-        if (!cancelled) setReadiness(value);
-      })
-      .catch(() => {
-        if (!cancelled) setReadiness(null);
-      })
+      .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setChecking(false);
       });
@@ -107,7 +91,6 @@ export function StripeXlmOnrampCard({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Buy XLM with Stripe</h3>
-                <Tag color={modeLabel === 'production' ? 'emerald' : 'blue'}>{readyLabel}</Tag>
               </div>
               <p className="mt-1 text-xs text-zinc-500">
                 Hosted fiat top-up to the connected Stellar wallet.
