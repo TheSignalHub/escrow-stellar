@@ -104,7 +104,7 @@ export function StripeXlmOnrampCard({
   };
 
   const content = (
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <div className={`flex flex-col gap-5 ${embedded ? '' : 'lg:flex-row lg:items-start lg:justify-between'}`}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 mb-4">
             {!embedded && (
@@ -180,7 +180,7 @@ export function StripeXlmOnrampCard({
           )}
         </div>
 
-        <div className="lg:w-72 space-y-3">
+        <div className={`${embedded ? 'w-full' : 'lg:w-72'} space-y-3`}>
           <Button
             onClick={startHostedOnramp}
             disabled={!canStart || loading || checking}

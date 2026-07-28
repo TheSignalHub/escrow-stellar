@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-28 11:43 BST | Wallet Prep responsive layout | Changed the wallet overview to stack wallet and Stripe top-up cards into two rows until wide screens, and kept the embedded Stripe card vertical so copy and controls do not squeeze. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:13 BST | Stripe onramp destination reminder | Added in-card safety copy reminding users to keep the hosted Stripe/Link flow on the configured fiat currency and XLM on Stellar before continuing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:07 BST | Wallet Prep top-up consolidation | Merged the Stripe XLM onramp action into the **Your Wallets** surface, removed duplicated funding-route copy, and removed internal status labels from Wallet Prep and Add Funds. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 02:41 BST | Stripe hosted XLM onramp | Added a Wallet Prep Stripe hosted onramp card and `/stripe_onramp_test` surface for connected Stellar wallets. The card creates server-side Stripe sessions for XLM delivery to the connected G-address and keeps escrow funding separate from onramp settlement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; `npm run build` passed in `indexer/`. |

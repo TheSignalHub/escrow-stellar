@@ -50,7 +50,7 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance, children }: Wal
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
