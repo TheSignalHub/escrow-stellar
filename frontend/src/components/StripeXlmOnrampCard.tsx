@@ -115,10 +115,6 @@ export function StripeXlmOnrampCard({
             </div>
           </div>
 
-          <p className="text-sm leading-relaxed text-zinc-400">
-            Add XLM to this Stellar wallet, then fund your escrow from Deals.
-          </p>
-
           <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/85 flex items-start gap-2">
             <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-300" />
             <span>
