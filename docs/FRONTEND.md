@@ -10,6 +10,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-28 11:13 BST | Stripe onramp destination reminder | Added in-card safety copy reminding users to continue in Stripe/Link only when the hosted page shows XLM on Stellar. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:07 BST | Wallet Prep top-up consolidation | Merged the Stripe XLM onramp action into the **Your Wallets** surface, removed duplicated funding-route copy, and removed internal status labels from Wallet Prep and Add Funds. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 02:41 BST | Stripe hosted XLM onramp | Added a Wallet Prep Stripe hosted onramp card and `/stripe_onramp_test` surface for connected Stellar wallets. The card creates server-side Stripe sessions for XLM delivery to the connected G-address and keeps escrow funding separate from onramp settlement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; `npm run build` passed in `indexer/`. |
 | 2026-07-27 21:25 BST | Header wallet network label | Made the connected-wallet header label and Stellar Wallets Kit initialization follow `VITE_STELLAR_NETWORK`, so Privy and extension-wallet paths show/use Mainnet on the production build instead of testnet copy/config. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |

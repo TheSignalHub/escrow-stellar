@@ -128,6 +128,14 @@ export function StripeXlmOnrampCard({
             XLM is the default top-up asset because it activates fresh Stellar accounts and avoids issued-asset trustline setup.
           </p>
 
+          <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/85 flex items-start gap-2">
+            <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-300" />
+            <span>
+              In Stripe/Link, only continue when <strong>Receive</strong> shows <strong>XLM</strong> on{' '}
+              <strong>Stellar</strong>. If another currency or network is selected, go back and start again.
+            </span>
+          </div>
+
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <label className="rounded-xl border border-zinc-800 bg-black/30 p-3">
               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay with</span>
@@ -159,7 +167,7 @@ export function StripeXlmOnrampCard({
             <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-200 flex items-start gap-2">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
               <span>
-                Session created. Complete the Stripe flow, then refresh this wallet balance before funding escrow.
+                Session created. Keep Stripe/Link set to XLM on Stellar, then refresh this wallet balance before funding escrow.
               </span>
             </div>
           )}
