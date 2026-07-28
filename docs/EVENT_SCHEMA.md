@@ -1,6 +1,6 @@
 # DealEscrow Event Schema
 
-> Reference for the off-chain indexer (SCF #42 — Deliverable 5).
+> Reference for the off-chain DealEscrow event indexer.
 >
 > Source of truth: `contracts/deal_escrow/src/lib.rs`
 > Indexer implementation: `indexer/src/runStellarIndexerOnce.ts`
@@ -10,7 +10,8 @@ The DealEscrow Soroban contract emits seven event topics over the course of a de
 - A **topic vector** (the first ScSymbol identifies the event type, followed by indexed parameters like `deal_id` and `milestone_idx`)
 - A **value** (the non-indexed payload, often a tuple)
 
-All numeric encodings follow Stellar's stroop precision: integer amounts at 7 decimals (`10000000` stroops = 1 USDC).
+All numeric encodings follow Stellar's 7-decimal precision: integer amounts at
+7 decimals (`10000000` base units = 1 token unit for XLM-compatible precision).
 
 ---
 
@@ -201,6 +202,10 @@ Since `bigint` doesn't serialize cleanly through MongoDB JSON responses, the ind
 
 ## Retention Window
 
-Soroban RPC event retention is network/provider dependent. For the Tranche 2 testnet review, assume a short retention window and keep the indexer running regularly. If the indexer is paused or redeployed beyond the available RPC event window, older events cannot be recovered from `getEvents` alone; they must be replayed by walking transactions from another source such as Horizon operations, which is out of scope for D5.
+Soroban RPC event retention is network/provider dependent. Keep the indexer
+running regularly so it does not fall behind the available event window. If the
+indexer is paused or redeployed beyond the provider's retention window, older
+events may need to be recovered from transaction history instead of
+`getEvents`.
 
 For continuous indexing, run the Inngest `sorobanEventListener` at least every minute. The default schedule in `indexer/src/inngest.ts` is `*/1 * * * *`, and `INDEXER_OVERLAP_LEDGERS=5` gives a short safety margin against transient RPC drift.

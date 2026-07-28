@@ -4,7 +4,11 @@
 
 The frontend is a React 19 single-page application built with TypeScript 5.9, Vite 8, and Tailwind CSS v4. It provides a complete interface for interacting with the DealEscrow smart contract on the configured Stellar network — from the landing page through wallet connection, deal creation, milestone management, and reputation lookup.
 
-Most signed escrow interactions happen directly between the browser and Stellar's Soroban RPC via `@stellar/stellar-sdk`. The deployed review stack can also run the small `indexer` backend for `/market_dashboard`, Inngest indexing, and the optional server-side Soroswap public aggregator quote check. The executable broker-style demo route in the frontend uses the on-chain Soroswap router adapter, not the public aggregator proxy.
+Most signed escrow interactions happen directly between the browser and
+Stellar's Soroban RPC via `@stellar/stellar-sdk`. The deployed stack also runs
+the small `indexer` backend for `/market_dashboard`, Inngest indexing, protected
+admin dispute operations, Stripe hosted onramp session creation, NEAR Intents /
+1Click quote/status routes, and optional server-side quote helpers.
 
 ## Feature Log
 
@@ -16,26 +20,26 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-28 11:55 BST | Stripe onramp card simplification | Hid the in-app fiat amount/currency row from the Stripe hosted onramp card and kept only the locked XLM-on-Stellar destination summary. Payment currency selection remains inside Stripe/Link where supported. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:43 BST | Wallet Prep responsive layout | Changed the wallet overview to stack wallet and Stripe top-up cards into two rows until wide screens, and kept the embedded Stripe card vertical so copy and controls do not squeeze. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 11:13 BST | Stripe onramp destination reminder | Added in-card safety copy reminding users to keep the hosted Stripe/Link flow on the configured fiat currency and XLM on Stellar before continuing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-28 11:07 BST | Wallet Prep top-up consolidation | Merged the Stripe XLM onramp action into the **Your Wallets** surface, removed duplicated funding-route copy, and removed internal status labels from Wallet Prep and Add Funds. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-28 11:07 BST | Wallet Prep top-up consolidation | Merged the Stripe XLM onramp action into the **Your Wallets** surface, removed duplicated funding-route copy, and removed implementation status labels from Wallet Prep and Add Funds. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-28 02:41 BST | Stripe hosted XLM onramp | Added a Wallet Prep Stripe hosted onramp card and `/stripe_onramp_test` surface for connected Stellar wallets. The card creates server-side Stripe sessions for XLM delivery to the connected G-address and keeps escrow funding separate from onramp settlement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; `npm run build` passed in `indexer/`. |
 | 2026-07-27 21:25 BST | Header wallet network label | Made the connected-wallet header label and Stellar Wallets Kit initialization follow `VITE_STELLAR_NETWORK`, so Privy and extension-wallet paths show/use Mainnet on the production build instead of testnet copy/config. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 12:43 BST | Landing network badge | Made the public landing badge read from `VITE_STELLAR_NETWORK` so production displays **Stellar Soroban Mainnet** instead of hardcoded testnet copy. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:36 BST | Mainnet inclusion fee default | Added a frontend `VITE_STELLAR_INCLUSION_FEE_STROOPS` override and defaulted mainnet escrow transactions to `10000` stroops after mainnet create/admin retries showed base inclusion fees can timeout without landing. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:14 BST | Create Deal finality recovery | Added a recoverable unconfirmed-transaction state when Create Deal polling times out after submission. The review panel now keeps the submitted hash, links to Stellar Explorer, lets the user check Deals/wallet activity, and allows an explicit retry instead of freezing on awaiting finality. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-26 00:06 BST | Deal metadata storage scope | Namespaced browser-local deal metadata and event ledger entries by Stellar network and DealEscrow contract address so same numeric deal IDs from testnet, mainnet, or older deployments no longer mix in the Deals tab. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 22:57 BST | Disputed deal pause UX | Added a deal-level paused banner for `Disputed` deals, hid normal release/dispute actions for still-funded milestones while the deal is frozen, and made timeout/error explorer URLs clickable from the Deals error panel. This matches the mainnet smoke finding that an open dispute blocks normal releases until admin resolution. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-25 22:57 BST | Disputed deal pause UX | Added a deal-level paused banner for `Disputed` deals, hid normal release/dispute actions for still-funded milestones while the deal is frozen, and made timeout/error explorer URLs clickable from the Deals error panel. This matches mainnet validation showing that an open dispute blocks normal releases until admin resolution. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 22:22 BST | Wallet Prep XLM transfer utility | Added a browser-signed **Send XLM** Wallet Prep utility for transferring native XLM from the connected Stellar wallet, including fresh-account activation via `createAccount` when the destination is not active. This avoids private-key export while supporting operator/tester wallet movement. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:30 BST | Deal event ledger grouping | Grouped same-transaction `fund_deal` milestone rows in the selected deal sidebar so a full-deal funding transaction reads as one **Deal Funded** action with affected milestones listed, instead of looking like duplicate unrelated funding history. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:27 BST | Create Deal timeout explorer link | Derived the submitted transaction hash from the signed XDR and used it as the fallback for submitted, polling, success, and timeout explorer links so delayed finality messages never point to an empty `/tx` URL. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:23 BST | Create Deal mainnet finality tracking | Create Deal now receives the submitted transaction hash immediately after Soroban RPC accepts the transaction, switches the progress state to awaiting finality during polling, and shows a Stellar Explorer link while confirmation is pending. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 21:12 BST | Optional connector deal creation | Made the Create Deal connector field optional. When no connector is provided, the frontend submits the provider address as the on-chain connector recipient so the connector share is paid to the provider instead of requiring a BD referrer. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 20:24 BST | Mainnet USDC SAC selection | Confirmed mainnet Circle USDC derives to `CCW67TSZ...JMI75` and made the frontend USDC default network-aware so a missing env cannot fall back to the testnet demo USDC on mainnet. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet Circle USDC SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`. |
+| 2026-07-25 20:24 BST | Mainnet USDC SAC selection | Confirmed mainnet Circle USDC derives to `CCW67TSZ...JMI75` and made the frontend USDC default network-aware so a missing env cannot fall back to the testnet USDC-compatible asset on mainnet. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet Circle USDC SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`. |
 | 2026-07-25 20:15 BST | Mainnet XLM SAC selection | Made native XLM SAC selection network-aware so mainnet XLM deals use `CAS3J7GY...XOWMA` instead of the testnet SAC. Added a funding guard/error for already-created mainnet deals that reference the testnet XLM SAC. | `npm run build -- --logLevel warn` passed with existing large-chunk warning; CLI confirmed mainnet native SAC `CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA`. |
-| 2026-07-25 19:29 BST | NEAR Intents completed badge | Changed the terminal 1Click settlement badge from the internal **Awaiting escrow event** amber state to a green **Swap completed** state while keeping the separate Fund Deal reminder below. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 19:24 BST | NEAR Intents settlement success copy | Replaced internal reconcile/indexing language in the top-up success banner with a user-facing next step: funds reached the Stellar wallet, then open Deals and fund escrow. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-25 19:29 BST | NEAR Intents completed badge | Changed the terminal 1Click settlement badge to a green **Swap completed** state while keeping the separate Fund Deal reminder below. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-25 19:24 BST | NEAR Intents settlement success copy | Replaced implementation reconcile/indexing language in the top-up success banner with a user-facing next step: funds reached the Stellar wallet, then open Deals and fund escrow. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:18 BST | NEAR Intents pay-card responsive fix | Changed the Add Funds **You pay** card so source amount and source selectors stack cleanly in narrow columns, preventing the chain/asset dropdowns from overlapping the amount field. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 19:12 BST | NEAR Intents status wait guidance | Added concise waiting-time guidance to the payment status copy so users understand that 1Click detection, routing, and Stellar settlement can take a few minutes after source payment submission. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 19:05 BST | NEAR Intents warning copy | Shortened the preview-only and source-wallet-required warning text in the Add Funds panel so the swap flow reads less like internal documentation while preserving the live-payment gate. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-25 19:05 BST | NEAR Intents warning copy | Shortened the preview-only and source-wallet-required warning text in the Add Funds panel so the swap flow reads less like implementation documentation while preserving the live-payment gate. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 18:50 BST | NEAR Intents swap panel polish | Reworked the Add Funds NEAR Intents input side into a cleaner swap-style surface with route chips, a larger **You pay** amount field, locked **You receive** settlement card, and compact source-wallet connection state. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 18:34 BST | NEAR Intents post-swap crash fix | Replaced the last unsafe nested status read in the settlement-complete banner with the normalized provider status so successful source swaps cannot crash the route tracking UI. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 17:08 BST | NEAR Intents status shape alignment | Verified the deployed 1Click status response shape and updated frontend tracking to read provider `originChainTxHashes` for source-chain explorer links, while retaining the prior fallback key. | Deployed status shape inspected with `inspect:near-shapes`; `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -51,7 +55,7 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-25 04:03 BST | Create Deal fresh payout address clarity | Added Create Deal participant copy clarifying that provider/connector payout addresses can be fresh at agreement creation and only need activation/asset receivability before milestone release. Functional validation already accepts address format only for payout recipients. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 03:57 BST | EVM source-wallet detection | Made the NEAR Intents source-wallet hook re-detect injected EVM wallets on mount, after delayed extension injection, and again on connect click. Updated the Add Funds button copy so installed wallets such as MetaMask are not presented as a dead install-only path. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 04:34 BST | Create Deal payout-address flow | Simplified mainnet Create Deal to validate pasted provider/connector payout address format only. Recipient receivability is now checked at milestone release, where the payout transfer actually happens. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
-| 2026-07-25 04:22 BST | Mainnet demo preset accounts | Added configurable public mainnet payout preset addresses for Create Deal quick-start scenarios, with active pilot ops-wallet fallback so mainnet smoke deals do not prefill inactive testnet accounts. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
+| 2026-07-25 04:22 BST | Mainnet preset accounts | Added configurable public mainnet payout preset addresses for Create Deal quick-start scenarios, with active pilot ops-wallet fallback so mainnet validation deals do not prefill inactive testnet accounts. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 04:06 BST | Mainnet recipient onboarding gate | Relaxed mainnet Create Deal so only the connected client wallet must be active before agreement creation. Provider/connector account activation and USDC trustline checks moved toward release-time enforcement, where funds actually move; create-time recipient warnings were later removed in the 04:34 entry. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 03:32 BST | Mainnet Stellar account readiness | Added production wallet-readiness gates: Wallet Prep flags inactive Stellar wallets, NEAR top-up quotes require an existing Stellar destination account, Create Deal began checking participant readiness, and Soroban transaction timeouts now include an explorer link with a longer confirmation window. Create-time recipient blocking was later relaxed in the 04:06 entry. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-25 03:21 BST | Wallet Prep advanced trustline guard | Generalized the Wallet Prep trustline check around the receive asset. Known issued Stellar assets can use the browser-signed trustline flow; unknown advanced pasted receive contracts now show a manual trustline warning and block swap execution instead of failing with `op_no_trust`. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
@@ -68,12 +72,12 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-24 23:52 BST | Wallet Prep custom Stellar routes | Generalized **Convert on Stellar** so users can paste Stellar token contract addresses for pay/receive assets, use XLM/USDC presets, flip direction, choose exact pay or exact receive, and run route checks against the selected pair. Escrow funding remains in Deals. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 23:41 BST | Wallet Prep conversion wording | Renamed the Wallet Prep broker section from funding language to **Convert on Stellar**, clarified that the swap prepares the connected Stellar wallet, and kept escrow funding anchored to Deals / Fund Deal. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 20:21 BST | Add Funds production flow split | Split the Add Funds NEAR Intents UI into an explicit **Preview Quote** path for live 1Click route evidence and a **Get Live Payment Quote** path gated by source-wallet readiness. Added a production payment flow panel that shows the connected Stellar wallet, selected source route, source-wallet connector state, and final Fund Deal handoff. | `npm run build` passed in `frontend/`. |
-| 2026-07-24 18:54 BST | Create Deal settlement labels | Aligned Create Deal settlement choices to production-directed Stellar XLM and Stellar USDC labels while retaining testnet demo USDC-compatible asset disclosures in docs/env policy. | `npm run build` passed in `frontend/`. |
+| 2026-07-24 18:54 BST | Create Deal settlement labels | Aligned Create Deal settlement choices to production-directed Stellar XLM and Stellar USDC labels while retaining testnet USDC-compatible asset disclosures in docs/env policy. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:08 BST | Dispute UI contract alignment | Removed the disputed-milestone client release override from the Deals UI because `release_milestone` only accepts funded milestones. Disputed milestones now point to operator/admin `resolve_dispute` for provider win, client refund, or partial split. | `npm run build` passed in `frontend/`. |
 | 2026-07-24 15:38 BST | Admin dispute operations surface | Added the protected `/admin` console in the indexer service for open dispute evidence, resolution/refund command generation, and manual indexer refresh. The public Deals UI remains user-side only and does not expose admin split controls. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 16:51 BST | Dispute notes and admin execution | Added a dispute-reason textarea to the user dispute modal, stores notes off-chain for admin review, and added optional protected `/admin` server-side resolution/refund execution behind explicit admin signer env gates. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-24 14:22 BST | EVM source-wallet quote gate | Added a lightweight EIP-1193 source-wallet connector inside the Add Funds panel. Ethereum/Base-style routes can now collect the connected EVM address as the live quote refund route, while unconnected routes remain dry preview-only. | `npm run build` passed in `frontend/`. |
-| 2026-07-24 01:26 BST | Production NEAR swap evidence path | Added an indexer-side live swap smoke command for production-directed NEAR Intents QA. It creates dry quotes by default, requires explicit `--live` for executable deposit instructions, enforces a max USD cap, validates source refund address shape, and supports status polling after manual source-chain payment. | `npm run build` passed in `indexer/`. |
+| 2026-07-24 01:26 BST | Production NEAR swap validation path | Added an indexer-side live swap command for production-directed NEAR Intents QA. It creates dry quotes by default, requires explicit `--live` for executable deposit instructions, enforces a max USD cap, validates source refund address shape, and supports status polling after manual source-chain payment. | `npm run build` passed in `indexer/`. |
 | 2026-07-24 00:54 BST | Add Funds route-quality UX | Ranked discovered 1Click source assets with recommended routes first, auto-estimated source amounts from live token prices when available, added friendly no-route copy, remembered successful preview routes, and surfaced a route verification checklist after signed dry quotes. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 21:07 BST | Add Funds quote amount display | Formatted 1Click destination quote amounts in human Stellar units for XLM/USDC instead of showing raw base-unit labels in the quote summary. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 17:39 BST | 1Click source token discovery | Replaced hardcoded Add Funds source-token cards with live 1Click token discovery. Users now choose source chain, source asset, and source amount from supported non-Stellar routes while the destination remains locked to the deal settlement asset. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
@@ -92,10 +96,10 @@ Most signed escrow interactions happen directly between the browser and Stellar'
 | 2026-07-23 11:46 BST | Wallet balance and ledger refresh UX | Updated the connected wallet header to expose balance context and changed Deals auto-sync to refresh silently so the left ledger list does not show loading skeletons on each polling interval. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 11:30 BST | Create Deal settlement-only flow | Removed the create-time XLM -> configured-settlement-token swap route from Create Deal. Create Deal now only selects the escrow settlement asset; swaps/top-ups/cross-chain payment remain in Wallet Prep or pending milestone funding. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 11:14 BST | Funding-time settlement balance UX | Added a pending-milestone settlement-balance check in Deals for XLM and configured settlement-token deals, disabled direct Stellar funding when the known balance is short, and kept Wallet Prep / Pay from Another Chain as recovery paths. | `npm run build` passed in `frontend/`. |
-| 2026-07-23 10:54 BST | Create Deal settlement asset naming | Renamed the Create Deal financial selector from source-asset language to **Escrow Settlement Asset** language and added an internal code comment clarifying that the existing `sourceAsset` state is a funding/settlement mode selector. | `npm run build` passed in `frontend/`. |
+| 2026-07-23 10:54 BST | Create Deal settlement asset naming | Renamed the Create Deal financial selector from source-asset language to **Escrow Settlement Asset** language and clarified that the existing `sourceAsset` state is a funding/settlement mode selector. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from the wallet-prep tab, kept NEAR Intents inside pending milestone funding, renamed the support tab to **Wallet Prep**, and replaced remaining create-deal deployment copy with deal-language. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-23 10:33 BST | Deal-level NEAR funding UX | Reused `NearIntentsPanel` inside pending milestone funding so users start cross-chain payment from a selected deal/milestone with the amount locked, while keeping Wallet Prep as testnet settlement preparation. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
-| 2026-07-22 18:51 BST | Product flow naming | Renamed the public app flow from **Liquidity / Deploy Contract** to **Payment Routes / Create Deal**, updated pending milestone actions to distinguish payment-route preparation from direct Stellar funding, and forced quote-only NEAR demo destinations to remain preview-only even when live execution is enabled. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
+| 2026-07-22 18:51 BST | Product flow naming | Renamed the public app flow from **Liquidity / Deploy Contract** to **Payment Routes / Create Deal**, updated pending milestone actions to distinguish payment-route preparation from direct Stellar funding, and forced NEAR preview destinations to remain preview-only even when live execution is enabled. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
 
 ## Component Architecture
 
@@ -113,9 +117,9 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
+    ├── Wallet Prep            — Wallet funding, Stripe XLM onramp, Stellar conversion, and NEAR Intents top-up
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle + deal-level settlement-balance check + NEAR funding entry)
+    ├── Deals                  — DealDashboard (split-panel lifecycle, fund-once checkout, release/dispute)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 
@@ -206,8 +210,8 @@ interface WalletState {
 ```
 
 **Key features**:
-- **Privy-first wallet support**: Uses Privy embedded Stellar wallets for the main demo path, with Freighter, xBull, and Albedo retained through Stellar Wallets Kit as fallbacks.
-- **Auto-refresh balances**: Polls XLM and test USDC balances every 15 seconds using ref-based intervals.
+- **Privy-first wallet support**: Uses Privy embedded Stellar wallets, with Freighter, xBull, and Albedo retained through Stellar Wallets Kit as fallbacks.
+- **Auto-refresh balances**: Polls XLM and USDC balances using ref-based intervals.
 - **Error-categorized signing**: Catches wallet errors and provides user-friendly messages (cancelled, unavailable, or generic failure).
 - **Event-driven state**: Listens to `STATE_UPDATED` and `DISCONNECT` events from the wallet kit.
 - **Disconnect resets app**: `disconnect()` clears address + balances, returning the user to the landing page (logo click when connected also calls `disconnect()`).
@@ -309,7 +313,9 @@ Three-step deal creation:
 
 **Step 3 — Success**: Centered animated checkmark, Deal ID, transaction hash, Explorer link, "View Deal Dashboard" navigation.
 
-**Quick Start scenarios**: Security Audit (500 XLM / 3 milestones), Dev Sprint (1,200 XLM / 2 milestones), Advisory Retainer (3,000 XLM / 4 milestones). Auto-fills demo testnet addresses.
+**Quick Start scenarios**: Security Audit (500 XLM / 3 milestones), Dev Sprint
+(1,200 XLM / 2 milestones), Advisory Retainer (3,000 XLM / 4 milestones).
+Auto-fills configurable preset addresses for the selected network.
 
 ### DealDashboard
 
@@ -355,8 +361,8 @@ On-chain reputation lookup with radar animation and animated count-up display. B
 Small browser client for the local NEAR Intents adapter:
 
 - `readiness()` calls the public backend readiness endpoint.
-- `createQuote(bindingId, body)` calls the protected quote endpoint.
-- `getStatus(bindingId)` calls the protected status endpoint.
+- `createQuote(bindingId, body)` calls the public quote endpoint.
+- `getStatus(bindingId)` calls the public status endpoint.
 - Errors are wrapped as `NearIntentsApiError` so the UI can distinguish admin
   auth, disabled feature flags, validation errors, and provider failures.
 
@@ -385,7 +391,7 @@ Core Stellar SDK configuration and utilities:
 ### stellarBroker.ts and soroswapOnchain.ts
 
 `stellarBroker.ts` exposes the broker-facing `StellarBrokerProvider` interface
-used by `SoroswapWidget` and the create-deal swap step:
+used by `SoroswapWidget`:
 
 ```ts
 getQuote(assetIn, assetOut, amount, tradeType, sourceAddress)
@@ -399,13 +405,17 @@ Quotes carry provider metadata:
 - `quoteExpiresAt`
 - `slippageBps`
 
-In the current testnet demo the provider delegates to `soroswapOnchain.ts`,
-which calls the seeded Soroswap router path directly because public indexed
-testnet liquidity may be unavailable after resets.
+On mainnet, common XLM/USDC routes use Stellar pathfinding/SDEX liquidity. In
+testnet staging, the provider can delegate to `soroswapOnchain.ts`, which calls
+a seeded Soroswap router path directly because public indexed testnet liquidity
+may be unavailable after resets.
 
 ### soroswap.ts
 
-Optional public aggregator quote client used by `SoroswapWidget` as an informational route-discovery check. It calls the local backend proxy at `/api/soroswap/quote`; the Soroswap API key stays server-side in `SOROSWAP_API_KEY`. It is not the executable swap path for the current demo.
+Optional public aggregator quote client used by `SoroswapWidget` for
+informational route checks. It calls the local backend proxy at
+`/api/soroswap/quote`; the Soroswap API key stays server-side in
+`SOROSWAP_API_KEY`.
 
 ### dealMetadata.ts
 
@@ -458,7 +468,7 @@ Only active when wallet is connected.
 | `VITE_STELLAR_BROKER_QUOTE_TTL_SECONDS` | No | Quote/deadline window; defaults to `3600` |
 | `VITE_SOROSWAP_ROUTER_ADDRESS` | No | Soroswap router used by the Stellar Broker testnet adapter |
 | `VITE_STRIPE_ONRAMP_ENABLED` | No | Enables the Stripe hosted XLM onramp card; defaults to `true` |
-| `VITE_STRIPE_ONRAMP_MODE` | No | Display mode for the Stripe card, usually `test` or `production` |
+| `VITE_STRIPE_ONRAMP_MODE` | No | Runtime mode sent to the backend for hosted onramp sessions, usually `test` or `production` |
 | `VITE_STRIPE_ONRAMP_SOURCE_CURRENCY` | No | Fiat currency default sent to the backend; defaults to `usd` |
 | `VITE_STRIPE_ONRAMP_DEFAULT_AMOUNT` | No | Fiat amount default for the hosted onramp session; defaults to `10` |
 | `VITE_STRIPE_ONRAMP_DESTINATION_CURRENCY` | No | Display destination currency; defaults to `xlm` |
@@ -468,10 +478,8 @@ The public aggregator API key belongs on the backend as `SOROSWAP_API_KEY`,
 not as a `VITE_` variable. Stripe hosted onramp sessions are also created by
 the backend; keep `STRIPE_SECRET_KEY` out of frontend env.
 
-When `VITE_STELLAR_NETWORK=mainnet`, Friendbot UI is hidden and seeded
-testnet pool language is replaced with generic provider/broker copy. The
-current executable broker adapter is still the seeded Soroswap route until the
-Gap 4 provider interface is completed.
+When `VITE_STELLAR_NETWORK=mainnet`, Friendbot UI is hidden and seeded testnet
+pool language is replaced with generic provider/broker copy.
 
 Settlement asset policy is documented in
 [`SETTLEMENT_ASSET_POLICY.md`](SETTLEMENT_ASSET_POLICY.md).

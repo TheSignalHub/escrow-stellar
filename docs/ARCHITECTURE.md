@@ -138,9 +138,9 @@ App.tsx (Root)
 │   ├── Connect Wallet CTA     — Opens unified Privy-first wallet modal
 │   └── Read the Docs CTA      — Links to GitHub repo
 └── App Tabs (when connected)
-    ├── Wallet Prep            — SoroswapWidget (Friendbot + broker-style testnet settlement-asset prep)
+    ├── Wallet Prep            — Wallet funding, Stripe XLM onramp, Stellar conversion, and NEAR Intents top-up
     ├── Create Deal            — CreateDeal (form + review + success)
-    ├── Deals                  — DealDashboard (split-panel lifecycle + deal-level funding entry + milestone-level release/dispute)
+    ├── Deals                  — DealDashboard (split-panel lifecycle, fund-once checkout, release/dispute)
     └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
 
@@ -225,6 +225,11 @@ Deal Agreement → Stripe hosted XLM top-up → Soroban fund_deal() → Mileston
 Deal Agreement → Soroban fund_deal() → Milestone Tracking → Soroban release_milestone()
 ```
 
+**Cross-Chain Top-Up Flow**:
+```text
+Deal Agreement → NEAR Intents / 1Click top-up → Soroban fund_deal() → Milestone Tracking
+```
+
 The smart contract replaces the payment processor while the marketplace handles everything else (user profiles, deal discovery, communication, content).
 
 Fiat top-up is wallet preparation, not escrow state. The app can create a
@@ -247,20 +252,23 @@ This is parameterized per deal via `connector_share_bps`, so different connector
 
 ## Deployment
 
-### Testnet
+### Network Profiles
 
-The current demo deployment uses Stellar's public testnet by default:
+The app is environment-driven and can run against Stellar testnet or mainnet.
+The public deployment uses the configured mainnet pilot contract; local staging
+can still use Stellar's public testnet.
+
+Common testnet defaults:
 
 - **RPC**: `https://soroban-testnet.stellar.org`
 - **Horizon**: `https://horizon-testnet.stellar.org`
 - **Explorer**: [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet)
-- **Friendbot**: Available for free 10,000 XLM funding
+- **Friendbot**: Available for testnet XLM funding
 
 Frontend network endpoints are environment-driven through
 `VITE_STELLAR_NETWORK`, `VITE_STELLAR_RPC_URL`,
 `VITE_STELLAR_HORIZON_URL`, `VITE_STELLAR_EXPLORER_URL`, and
-`VITE_FRIENDBOT_URL`. Testnet remains the default for SCF review. Friendbot is
-disabled outside testnet.
+`VITE_FRIENDBOT_URL`. Friendbot is disabled outside testnet.
 
 ### Mainnet Considerations
 
@@ -268,6 +276,6 @@ For production deployment:
 
 1. **Storage rent**: Persistent storage requires rent payments. Deals should include a rent reserve or use TTL management.
 2. **Fee estimation**: Production should continue relying on simulation-driven Soroban fee assembly and add monitoring/limits for abnormal fee spikes.
-3. **Token support**: Replace XLM SAC with production USDC or other stablecoins.
+3. **Token support**: XLM is the default settlement path for fresh wallets. USDC and other issued assets require active recipients and trustlines.
 4. **Admin key management**: Use a multisig or DAO-controlled admin address.
 5. **Contract upgrades**: Consider implementing a proxy pattern or versioned storage for future upgrades.

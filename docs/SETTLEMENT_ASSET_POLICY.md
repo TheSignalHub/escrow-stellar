@@ -9,26 +9,25 @@ route, indexer, and marketplace binding layer.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
-| 2026-07-24 18:54 BST | Stellar USDC presentation alignment | Updated frontend/default env labels to present the configured USDC-compatible settlement rail as Stellar USDC while preserving the testnet demo-asset disclosure. | `npm run build` passed in `frontend/`. |
+| 2026-07-24 18:54 BST | Stellar USDC presentation alignment | Updated frontend/default env labels to present the configured USDC-compatible settlement rail as Stellar USDC while preserving the testnet asset disclosure. | `npm run build` passed in `frontend/`. |
 | 2026-07-23 16:19 BST | Production settlement allowlist | Clarified the product settlement boundary: escrow deals may settle only in approved Stellar USDC or native XLM, while cross-chain source assets remain flexible through supported provider routes. | `npm run build` passed in `frontend/`. |
-| 2026-07-01 10:16 HKT | Settlement asset policy | Added explicit demo/mainnet asset policy, amount precision, minimum amount, trustline, and dust/rounding notes. | `npm run build` passed; mainnet policy-profile build passed. |
+| 2026-07-01 10:16 HKT | Settlement asset policy | Added explicit testnet/mainnet asset policy, amount precision, minimum amount, trustline, and dust/rounding notes. | `npm run build` passed; mainnet policy-profile build passed. |
 
-## Current Demo Asset
+## Network Asset Profiles
 
-The SCF demo uses a testnet SEP-41 token as the configured settlement asset:
+Testnet deployments can use a SEP-41 USDC-compatible token as the configured
+issued settlement asset:
 
 ```text
 Display symbol:  USDC
 Display name:    Stellar USDC
 Decimals:        7
 SAC address:     CAHJQG77XDPFZAC7JJSRGAVYWKGEUDWOQ5O33VK4VTR2ZKOBCZAIVLFX
-Policy profile:  demo-testnet
+Policy profile:  testnet
 ```
 
-This testnet SAC is a USDC-compatible demo asset, not production Circle-issued
-USDC. The product-facing label is Stellar USDC so the checkout shape matches
-the intended mainnet rail, while the policy profile and docs keep the testnet
-asset boundary explicit.
+This testnet SAC is not production Circle-issued USDC. Mainnet deployments use
+the verified mainnet Circle USDC SAC when a USDC settlement path is enabled.
 
 ## Production Asset Requirements
 
@@ -65,7 +64,7 @@ VITE_SETTLEMENT_TOKEN_SYMBOL=USDC
 VITE_SETTLEMENT_TOKEN_NAME=Stellar USDC
 VITE_SETTLEMENT_TOKEN_DECIMALS=7
 VITE_SETTLEMENT_MIN_UNITS=1
-VITE_SETTLEMENT_ASSET_POLICY=demo-testnet
+VITE_SETTLEMENT_ASSET_POLICY=testnet
 ```
 
 For mainnet, use a policy label such as `approved-mainnet` and set
@@ -111,9 +110,10 @@ zero or become operationally meaningless.
 - Native XLM does not require a trustline.
 - Non-native Stellar assets may require wallet-side trustline setup before a
   user can receive or hold the asset.
-- The current demo relies on testnet funding and a seeded broker route.
+- Testnet deployments may rely on funded test accounts and seeded liquidity
+  routes.
 - Mainnet onboarding must document how the client obtains the approved
-  settlement asset before calling `deposit`.
+  settlement asset before calling `fund_deal`.
 
 ## Indexer And Marketplace Binding Notes
 
@@ -129,5 +129,5 @@ settlementAsset: {
 
 Consumers should treat this metadata as part of the reconciliation contract.
 If a marketplace changes settlement asset policy, downstream dashboards,
-exports, and support tooling must know whether amounts are testnet demo units
-or production-approved settlement units.
+exports, and support tooling must know which network asset profile produced the
+amounts.

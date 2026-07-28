@@ -1,16 +1,20 @@
-# Demo Guide
+# Product Demo Guide
 
-A step-by-step walkthrough of the complete DealEscrow demo flow on Stellar Testnet.
+A step-by-step walkthrough of the DealEscrow flow on the configured Stellar
+network. The public deployment currently uses the mainnet pilot contract; local
+or staging builds can still run against testnet.
 
 ## Prerequisites
 
 Before starting, ensure you have:
 
 1. **Wallet access**:
-   - Privy embedded Stellar wallet for the Tranche 2 demo path
-   - Optional fallback: Freighter, xBull, or Albedo via Stellar Wallets Kit
+   - Privy embedded Stellar wallet
+   - Freighter, xBull, or Albedo via Stellar Wallets Kit
 
-2. **Wallet set to Testnet**: Privy is configured for the app's testnet flow. For extension wallets, select "Test Net".
+2. **Wallet network**: Use the same network as the deployed frontend. Mainnet
+   builds require a mainnet Stellar account with enough XLM for reserve, fees,
+   and the deal amount.
 
 3. **The frontend running** at `http://localhost:5173`:
    ```bash
@@ -35,19 +39,23 @@ Open `http://localhost:5173`. The landing page shows:
 To connect:
 
 1. Click **Connect Wallet**
-2. The connect modal appears — use Privy for the main Tranche 2 path, or choose an extension wallet fallback
+2. The connect modal appears — use Privy or choose an extension wallet fallback
 3. Approve the connection/sign-in
-4. Your truncated address and XLM/test USDC balances appear in the top-right header
+4. Your truncated address and XLM/USDC balances appear in the top-right header
 5. The Live Network Ticker disappears and the app tabs appear
 
-**What happens**: The app uses the unified wallet hook. Privy is preferred for the embedded Stellar wallet path, and Stellar Wallets Kit remains available as a fallback. On successful connection, it starts polling your XLM and test USDC balances every 15 seconds.
+**What happens**: The app uses the unified wallet hook. Privy is preferred for
+the embedded Stellar wallet path, and Stellar Wallets Kit remains available as
+a fallback. On successful connection, it starts polling your XLM and USDC
+balances.
 
 ---
 
 ## Step 2: Prepare Wallet
 
-Navigate to the **Wallet Prep** tab (`Alt+1`) only if you need testnet XLM or
-the demo settlement asset before funding a milestone.
+Navigate to the **Wallet Prep** tab (`Alt+1`) when the connected Stellar wallet
+needs XLM, a Stellar asset conversion, or a cross-chain top-up before funding a
+deal.
 
 ### Option S: Send XLM
 
@@ -73,7 +81,7 @@ exported.
 This is the clean fiat path for both Privy and extension-wallet users because
 the onramp destination is the connected Stellar wallet.
 
-### Option A: Friendbot (Free 10,000 XLM)
+### Option A: Friendbot (Testnet Only)
 
 1. Click **Get 10,000 XLM from Friendbot**
 2. Wait for confirmation (1-2 seconds)
@@ -84,9 +92,10 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 ### Option B: Convert on Stellar
 
-1. Use the default **XLM -> USDC** preset, or paste Stellar token contract addresses for the pay and receive assets
+1. Use the default **XLM -> USDC** preset, **USDC -> XLM** preset, or paste
+   Stellar token contract addresses in advanced mode
 2. Choose **Exact pay** or **Exact receive**
-3. Enter the amount (for the 500 test USDC demo, use about `2260` XLM with the preset)
+3. Enter the amount
 4. Click **Calculate Route** to fetch a broker quote
 5. Review the rate and slippage tolerance (1%)
 6. Click **Convert Balance**
@@ -94,9 +103,10 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 8. On success, see the test USDC amount received with an Explorer link
 9. Return to **Deals** and click **Fund Deal** when the settlement balance is sufficient
 
-> **Note**: For Tranche 2 testnet review, the Stellar Broker adapter uses a seeded Soroswap router pool. The configured settlement token is demo-only test USDC, not production Circle USDC.
-> Custom token pairs can be entered, but they only quote and execute when the configured broker/Soroswap route has liquidity for that pair.
-> On mainnet, a fresh Stellar wallet must first receive XLM to become active before it can create a USDC trustline or hold issued assets.
+> **Note**: XLM is the simplest default for fresh Stellar wallets because native
+> XLM can activate the account. USDC and other issued assets require the wallet
+> to be active and to hold the relevant trustline before it can receive or swap
+> into that asset.
 
 ### Option C: Add Funds from Another Chain
 
@@ -112,7 +122,7 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 The Wallet Prep NEAR Intents panel is a general wallet top-up utility. The
 Deals tab also has a focused version that locks the selected deal, amount due,
 and settlement asset for checkout. In both places, cross-chain payment status
-is not escrow state; escrow locks only from Deals via **Fund Deal**.
+is wallet top-up state; escrow locks only from Deals via **Fund Deal**.
 The Stellar conversion path is also wallet preparation, not escrow funding.
 
 ---
@@ -131,7 +141,8 @@ Click one of the **Quick Start** scenario buttons to pre-fill the form:
 | Dev Sprint | 1,200 settlement units | 2 (50/50) | 8% | 50% |
 | Advisory Retainer | 3,000 settlement units | 4 (25/25/25/25) | 15% | 30% |
 
-Quick Start also fills in demo testnet addresses for the provider and connector.
+Quick Start fills in configurable provider and connector preset addresses for
+the selected network.
 
 ### Manual Configuration
 
@@ -213,17 +224,16 @@ The segmented filter bar at the top of the deal list:
 3. Choose a funding path:
    - **Fund Deal with XLM/USDC** when the deal-funding balance row shows enough wallet balance. XLM-settled deals are the simplest path for fresh wallets.
    - **Top Up from Another Chain** for a NEAR Intents-backed wallet top-up quote using the remaining pending deal amount
-   - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
+   - **Prepare Wallet** if you need XLM, a Stellar asset conversion, or a
+     cross-chain wallet top-up first
 4. For direct Stellar funding, approve the token transfer in your wallet
 5. For cross-chain top-up, a focused modal opens for the selected deal. Review the quote and payment status there. Escrow remains pending after the top-up until the connected Stellar wallet confirms **Fund Deal** and the contract emits `funded` events
 6. Once funded on-chain, all pending milestones transition to **Funded** and the deal becomes **Active**
 
-The public UI intentionally hides binding ids, raw asset ids, refund fallback
-envs, JWT/readiness details, and operator tooling terminology. NEAR Intents
-status is payment-initiation evidence only. Quote-only demo destinations are
-forced dry previews and do not show executable deposit instructions. The deal is
-not considered escrow-funded until the Stellar DealEscrow contract emits a
-`funded` event and the indexer sees it.
+The public UI hides binding ids, raw asset ids, refund fallback envs,
+JWT/readiness details, and operator tooling terminology. NEAR Intents status is
+wallet top-up progress only. The deal is not considered escrow-funded until the
+Stellar DealEscrow contract emits a `funded` event and the indexer sees it.
 
 **What happens on-chain**: The `fund_deal` function executes one SAC `transfer()` from your wallet to the contract address for the remaining pending deal balance. The contract marks pending milestones as funded, and those locked funds are released or refunded per milestone.
 
@@ -345,9 +355,7 @@ After completing the full flow, verify:
 2. If cross-chain payments are unavailable, capture the product-facing
    availability message and confirm the quote button is unavailable or returns
    a clear payment-route error.
-3. If an operator session is required for protected tooling, sign in through
-   `/admin`, then retry the quote from the public flow.
-4. Capture any failed/refunded/provider-pending status as payment status only;
+3. Capture any failed/refunded/provider-pending status as payment status only;
    do not mark the escrow funded unless the user confirms Fund Deal and matching Soroban `funded` events are
    visible.
 
@@ -378,14 +386,14 @@ Only active when wallet is connected.
 
 | Issue | Solution |
 |-------|----------|
-| "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
-| "Insufficient balance" | Go to Wallet Prep and use Friendbot to get 10,000 XLM, or choose Top Up from Another Chain on the first pending milestone. |
+| "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to the same network as the deployed app. |
+| "Insufficient balance" | Go to Wallet Prep and buy XLM with Stripe, transfer XLM from another wallet, convert an existing Stellar balance, or choose Top Up from Another Chain on the first pending milestone. |
 | "Transaction cancelled by user" | You declined the signing prompt in Privy or your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Use the transaction link shown during **Awaiting Finality** to check Stellar Explorer, then refresh **Deals** after the transaction succeeds. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
 | Connector cannot dispute | This is expected. Only the client or provider can dispute funded milestones. |
 | Admin resolution button missing in public app | This is expected. Use protected `/admin` for dispute evidence and admin-ready `resolve_dispute` commands. |
-| Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Create Deal. |
-| Soroswap quote fails | The seeded testnet route may lack liquidity for that size, or the optional public aggregator may not discover the route. Use XLM directly as the payment token or seed the testnet pool and retry. |
-| Balance shows 0 after Friendbot | Wait a few seconds for the balance refresh (every 15s), or switch tabs to trigger a refresh. |
+| Friendbot is not visible | Friendbot is testnet-only and is hidden on mainnet. Use Stripe, wallet transfer, or cross-chain top-up. |
+| Stellar conversion quote fails | The selected route may not have enough liquidity or the wallet may need account activation/trustline setup first. Use XLM directly or try a smaller amount. |
+| Balance has not updated after top-up | Wait for the network/provider to settle, then refresh the wallet balance or switch tabs to trigger a refresh. |
 | Live Ticker not showing | The ticker requires at least one on-chain deal. Create a deal first, then reload the landing page. |
