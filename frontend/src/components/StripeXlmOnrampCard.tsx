@@ -7,7 +7,6 @@ import {
   STRIPE_ONRAMP_DESTINATION_NETWORK,
   STRIPE_ONRAMP_ENABLED,
   STRIPE_ONRAMP_MODE,
-  STRIPE_ONRAMP_SOURCE_CURRENCY,
   stripeOnrampClient,
   type StripeOnrampReadiness,
   type StripeOnrampSession,
@@ -25,11 +24,6 @@ function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-function isPositiveFiatAmount(value: string): boolean {
-  if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) return false;
-  return Number(value) > 0;
-}
-
 export function StripeXlmOnrampCard({
   walletAddress,
   stepNumber = 1,
@@ -37,7 +31,6 @@ export function StripeXlmOnrampCard({
   embedded = false,
 }: StripeXlmOnrampCardProps) {
   const toast = useToast();
-  const [sourceAmount, setSourceAmount] = useState(STRIPE_ONRAMP_DEFAULT_AMOUNT);
   const [readiness, setReadiness] = useState<StripeOnrampReadiness | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -45,7 +38,7 @@ export function StripeXlmOnrampCard({
   const [error, setError] = useState('');
 
   const destinationLabel = `${STRIPE_ONRAMP_DESTINATION_CURRENCY.toUpperCase()} on ${STRIPE_ONRAMP_DESTINATION_NETWORK}`;
-  const canStart = STRIPE_ONRAMP_ENABLED && Boolean(walletAddress) && isPositiveFiatAmount(sourceAmount);
+  const canStart = STRIPE_ONRAMP_ENABLED && Boolean(walletAddress);
   const modeLabel = readiness?.mode === 'live' || STRIPE_ONRAMP_MODE === 'production' ? 'production' : 'test';
 
   const readyLabel = useMemo(() => {
@@ -84,8 +77,7 @@ export function StripeXlmOnrampCard({
     try {
       const created = await stripeOnrampClient.createSession({
         walletAddress,
-        sourceAmount: sourceAmount.trim(),
-        sourceCurrency: STRIPE_ONRAMP_SOURCE_CURRENCY,
+        sourceAmount: STRIPE_ONRAMP_DEFAULT_AMOUNT,
       });
       setSession(created);
       toast('Stripe onramp session created', 'success');
@@ -131,26 +123,12 @@ export function StripeXlmOnrampCard({
           <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/85 flex items-start gap-2">
             <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-300" />
             <span>
-              In Stripe/Link, keep <strong>Pay</strong> as <strong>{STRIPE_ONRAMP_SOURCE_CURRENCY.toUpperCase()}</strong> and{' '}
-              <strong>Receive</strong> as <strong>XLM on Stellar</strong>. If Stripe shows another setup or an error, go back and restart.
+              In Stripe/Link, continue only when <strong>Receive</strong> shows <strong>XLM on Stellar</strong>.
+              If Stripe shows another asset, network, or an error, go back and restart.
             </span>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label className="rounded-xl border border-zinc-800 bg-black/30 p-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pay with</span>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-sm font-bold uppercase text-white">{STRIPE_ONRAMP_SOURCE_CURRENCY}</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={sourceAmount}
-                  onChange={(event) => setSourceAmount(event.target.value)}
-                  className="min-w-0 flex-1 bg-transparent text-right font-mono text-sm font-bold text-emerald-200 outline-none"
-                  aria-label="Fiat amount"
-                />
-              </div>
-            </label>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="rounded-xl border border-zinc-800 bg-black/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Receive</p>
               <p className="mt-2 text-sm font-bold text-white">{destinationLabel}</p>
@@ -167,7 +145,7 @@ export function StripeXlmOnrampCard({
             <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-200 flex items-start gap-2">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
               <span>
-                Session created. Keep Stripe/Link set to {STRIPE_ONRAMP_SOURCE_CURRENCY.toUpperCase()} to XLM on Stellar, then refresh this wallet balance before funding escrow.
+                Session created. Keep Stripe/Link set to XLM on Stellar, then refresh this wallet balance before funding escrow.
               </span>
             </div>
           )}
