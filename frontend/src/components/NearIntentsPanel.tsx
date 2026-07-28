@@ -877,7 +877,6 @@ export function NearIntentsPanel({
                 Add funds from another chain
               </h3>
               <Tag color={readiness?.enabled ? 'blue' : 'zinc'}>{readiness?.enabled ? 'Available' : 'Unavailable'}</Tag>
-              <Tag color="emerald">Escrow gated</Tag>
             </div>
             <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
               {isDealFundingMode

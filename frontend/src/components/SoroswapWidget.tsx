@@ -413,7 +413,9 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         )}
       </div>
 
-      <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance} />
+      <WalletPrepOverview stellarAddress={walletAddress} xlmBalance={xlmBalance}>
+        <StripeXlmOnrampCard stepNumber={1} walletAddress={walletAddress} embedded />
+      </WalletPrepOverview>
 
       <Card className="p-4 sm:p-6 bg-[#02040a]" glowOnHover>
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -424,7 +426,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Send XLM</h3>
-                <Tag color="emerald">Wallet signed</Tag>
               </div>
               <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
                 Move native XLM from the connected Stellar wallet without exporting keys. Fresh Stellar addresses are activated automatically when you send at least 1 XLM.
@@ -509,8 +510,6 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
           </div>
         )}
       </Card>
-
-      <StripeXlmOnrampCard stepNumber={1} walletAddress={walletAddress} />
 
       <div className={`grid grid-cols-1 gap-4 lg:gap-8 ${IS_TESTNET ? 'md:grid-cols-2' : ''}`}>
         {IS_TESTNET && (

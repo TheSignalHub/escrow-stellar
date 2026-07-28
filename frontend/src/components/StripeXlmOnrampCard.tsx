@@ -18,6 +18,7 @@ interface StripeXlmOnrampCardProps {
   walletAddress: string;
   stepNumber?: number;
   compact?: boolean;
+  embedded?: boolean;
 }
 
 function shortAddress(address: string): string {
@@ -33,6 +34,7 @@ export function StripeXlmOnrampCard({
   walletAddress,
   stepNumber = 1,
   compact = false,
+  embedded = false,
 }: StripeXlmOnrampCardProps) {
   const toast = useToast();
   const [sourceAmount, setSourceAmount] = useState(STRIPE_ONRAMP_DEFAULT_AMOUNT);
@@ -101,14 +103,15 @@ export function StripeXlmOnrampCard({
     }
   };
 
-  return (
-    <Card className={`bg-[#02040a] ${compact ? 'p-4 sm:p-6' : 'p-4 sm:p-6 lg:p-8'}`} glowOnHover>
+  const content = (
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold text-sm">
-              {stepNumber}
-            </div>
+            {!embedded && (
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold text-sm">
+                {stepNumber}
+              </div>
+            )}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Buy XLM with Stripe</h3>
@@ -198,7 +201,19 @@ export function StripeXlmOnrampCard({
           </div>
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Card className={`bg-[#02040a] ${compact ? 'p-4 sm:p-6' : 'p-4 sm:p-6 lg:p-8'}`} glowOnHover>
+      {content}
     </Card>
   );
 }
-

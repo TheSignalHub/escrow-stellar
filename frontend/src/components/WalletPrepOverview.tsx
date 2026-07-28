@@ -1,19 +1,20 @@
-import { AlertCircle, Copy, ShieldCheck, Wallet } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Copy, ShieldCheck } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useToast } from '../App';
 import { accountExists, IS_TESTNET } from '../lib/stellar';
-import { Card, Tag } from './ui/Components';
+import { Card } from './ui/Components';
 
 interface WalletPrepOverviewProps {
   stellarAddress: string;
   xlmBalance?: string;
+  children?: ReactNode;
 }
 
 function truncateStellar(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOverviewProps) {
+export function WalletPrepOverview({ stellarAddress, xlmBalance, children }: WalletPrepOverviewProps) {
   const toast = useToast();
   const [stellarAccountExists, setStellarAccountExists] = useState<boolean | null>(null);
 
@@ -45,9 +46,8 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOve
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-black text-white tracking-tight">Your Wallets</h3>
-            <p className="mt-1 text-xs text-zinc-500">The app keeps escrow signing and fiat/source funding separated.</p>
+            <p className="mt-1 text-xs text-zinc-500">Top up and manage the connected Stellar wallet before funding escrow.</p>
           </div>
-          <Tag color="emerald">Non-custodial flow</Tag>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -89,25 +89,7 @@ export function WalletPrepOverview({ stellarAddress, xlmBalance }: WalletPrepOve
             )}
           </div>
 
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="h-10 w-10 rounded-lg border border-blue-500/30 bg-black/30 flex items-center justify-center text-blue-300 shrink-0">
-                  <Wallet size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-black text-blue-100">Funding routes</p>
-                  <p className="mt-1 font-mono text-sm text-blue-300 truncate">Connect only when adding funds</p>
-                  <p className="mt-2 text-xs leading-relaxed text-blue-100/70">
-                    Stripe can top up this Stellar wallet with XLM. NEAR Intents connects a source wallet only when you choose a cross-chain route.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 rounded-lg border border-blue-500/10 bg-black/20 px-3 py-2 text-xs font-mono text-blue-100/80">
-              Fiat/card top-up and cross-chain top-up are wallet preparation steps. Escrow locks only after Fund Deal.
-            </div>
-          </div>
+          {children}
         </div>
       </div>
     </Card>
