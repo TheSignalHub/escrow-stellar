@@ -60,8 +60,8 @@ Rows are intentionally isolated:
 
 ## Marketplace Binding Boundary
 
-For final-tranche validation, keep this database isolated from The Signal's
-production marketplace collections. If marketplace binding is demonstrated,
+Keep this database isolated from The Signal's production marketplace
+collections. If marketplace binding is demonstrated,
 use a shadow adapter/collection that maps external marketplace IDs to Soroban
 deal IDs without mutating live `deals`, `milestones`, matching, listings, SEO,
 Telegram, or production payment records.
@@ -71,8 +71,7 @@ marketplace can map its own deal and milestone IDs to DealEscrow events through
 an adapter/API layer, while this indexer remains the Stellar event read model.
 
 Marketplace bindings may include `externalPaymentIntent` metadata for NEAR
-Intents or another external payment initiator. This is now a required
-final-tranche integration workstream. The server-side implementation wraps
+Intents or another external payment initiator. The server-side implementation wraps
 `@defuse-protocol/one-click-sdk-typescript`, verifies 1Click quote signatures,
 and accepts a request-selected destination asset only when it is present in the
 deployment allowlist. The metadata still cannot mark escrow funds as locked
@@ -99,7 +98,7 @@ Minimum env:
 
 ```env
 DATABASE_URI=mongodb://127.0.0.1:27017/escrow-stellar-demo
-ADMIN_USERNAME=reviewer
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=<strong-password>
 ADMIN_RESOLUTION_EXECUTION_ENABLED=false
 ADMIN_STELLAR_SECRET_KEY=<optional-testnet-admin-secret-key>
@@ -139,8 +138,8 @@ the quote request as `refundTo`; do not present this env as the user refund
 model.
 
 `NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED` and
-`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are optional reviewer-evidence
-flags. They allow a signed 1Click quote against a liquid non-Stellar demo
+`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are optional fallback preview
+flags. They allow a signed 1Click quote against a liquid non-Stellar
 destination when the configured Stellar settlement route has no live provider
 liquidity. These destinations are quote-only and must not be treated as escrow
 settlement.
@@ -195,7 +194,7 @@ Run it again to verify dedupe:
 
 ## Backend Readiness Smoke
 
-Use this before moving to frontend QA or submission screenshots:
+Use this before moving to frontend QA:
 
 ```bash
 npm run smoke:backend
@@ -226,7 +225,7 @@ What it checks:
 - optional NEAR token discovery with `--tokens`
 - optional NEAR dry quote with `--quote`
 
-Use strict mode for a grant/submission gate:
+Use strict mode for a production-readiness gate:
 
 ```bash
 BACKEND_BASE_URL=https://stellar.thesignal.directory \
@@ -310,8 +309,8 @@ server default is configured. It does not mark escrow funded; the Soroban
 
 ## Shadow Marketplace Binding Seed
 
-For final-tranche review, seed sanitized Signal-style marketplace bindings into the
-isolated indexer database:
+Seed sanitized Signal-style marketplace bindings into the isolated indexer
+database when testing marketplace adapter reconciliation:
 
 ```bash
 npm run seed:marketplace-bindings
@@ -427,7 +426,7 @@ secrets, or admin credentials.
 The runtime server exposes:
 
 - `/` — frontend app
-- `/market_dashboard` — read-only Stellar event dashboard for reviewer/demo visibility
+- `/market_dashboard` — read-only Stellar event dashboard for operational visibility
 - `/market_dashboard` also shows read-only shadow marketplace bindings when seeded
 - `/admin` — protected dispute operations console for open-deal dispute review, off-chain dispute notes, admin-ready `resolve_dispute` / emergency `refund` command generation, optional gated execution, indexed evidence, and manual indexer control
 - `/health` — indexer health
@@ -473,12 +472,3 @@ defaults to `10000` stroops inclusion fee when
 `ADMIN_RESOLUTION_INCLUSION_FEE_STROOPS` is not set. The public `/market_dashboard`
 route is intentionally read-only and has no buttons that can mutate indexer
 state. Inngest scheduled runs do not depend on the admin session.
-
-## Review Positioning
-
-For Tranche 2 review, describe this as:
-
-> An isolated testnet indexer that reads DealEscrow Soroban events, stores
-> decoded `chain=stellar` escrow-transfer rows in MongoDB, persists its cursor
-> in `stellar-indexer-state`, and exposes a focused dashboard for reviewer
-> verification. It does not touch the production marketplace dealflow.

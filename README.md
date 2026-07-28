@@ -12,19 +12,19 @@ A fully functional implementation of The Signal's deal escrow system on Stellar'
 
 **GitHub**: [github.com/TheSignalHub/escrow-stellar](https://github.com/TheSignalHub/escrow-stellar)
 
-## SCF #42 Submission Status
+## SCF #42 Build Status
 
 This repository includes both the original Tranche 2 testnet environment and a
-mainnet pilot contract for final-tranche validation:
+mainnet pilot contract for production validation:
 
 - **Deliverable 4**: DealEscrow is deployed to Soroban Testnet and connected to the marketplace frontend.
-- **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and purpose-built read-only reviewer dashboard in [`indexer`](indexer).
+- **Deliverable 5**: DealEscrow event topics and indexer mapping are published in [`docs/EVENT_SCHEMA.md`](docs/EVENT_SCHEMA.md), with an isolated testnet indexer and read-only event dashboard in [`indexer`](indexer).
 - **Deliverable 6**: The frontend exposes a Broker-style multi-asset funding step. On testnet, the adapter routes XLM into the configured demo test USDC settlement asset through a seeded Soroswap router path because public indexed testnet liquidity may be unavailable after resets.
 - **Mainnet DealEscrow pilot**: The audited `fund_deal` contract is deployed on Stellar Mainnet and supports create, fund-once, release, dispute, and admin resolution flows.
 - **NEAR Intents cross-chain top-up**: NEAR Intents / 1Click is integrated as a server-side cross-chain Stellar wallet top-up path. The user chooses source chain, source asset, and source amount; the destination is constrained to the approved Stellar settlement asset for the deal. EVM source routes can submit native/ERC-20 payments from a connected browser wallet to the 1Click deposit address. After the Stellar wallet is topped up, the user confirms **Fund Deal**, which calls `fund_deal`; escrow state remains gated on Soroban `funded` events.
 - **Fiat onramp path**: Stripe hosted crypto onramp can create an XLM top-up session for the connected Stellar wallet. The user completes the fiat purchase with Stripe/Link, then funds the same DealEscrow workflow from the Stellar wallet after XLM arrives.
 
-Reviewer links:
+Live links:
 
 ```text
 Frontend:             https://stellar.thesignal.directory
@@ -78,7 +78,7 @@ testnet: XLM in, demo test USDC settlement asset out, then escrow funding.
 
 The indexer database is not the source of truth for funds or deal state. The
 Soroban contract remains the source of truth; the isolated MongoDB indexer
-database is a read model for marketplace-style status sync and reviewer
+database is a read model for marketplace-style status sync and operational
 visibility.
 
 Network endpoints are environment-driven. Set `VITE_STELLAR_NETWORK`,
@@ -216,7 +216,7 @@ npm run dev
 3. Fund your wallet with 10,000 XLM via Friendbot
 4. Use **Wallet Prep** to buy XLM through Stripe hosted onramp, quote a NEAR Intents wallet top-up, or swap XLM into demo test USDC through the seeded Soroswap testnet route if the deal requires that settlement asset
 5. Create a deal using a Quick Start scenario; the financial setup defaults to Stellar XLM, with Stellar USDC still available as an optional issued-asset settlement path
-6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM** for the clean grant smoke or use **Prepare Wallet** / **Top Up from Another Chain** when the wallet needs more XLM first
+6. In **Deals**, open the first pending milestone, confirm the deal-funding balance row, then choose **Fund Deal with XLM** or use **Prepare Wallet** / **Top Up from Another Chain** when the wallet needs more XLM first
 7. For the cross-chain path, request a remaining-balance top-up quote, wait for the connected Stellar wallet balance to be ready, then confirm **Fund Deal**; escrow state remains gated on Stellar `funded` events
 8. Release funded milestones and watch the 3-way split visualization
 9. Check synced events in `/market_dashboard`

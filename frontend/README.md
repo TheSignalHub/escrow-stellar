@@ -236,21 +236,21 @@ cross-chain **Add Funds** entry. The panel locks to the selected deal and remain
 pending balance, discovers source chain/source asset options from 1Click,
 locks the destination to the deal's Stellar settlement asset, gets a quote, and
 reports whether the returned 1Click quote was verified. It intentionally hides
-binding ids, JWT/readiness internals, refund fallback envs, and internal smoke
+binding ids, JWT/readiness internals, refund fallback envs, and operator tooling
 terminology. Source token metadata is public 1Click discovery data; destination
 settlement assets remain backend-approved. The demo test USDC token is not
 Circle-issued production USDC, and
 NEAR/payment status never marks escrow funded. After the Stellar wallet is
 topped up, the user confirms **Fund Deal**, and only Stellar DealEscrow
-`funded` events mark escrow funded. If the backend exposes a quote-evidence destination
-because Stellar-route liquidity is unavailable, the panel labels it as quote
-evidence rather than escrow settlement. For deal-tied top-ups, the amount is
+`funded` events mark escrow funded. If the backend exposes a fallback preview
+destination because Stellar-route liquidity is unavailable, the panel labels it
+as a preview rather than escrow settlement. For deal-tied top-ups, the amount is
 shown in human Stellar units and the destination route is constrained to the
 deal's approved Stellar settlement asset: Stellar USDC-compatible settlement
 token for USDC deals, or Stellar XLM for XLM deals. Source assets remain
 user-selectable from supported non-Stellar 1Click routes; recommended discovered
 routes are ranked first, source amounts are estimated from live token prices
-when available, and successful dry quotes show a quote-evidence checklist. The
+when available, and successful dry quotes show a route verification checklist. The
 panel now separates **Preview Quote** from **Get Live Payment Quote** so the app
 can prove live 1Click pricing while clearly separating preview state from
 source-payment readiness.

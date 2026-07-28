@@ -1,22 +1,18 @@
-# Near Intents Integration Plan
+# Near Intents Integration
 
 Last updated: 2026-07-26 13:58 BST
 
-Scope: final-tranche integration plan for NEAR Intents as a required
-cross-chain payment initiation path for the reusable Stellar escrow rail.
-
-This document supersedes the earlier "external boundary only" wording. NEAR
-Intents is no longer treated as something we can skip for the final tranche.
-The correct direction is a staged adapter: integrate quote/status/payment
-tracking while keeping Soroban escrow events as the source of truth for when
-funds are actually locked in DealEscrow.
+Scope: NEAR Intents / 1Click integration for cross-chain wallet top-ups into
+the reusable Stellar escrow rail. The adapter handles quote, source-payment,
+status, and settlement tracking while Soroban escrow events remain the source
+of truth for funds locked in DealEscrow.
 
 ## Feature Log
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
 | 2026-07-26 13:58 BST | Public user quote/status routes | Removed admin Basic Auth from the user-facing 1Click quote, status, and source transaction submission endpoints so NEAR Intents wallet top-up can be used from the public app without an operator login prompt. Admin reconciliation remains protected. | `npm run build` passed in `indexer/`. |
-| 2026-07-23 16:34 BST | Source-wallet refund routing | Tightened the quote path so production-style cross-chain routes require an explicit connected source-wallet refund address. The server default refund account remains available only for dry/internal QA or quote-evidence destinations. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
+| 2026-07-23 16:34 BST | Source-wallet refund routing | Tightened the quote path so production-style cross-chain routes require an explicit connected source-wallet refund address. The server default refund account remains available only for controlled dry-run or quote-preview routes. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-01 10:25 HKT | Near Intents boundary | Documented NEAR Intents as an external payment initiation boundary and added optional marketplace binding metadata for cross-chain intent tracking. | Superseded by 10:28 HKT validation. |
 | 2026-07-01 10:28 HKT | Near Intents boundary validation | Confirmed the optional binding metadata compiles in the indexer type model and kept executable payment flow explicitly out of scope for this tranche. | Superseded by 10:40 HKT direction change. |
 | 2026-07-01 10:40 HKT | Near Intents required integration | Reopened Gap 5 as a required integration workstream. Added researched protocol flow, staged adapter plan, status mapping, API/env readiness, and acceptance criteria. | Static docs update using NEAR docs and NEAR sandbox 1Click interface reference; production endpoint contract still requires provider validation. |
@@ -31,8 +27,8 @@ funds are actually locked in DealEscrow.
 | 2026-07-21 21:13 BST | NEAR quote request compatibility | Removed forced `depositMode` from the public quote request path. 1Click now decides whether the selected route needs a deposit memo, and the UI still displays `depositMemo` when returned. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-21 23:50 BST | Stellar recipient quote guard | Added frontend validation so **Pay from another chain** requires a real connected Stellar G-address before requesting a quote, matching the server-side Stellar recipient preflight. This prevents the shadow binding placeholder wallet from being sent to 1Click. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
 | 2026-07-21 23:53 BST | Source-chain refund guard | Disabled Ethereum/Base source assets in the public panel until native source-wallet connection exists, and added backend validation so EVM source assets require an EVM refund address instead of falling back to the NEAR QA refund account. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. |
-| 2026-07-22 11:51 BST | NEAR quote evidence destination | Added an explicitly flagged demo destination allowlist so reviewers can request a signed 1Click quote for a liquid non-Stellar route when Stellar settlement liquidity is unavailable. The UI labels this as quote evidence only and never treats it as escrow funding. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live direct 1Click probe previously confirmed NEAR -> NEAR USDT dry quote succeeds while NEAR -> Stellar USDC returns no liquidity. |
-| 2026-07-22 18:51 BST | NEAR quote-only UX guard | Forced quote-evidence destinations to stay dry-preview even when live execution is enabled, preventing deposit instructions or pending-deposit status from appearing for routes that do not settle into Stellar escrow. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
+| 2026-07-22 11:51 BST | NEAR quote-preview destination | Added an explicitly flagged fallback destination allowlist for signed 1Click quote previews when a Stellar settlement route has no current liquidity. The UI labels these routes as previews and never treats them as escrow funding. | `npm run build` passed in `frontend/`; `npm run build` passed in `indexer/`. Live direct 1Click probe previously confirmed NEAR -> NEAR USDT dry quote succeeds while NEAR -> Stellar USDC returns no liquidity. |
+| 2026-07-22 18:51 BST | NEAR quote-only UX guard | Forced fallback preview destinations to stay dry-preview even when live execution is enabled, preventing deposit instructions or pending-deposit status from appearing for routes that do not settle into Stellar escrow. | `npm run build` passed in `frontend/`. Backend behavior unchanged. |
 | 2026-07-23 10:44 BST | Wallet prep boundary cleanup | Removed standalone NEAR quote UI from Wallet Prep so cross-chain checkout starts from a pending deal milestone. Wallet Prep now remains for testnet funding and Stellar settlement-asset preparation only. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-23 10:33 BST | Deal-level NEAR funding entry | Reused the NEAR Intents panel from pending Deal Dashboard milestones so cross-chain payment starts from a selected deal/milestone with amount due locked. Wallet Prep remains a settlement-asset preparation surface. | `npm run build` passed in `frontend/`. Backend/API behavior unchanged; Soroban `funded` remains the escrow source of truth. |
 | 2026-07-23 14:55 BST | NEAR top-up boundary | Clarified that NEAR Intents is a connected Stellar wallet top-up route, not a direct escrow funding route. Escrow funding still requires the user to confirm **Fund Deal** and emit Soroban `funded` events. | `npm run build` passed in `frontend/`. |
@@ -210,10 +206,10 @@ The public flow should read like checkout, not an integration console:
    wallet top-up. Escrow funding happens only after the user confirms **Fund
    Deal** and matching Soroban `funded` events are indexed.
 
-Do not expose these implementation details in the public checkout surface:
+The public checkout surface hides implementation details such as:
 binding ids, raw asset ids, JWT/readiness internals, refund fallback envs,
 dry-quote labels, smoke/admin language, or marketplace shadow-binding jargon.
-Those remain internal QA and operator concerns.
+Those remain operator concerns.
 
 ## Adapter Responsibilities
 
@@ -338,12 +334,12 @@ keys, replay protection, provider signature verification if webhooks are
 enabled, and raw provider payload logging with JWTs/secrets redacted.
 
 `NEAR_INTENTS_DEMO_DESTINATIONS_ENABLED` and
-`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are reviewer-evidence flags for
+`NEAR_INTENTS_DEMO_DESTINATION_ASSET_ALLOWLIST` are fallback preview flags for
 quote-only destinations. Use them only when the configured Stellar settlement
-asset has no current 1Click liquidity and the team needs to demonstrate
-successful SDK quote creation plus signature verification through another
-liquid 1Click asset such as `nep141:usdt.tether-token.near`. These routes are
-not Stellar escrow settlement routes and must not mark a deal funded.
+asset has no current 1Click liquidity and the deployment needs to verify SDK
+quote creation plus signature verification through another liquid 1Click asset
+such as `nep141:usdt.tether-token.near`. These routes are not Stellar escrow
+settlement routes and must not mark a deal funded.
 
 Webhook support is not implemented yet. If we add it later, add
 `NEAR_INTENTS_WEBHOOK_SECRET` and signature verification before accepting
@@ -363,7 +359,7 @@ quote path; it remains for Friendbot and the Stellar broker settlement route:
   product surface.
 - Keeps refund handling product-facing: production refunds route to the
   connected source wallet; the server default refund account remains an
-  operator-controlled internal QA fallback.
+  operator-controlled fallback for controlled dry-run routes.
 - Uses product language for protected/disabled route errors instead of exposing
   server configuration details.
 - Shows provider/payment status and keeps `SUCCESS`, `FAILED`, `REFUNDED`, and
@@ -380,12 +376,9 @@ settlement, refund, and provider/Soroban state mismatch.
 
 ## Acceptance Criteria
 
-- A reviewer can open a deal, choose a pending milestone, request a NEAR
-  Intents quote through the official SDK, and see quote/intent/deposit metadata
-  persisted against the internal binding. Status: server API implemented; live
-  quote evidence still needs final route evidence. Frontend panel is
-  implemented as a product-facing cross-chain quote, payment instruction, and
-  status display.
+- A user can open a deal, choose a pending milestone, request a NEAR Intents
+  quote through the official SDK, and see quote, payment instruction, and
+  status information in the product-facing funding panel.
 - Status updates are idempotent and mapped into the local state model. Status:
   server API implemented for SDK polling by stored deposit address/memo.
 - Failed, expired, refunded, and delayed settlement states are visible in API

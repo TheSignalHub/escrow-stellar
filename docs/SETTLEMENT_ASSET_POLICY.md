@@ -54,8 +54,8 @@ Before a mainnet deployment, each approved settlement asset must have:
   USDC and/or native XLM.
 - A reconciliation note for the indexer and marketplace binding consumer.
 
-Do not claim production USDC support until the mainnet SAC address, issuer,
-trustline flow, and liquidity route have been verified for the deployed network.
+Production USDC support requires the mainnet SAC address, issuer, trustline
+flow, and liquidity route to be verified for the deployed network.
 
 ## Frontend Configuration
 

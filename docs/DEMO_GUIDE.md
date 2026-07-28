@@ -111,8 +111,8 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 The Wallet Prep NEAR Intents panel is a general wallet top-up utility. The
 Deals tab also has a focused version that locks the selected deal, amount due,
-and settlement asset for reviewer checkout. In both places, cross-chain payment
-status is not escrow state; escrow locks only from Deals via **Fund Deal**.
+and settlement asset for checkout. In both places, cross-chain payment status
+is not escrow state; escrow locks only from Deals via **Fund Deal**.
 The Stellar conversion path is also wallet preparation, not escrow funding.
 
 ---
@@ -137,7 +137,7 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 
 1. **Provider Address**: Paste the Stellar public key (G...) of the service provider
 2. **Connector Address**: Optional. Paste the BD referrer's address when there is one; leave it blank when the deal has no connector.
-3. **Escrow Settlement Asset**: Keep the default Stellar XLM settlement for the grant smoke test, or switch to Stellar USDC only when intentionally testing issued-asset trustlines
+3. **Escrow Settlement Asset**: Keep the default Stellar XLM settlement for the simplest path, or switch to Stellar USDC when intentionally using issued-asset trustlines
 4. **Total Amount**: Enter the deal total in the selected token
 5. **Platform Fee**: Set the total platform fee percentage (e.g., 10%)
 6. **Connector Share**: Set the connector's share of the platform fee (e.g., 40%)
@@ -211,7 +211,7 @@ The segmented filter bar at the top of the deal list:
 1. Select a deal from the left panel
 2. Find the first milestone showing **Pending** status
 3. Choose a funding path:
-   - **Fund Deal with XLM/USDC** when the deal-funding balance row shows enough wallet balance. For the main grant smoke, prefer XLM-settled deals.
+   - **Fund Deal with XLM/USDC** when the deal-funding balance row shows enough wallet balance. XLM-settled deals are the simplest path for fresh wallets.
    - **Top Up from Another Chain** for a NEAR Intents-backed wallet top-up quote using the remaining pending deal amount
    - **Prepare Wallet** if you need testnet XLM or the broker-style XLM-to-test-USDC route first
 4. For direct Stellar funding, approve the token transfer in your wallet
@@ -219,7 +219,7 @@ The segmented filter bar at the top of the deal list:
 6. Once funded on-chain, all pending milestones transition to **Funded** and the deal becomes **Active**
 
 The public UI intentionally hides binding ids, raw asset ids, refund fallback
-envs, JWT/readiness internals, and internal smoke terminology. NEAR Intents
+envs, JWT/readiness details, and operator tooling terminology. NEAR Intents
 status is payment-initiation evidence only. Quote-only demo destinations are
 forced dry previews and do not show executable deposit instructions. The deal is
 not considered escrow-funded until the Stellar DealEscrow contract emits a
@@ -345,8 +345,8 @@ After completing the full flow, verify:
 2. If cross-chain payments are unavailable, capture the product-facing
    availability message and confirm the quote button is unavailable or returns
    a clear payment-route error.
-3. If the protected reviewer session is missing, sign in through `/admin`, then
-   retry the quote without exposing the admin session details in screenshots.
+3. If an operator session is required for protected tooling, sign in through
+   `/admin`, then retry the quote from the public flow.
 4. Capture any failed/refunded/provider-pending status as payment status only;
    do not mark the escrow funded unless the user confirms Fund Deal and matching Soroban `funded` events are
    visible.
