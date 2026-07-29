@@ -93,6 +93,8 @@ export async function createStripeOnrampSession(
   params.set('source_amount', sourceAmount);
   params.set('destination_currency', config.stripeOnramp.destinationCurrency);
   params.set('destination_network', config.stripeOnramp.destinationNetwork);
+  params.append('destination_currencies[]', config.stripeOnramp.destinationCurrency);
+  params.append('destination_networks[]', config.stripeOnramp.destinationNetwork);
   params.set('wallet_addresses[stellar]', walletAddress);
   params.set('lock_wallet_address', String(config.stripeOnramp.lockWalletAddress));
   if (config.stripeOnramp.finishUrl) {

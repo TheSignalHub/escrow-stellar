@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, CreditCard, ExternalLink, Loader2, Wallet } from 'lucide-react';
 import { useToast } from '../App';
 import {
@@ -33,6 +33,7 @@ export function StripeXlmOnrampCard({
   const [checking, setChecking] = useState(false);
   const [session, setSession] = useState<StripeOnrampSession | null>(null);
   const [error, setError] = useState('');
+  const openingRef = useRef(false);
 
   const destinationLabel = `${STRIPE_ONRAMP_DESTINATION_CURRENCY.toUpperCase()} on ${STRIPE_ONRAMP_DESTINATION_NETWORK}`;
   const canStart = STRIPE_ONRAMP_ENABLED && Boolean(walletAddress);
@@ -52,8 +53,9 @@ export function StripeXlmOnrampCard({
   }, []);
 
   const startHostedOnramp = async () => {
-    if (!canStart || loading) return;
+    if (!canStart || loading || openingRef.current) return;
 
+    openingRef.current = true;
     setLoading(true);
     setError('');
     setSession(null);
@@ -66,15 +68,19 @@ export function StripeXlmOnrampCard({
       setSession(created);
       toast('Stripe onramp session created', 'success');
 
-      const popup = window.open(created.redirectUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) {
-        window.location.href = created.redirectUrl;
+      const popup = window.open(created.redirectUrl, '_blank');
+      if (popup) {
+        popup.opener = null;
+        popup.focus?.();
+      } else {
+        window.location.assign(created.redirectUrl);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Stripe onramp session could not be created.';
       setError(message);
       toast('Stripe onramp did not start', 'error');
     } finally {
+      openingRef.current = false;
       setLoading(false);
     }
   };

@@ -9,6 +9,7 @@ funding, and Stellar escrow state work together.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-29 16:20 BST | Stripe hosted onramp session hardening | Tightened Stripe hosted onramp launch behavior so one user action opens one hosted session, and added explicit XLM/Stellar destination list parameters to the backend session request. | `npm run build -- --logLevel warn` passed in `frontend/` with existing large-chunk warning; `npm run build` passed in `indexer/`. |
 | 2026-07-28 12:20 BST | Public documentation cleanup | Reframed payment-rail boundaries as neutral product and operations behavior. | Targeted `rg` scans for private planning phrases. |
 | 2026-07-28 02:41 BST | Stripe XLM hosted onramp | Added a server-side Stripe hosted onramp session adapter and Wallet Prep entry that locks destination to the connected Stellar wallet and buys native XLM before escrow funding. | `npm run build` passed in `indexer/`; `npm run build -- --logLevel warn` passed in `frontend/` with existing large-chunk warning. |
 
