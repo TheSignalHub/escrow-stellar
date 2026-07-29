@@ -35,6 +35,7 @@ state and must stay out of the escrow lifecycle tables until the user signs
 
 | Timestamp | Area | Change | Validation |
 |---|---|---|---|
+| 2026-07-30 00:38 BST | Admin dispute dashboard presentation | Removed internal raw-event and shadow-binding warnings from open dispute cards. Direct app-created disputes show dispute evidence and admin actions; linked marketplace references appear only when present. | `npm run build` passed |
 | 2026-07-25 21:20 BST | Market dashboard event boundary | Added parser/API guards so non-DealEscrow payment-route events cannot appear as DealEscrow lifecycle evidence. | `npm run build` in `indexer/` passed |
 
 ## Collections
@@ -219,7 +220,7 @@ What it checks:
 - `/api/market-dashboard/summary`
 - indexed event count
 - indexed `dispute` evidence
-- shadow marketplace binding presence
+- optional marketplace reference presence
 - protected binding lookup when `ADMIN_USERNAME` / `ADMIN_PASSWORD` are set
 - optional protected indexer tick with `--run-indexer`
 - optional NEAR token discovery with `--tokens`
@@ -427,11 +428,11 @@ The runtime server exposes:
 
 - `/` — frontend app
 - `/market_dashboard` — read-only Stellar event dashboard for operational visibility
-- `/market_dashboard` also shows read-only shadow marketplace bindings when seeded
+- `/market_dashboard` also shows read-only marketplace references when seeded
 - `/admin` — protected dispute operations console for open-deal dispute review, off-chain dispute notes, admin-ready `resolve_dispute` / emergency `refund` command generation, optional gated execution, indexed evidence, and manual indexer control
 - `/health` — indexer health
 - `/api/indexer/run-once` — protected manual indexer tick
-- `/api/marketplace-bindings*` — protected shadow marketplace binding and reconciliation APIs
+- `/api/marketplace-bindings*` — protected marketplace reference and reconciliation APIs
 - `/api/near-intents/readiness` — public non-secret NEAR Intents readiness for the frontend panel
 - `/api/near-intents/tokens` and `/api/marketplace-bindings/:bindingId/near-intents/quote|status|deposit-tx` — public user-facing NEAR Intents APIs, disabled unless configured
 - `/api/stripe/onramp/readiness` and `/api/stripe/onramp/session` — public Stripe hosted onramp adapter for XLM wallet top-ups; requires server-side `STRIPE_SECRET_KEY`

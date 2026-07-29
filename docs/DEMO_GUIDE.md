@@ -272,8 +272,8 @@ required before funds can move.
 For operator/admin resolution, use the protected `/admin` console:
 
 1. Sign in with the configured admin credentials
-2. Review the open dispute row: deal, milestone, caller, amount, event tx, and
-   any shadow marketplace binding
+2. Review the open dispute row: deal, milestone, caller, amount, event tx,
+   dispute notes, and linked marketplace reference when present
 3. Choose the refund split:
    - 0%: All funds go to provider
    - 50%: Equal split between client and provider

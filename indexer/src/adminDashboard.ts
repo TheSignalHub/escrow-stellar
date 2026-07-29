@@ -769,23 +769,31 @@ function renderInternalAdminPage(config: IndexerConfig): string {
         if (!disputes.length) return '<div class="empty">No open indexed disputes. File a dispute on a funded milestone, then run the indexer.</div>';
         return disputes.map((dispute) => {
           const binding = dispute.binding;
+          const amountLabel = dispute.settlementSymbol
+            ? fmt.format(dispute.amount || 0) + ' ' + dispute.settlementSymbol
+            : fmt.format(dispute.amount || 0);
+          const settlementMeta = dispute.settlementSymbol
+            ? '<div><div class="label">Settlement asset</div><div>' + escapeHtml(dispute.settlementSymbol) + '</div></div>'
+            : '';
+          const linkedDealMeta = binding
+            ? '<div><div class="label">Marketplace reference</div><div class="mono">' + escapeHtml(binding.bindingId) + '</div></div>' +
+              '<div><div class="label">External deal</div><div class="mono">' + escapeHtml(binding.externalDealId) + '</div></div>' +
+              '<div><div class="label">Client</div><div class="mono">' + escapeHtml(binding.clientWallet) + '</div></div>' +
+              '<div><div class="label">Provider</div><div class="mono">' + escapeHtml(binding.providerWallet) + '</div></div>'
+            : '';
           return '<article class="dispute-card">' +
             '<div>' +
               '<span class="pill dispute">Open dispute</span>' +
               '<h3 style="margin-top:12px">Deal #' + escapeHtml(dispute.dealId) + ' / ' + escapeHtml(milestoneLabel(dispute.milestoneIdx)) + '</h3>' +
               '<div class="meta">' +
-                '<div><div class="label">Indexed amount</div><div>' + fmt.format(dispute.amount || 0) + '</div></div>' +
-                '<div><div class="label">Settlement asset</div><div>' + escapeHtml(dispute.settlementSymbol || 'Unknown') + '</div></div>' +
+                '<div><div class="label">Disputed amount</div><div>' + escapeHtml(amountLabel) + '</div></div>' +
+                settlementMeta +
                 '<div><div class="label">Ledger</div><div class="mono">' + escapeHtml(dispute.ledger) + '</div></div>' +
                 '<div><div class="label">Disputed by</div><div class="mono">' + escapeHtml(dispute.caller || '-') + '</div></div>' +
                 '<div><div class="label">Tx</div><div class="mono">' + (dispute.explorerTxUrl ? '<a href="' + escapeHtml(dispute.explorerTxUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(short(dispute.txHash)) + '</a>' : '-') + '</div></div>' +
-                '<div><div class="label">Marketplace binding</div><div class="mono">' + escapeHtml(binding ? binding.bindingId : 'No shadow binding') + '</div></div>' +
-                '<div><div class="label">External deal</div><div class="mono">' + escapeHtml(binding ? binding.externalDealId : '-') + '</div></div>' +
-                '<div><div class="label">Client</div><div class="mono">' + escapeHtml(binding ? binding.clientWallet : '-') + '</div></div>' +
-                '<div><div class="label">Provider</div><div class="mono">' + escapeHtml(binding ? binding.providerWallet : '-') + '</div></div>' +
+                linkedDealMeta +
               '</div>' +
               renderNotes(dispute.notes) +
-              (!binding ? '<div class="notice">Settlement asset and party wallets are not present in raw dispute events. For direct app-created deals, confirm the asset and parties in the Deals tab or add a shadow marketplace binding before final evidence capture.</div>' : '') +
             '</div>' +
             commandBlock(dispute, adminExecution) +
           '</article>';
