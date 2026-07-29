@@ -80,12 +80,23 @@ VITE_STRIPE_ONRAMP_SOURCE_CURRENCY=usd
 VITE_STRIPE_ONRAMP_DEFAULT_AMOUNT=10
 VITE_STRIPE_ONRAMP_DESTINATION_CURRENCY=xlm
 VITE_STRIPE_ONRAMP_DESTINATION_NETWORK=stellar
+
+# Optional MoonPay sandbox route check. Public key only; keep any MoonPay
+# secret/signing key server-side if production wallet-prefill signing is added.
+VITE_MOONPAY_API_KEY=
+VITE_MOONPAY_ENVIRONMENT=sandbox
+VITE_MOONPAY_BASE_CURRENCY=eur
+VITE_MOONPAY_DEFAULT_AMOUNT=30
+VITE_MOONPAY_CURRENCY_CODE=xlm
 ```
 
 The Soroswap public aggregator API key is intentionally not a `VITE_` variable.
 For the single Coolify deployment, set it on the backend as `SOROSWAP_API_KEY`.
 Stripe hosted onramp sessions are also created by the backend. Keep
 `STRIPE_SECRET_KEY` server-only; do not expose it as a `VITE_` variable.
+The optional MoonPay sandbox page is available at `/moonpay_onramp_test` for
+route testing with a MoonPay publishable test key. Production locked wallet
+delivery may require a server-side MoonPay URL-signing endpoint.
 NEAR Intents keys and approved settlement asset lists are also backend-only.
 Do not create `VITE_` variables for `NEAR_INTENTS_JWT`, provider asset ids, or
 live execution flags; the frontend uses local `/api/near-intents/*` routes so

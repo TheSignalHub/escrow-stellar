@@ -17,6 +17,7 @@ import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
 import { StripeXlmOnrampCard } from './components/StripeXlmOnrampCard';
+import { MoonPayXlmOnrampTest } from './components/MoonPayXlmOnrampTest';
 import { DEAL_ESCROW_CONTRACT, EXPLORER_URL, STELLAR_NETWORK, getExplorerContractLink } from './lib/stellar';
 import { SignalLogo, GlowingBackground } from './components/ui/Branding';
 import { Button, Card } from './components/ui/Components';
@@ -221,6 +222,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const stripeOnrampTestPath =
     typeof window !== 'undefined' && window.location.pathname === '/stripe_onramp_test';
+  const moonPayOnrampTestPath =
+    typeof window !== 'undefined' && window.location.pathname === '/moonpay_onramp_test';
   const [lastCreatedDealId, setLastCreatedDealId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem('parity-banner-dismissed') === '1'
@@ -519,7 +522,11 @@ export default function App() {
                 </div>
               )}
 
-              {!stripeOnrampTestPath && activeTab === 'fund' && (
+              {moonPayOnrampTestPath && (
+                <MoonPayXlmOnrampTest walletAddress={wallet.address} />
+              )}
+
+              {!stripeOnrampTestPath && !moonPayOnrampTestPath && activeTab === 'fund' && (
                 <SoroswapWidget
                   walletAddress={wallet.address}
                   signTransaction={wallet.signTransaction}
@@ -531,7 +538,7 @@ export default function App() {
                 />
               )}
 
-              {!stripeOnrampTestPath && activeTab === 'create' && (
+              {!stripeOnrampTestPath && !moonPayOnrampTestPath && activeTab === 'create' && (
                 <CreateDeal
                   walletAddress={wallet.address}
                   onCreateDeal={escrow.createDeal}
@@ -540,7 +547,7 @@ export default function App() {
                 />
               )}
 
-              {!stripeOnrampTestPath && activeTab === 'dashboard' && (
+              {!stripeOnrampTestPath && !moonPayOnrampTestPath && activeTab === 'dashboard' && (
                 <DealDashboard
                   getDeal={escrow.getDeal}
                   getDealCount={escrow.getDealCount}
@@ -556,7 +563,7 @@ export default function App() {
                 />
               )}
 
-              {!stripeOnrampTestPath && activeTab === 'reputation' && (
+              {!stripeOnrampTestPath && !moonPayOnrampTestPath && activeTab === 'reputation' && (
                 <ReputationBadge
                   getReputation={escrow.getReputation}
                   getDealCount={escrow.getDealCount}

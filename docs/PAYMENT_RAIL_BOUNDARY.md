@@ -9,6 +9,7 @@ funding, and Stellar escrow state work together.
 
 | Timestamp | Feature / Area | Change Logged | Validation |
 |---|---|---|---|
+| 2026-07-29 23:33 BST | MoonPay sandbox route check | Added an isolated MoonPay sandbox test page for XLM wallet top-up route validation. Stripe remains the integrated hosted onramp path while MoonPay is evaluated as a regional fallback. | `npm run build -- --logLevel warn` passed with existing large-chunk warning. |
 | 2026-07-29 16:20 BST | Stripe hosted onramp session hardening | Tightened Stripe hosted onramp launch behavior so one user action opens one hosted session, and added explicit XLM/Stellar destination list parameters to the backend session request. | `npm run build -- --logLevel warn` passed in `frontend/` with existing large-chunk warning; `npm run build` passed in `indexer/`. |
 | 2026-07-28 12:20 BST | Public documentation cleanup | Reframed payment-rail boundaries as neutral product and operations behavior. | Targeted `rg` scans for private planning phrases. |
 | 2026-07-28 02:41 BST | Stripe XLM hosted onramp | Added a server-side Stripe hosted onramp session adapter and Wallet Prep entry that locks destination to the connected Stellar wallet and buys native XLM before escrow funding. | `npm run build` passed in `indexer/`; `npm run build -- --logLevel warn` passed in `frontend/` with existing large-chunk warning. |
@@ -18,6 +19,10 @@ funding, and Stellar escrow state work together.
 The app supports fiat-to-crypto wallet top-up through Stripe hosted onramp. A
 user can buy native XLM into the connected Stellar wallet, then fund a
 DealEscrow deal from that wallet.
+
+An isolated MoonPay sandbox route is available for evaluating alternate XLM
+wallet top-up coverage. It is a route check only until production credentials,
+domain allowlisting, and any required server-side URL signing are configured.
 
 The user flow is:
 

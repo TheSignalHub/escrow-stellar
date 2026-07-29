@@ -104,6 +104,8 @@ Stripe hosted crypto onramp is integrated as an XLM wallet top-up path. A user
 can buy native XLM into the connected Stellar wallet, then fund the same
 DealEscrow workflow from that wallet. See
 [`docs/PAYMENT_RAIL_BOUNDARY.md`](docs/PAYMENT_RAIL_BOUNDARY.md).
+An isolated MoonPay sandbox route check is also available at
+`/moonpay_onramp_test` when `VITE_MOONPAY_API_KEY` is configured.
 
 ## Key Features
 
